@@ -2,13 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { parseSignupForm } from "@/lib/validation/auth";
 
 export async function signup(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const parsed = parseSignupForm(formData);
+  if (!parsed.success) {
+    redirect(`/signup?error=${encodeURIComponent(parsed.error)}`);
+  }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp(parsed.data);
 
   if (error) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`);

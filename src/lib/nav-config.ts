@@ -40,7 +40,7 @@ export const navGroups: NavGroup[] = [
         icon: FileText,
         status: "live",
       },
-      { label: "Inbox", href: "/dashboard/inbox", icon: Inbox, status: "soon" },
+      { label: "Inbox", href: "/dashboard/inbox", icon: Inbox, status: "live" },
       {
         label: "Vendors",
         href: "/dashboard/vendors",

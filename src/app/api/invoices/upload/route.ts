@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice } from "@/lib/extraction";
+import { validateUploadFile } from "@/lib/validation/upload";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -18,22 +19,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing file" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type || "application/octet-stream";
+  const validated = validateUploadFile({ type: mimeType, size: file.size });
+  if (!validated.success) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
+  }
 
+  const buffer = Buffer.from(await file.arrayBuffer());
   const input =
     mimeType === "application/pdf"
       ? ({ type: "pdf", data: buffer } as const)
-      : mimeType.startsWith("image/")
-        ? ({ type: "image", data: buffer, mimeType } as const)
-        : null;
-
-  if (!input) {
-    return NextResponse.json(
-      { error: "unsupported file type — upload a PDF or image" },
-      { status: 400 },
-    );
-  }
+      : ({ type: "image", data: buffer, mimeType } as const);
 
   const extracted = await extractInvoice(input);
   if (!extracted.is_invoice) {

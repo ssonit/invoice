@@ -2,6 +2,13 @@
 // `amount` is coerced to a number in normalizeInvoice() because Postgres
 // numeric columns can arrive as strings from PostgREST.
 
+export type InvoiceLineItem = {
+  description: string;
+  quantity: number | null;
+  unit_price: number | null;
+  amount: number | null;
+};
+
 export type InvoiceRow = {
   id: string;
   vendor: string | null;
@@ -9,27 +16,151 @@ export type InvoiceRow = {
   amount: number | null;
   currency: string | null;
   issue_date: string | null;
+  due_date: string | null;
+  tax: number | null;
+  line_items: InvoiceLineItem[];
+  confidence_score: number | null;
   source: string;
   needs_review: boolean;
+  file_url: string | null;
   created_at: string;
 };
 
-export function normalizeInvoice(row: Record<string, unknown>): InvoiceRow {
-  const rawAmount = row.amount;
-  const amount =
-    rawAmount == null || rawAmount === ""
-      ? null
-      : Number(rawAmount);
+export type InvoiceInboxStatus = "review" | "extracted" | "approved";
 
+/** Map extraction confidence + needs_review into inbox UI statuses. */
+export function getInboxStatus(row: InvoiceRow): InvoiceInboxStatus {
+  if (row.needs_review) return "review";
+  if (row.confidence_score != null && row.confidence_score >= 0.9) {
+    return "approved";
+  }
+  return "extracted";
+}
+
+export function formatInvoiceMoney(
+  amount: number | null,
+  currency: string | null,
+): string {
+  if (amount == null) return "—";
+  const digits = currency === "USD" ? 2 : 0;
+  const formatted = formatFixedNumber(amount, digits);
+  if (currency === "USD") return `$${formatted}`;
+  return `${formatted} ${currency ?? ""}`.trim();
+}
+
+/** Locale-stable number formatting for SSR/client hydration. */
+function formatFixedNumber(n: number, fractionDigits: number): string {
+  const fixed = Math.abs(n).toFixed(fractionDigits);
+  const [intPart, fracPart] = fixed.split(".");
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const sign = n < 0 ? "-" : "";
+  return fracPart != null && fractionDigits > 0
+    ? `${sign}${withCommas}.${fracPart}`
+    : `${sign}${withCommas}`;
+}
+
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Format YYYY-MM-DD without timezone shifts. */
+export function formatInvoiceDate(value: string | null): string {
+  if (!value) return "—";
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12) return value;
+  return `${MONTHS_SHORT[month - 1]} ${day}, ${year}`;
+}
+
+function utcDayKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+}
+
+function startOfUtcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** Group label relative to a fixed `now` (pass the same ISO from the server). */
+export function inboxGroupLabel(createdAt: string, nowIso: string): string {
+  const date = new Date(createdAt);
+  const now = new Date(nowIso);
+  const today = startOfUtcDay(now);
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
+  const day = startOfUtcDay(date);
+
+  if (utcDayKey(day) === utcDayKey(today)) return "Today";
+  if (utcDayKey(day) === utcDayKey(yesterday)) return "Yesterday";
+  return `${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCDate()}, ${day.getUTCFullYear()}`;
+}
+
+export function inboxTimeLabel(createdAt: string, nowIso: string): string {
+  const date = new Date(createdAt);
+  const now = new Date(nowIso);
+  const today = startOfUtcDay(now);
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
+  const day = startOfUtcDay(date);
+
+  if (utcDayKey(day) === utcDayKey(today)) {
+    let hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    const period = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${String(minutes).padStart(2, "0")} ${period}`;
+  }
+  if (utcDayKey(day) === utcDayKey(yesterday)) return "Yesterday";
+  return `${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCDate()}`;
+}
+
+function asNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeLineItems(value: unknown): InvoiceLineItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    return {
+      description: String(row.description ?? ""),
+      quantity: asNumber(row.quantity),
+      unit_price: asNumber(row.unit_price),
+      amount: asNumber(row.amount),
+    };
+  });
+}
+
+export function normalizeInvoice(row: Record<string, unknown>): InvoiceRow {
   return {
     id: String(row.id),
     vendor: (row.vendor as string) ?? null,
     invoice_number: (row.invoice_number as string) ?? null,
-    amount: amount != null && Number.isFinite(amount) ? amount : null,
+    amount: asNumber(row.amount),
     currency: (row.currency as string) ?? null,
     issue_date: (row.issue_date as string) ?? null,
+    due_date: (row.due_date as string) ?? null,
+    tax: asNumber(row.tax),
+    line_items: normalizeLineItems(row.line_items),
+    confidence_score: asNumber(row.confidence_score),
     source: String(row.source ?? "email"),
     needs_review: Boolean(row.needs_review),
+    file_url: (row.file_url as string) ?? null,
     created_at: String(row.created_at),
   };
 }
