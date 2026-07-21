@@ -159,3 +159,109 @@
     @apply font-sans;
   }
 }
+
+/* ── Auth intro panel animation (fintech, single emerald accent) ────────── */
+@layer components {
+  .auth-aurora::before,
+  .auth-aurora::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(60px);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .auth-aurora::before {
+    width: 32rem;
+    height: 32rem;
+    top: -8rem;
+    left: -6rem;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.35), transparent 70%);
+    animation: auth-drift-a 16s ease-in-out infinite alternate;
+  }
+  .auth-aurora::after {
+    width: 26rem;
+    height: 26rem;
+    bottom: -6rem;
+    right: -4rem;
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.28), transparent 70%);
+    animation: auth-drift-b 20s ease-in-out infinite alternate;
+  }
+
+  .auth-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at 50% 40%, black 40%, transparent 80%);
+  }
+
+  .auth-scan::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 40%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(16, 185, 129, 0.14),
+      transparent
+    );
+    animation: auth-scan 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .auth-float {
+    animation: auth-float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes auth-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3rem, 2rem, 0) scale(1.12);
+  }
+}
+@keyframes auth-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-2.5rem, -1.5rem, 0) scale(0.92);
+  }
+}
+@keyframes auth-scan {
+  0% {
+    transform: translateY(-40%);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(250%);
+    opacity: 0;
+  }
+}
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-aurora::before,
+  .auth-aurora::after,
+  .auth-scan::after,
+  .auth-float {
+    animation: none;
+  }
+}

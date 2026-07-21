@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
     "@base-ui/react": "^1.6.0",
+    "@google/genai": "^2.12.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "agentmail": "^0.5.16",
