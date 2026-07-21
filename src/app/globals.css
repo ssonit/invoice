@@ -54,7 +54,49 @@
   --color-nav-text: var(--nav-text);
   --color-nav-muted: var(--nav-muted);
   --color-nav-label: var(--nav-label);
-}
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  @keyframes marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+    }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  --animate-gradient: gradient 8s linear infinite
+;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);}}
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);}
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);}
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);}
+  100% {
+    transform: translateZ(0) rotate(360deg);}}
+  @keyframes gradient {
+  to {
+    background-position: var(--bg-size, 300%) 0;}}
+  --animate-shiny-text: shiny-text 8s infinite;
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;}
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;}}}
 
 :root {
   --background: hsl(0 0% 100%);
@@ -160,7 +202,7 @@
   }
 }
 
-/* ── Auth intro panel animation (fintech, single emerald accent) ────────── */
+/* ── Auth intro panel animation (aligned with landing lime/teal) ────────── */
 @layer components {
   .auth-aurora::before,
   .auth-aurora::after {
@@ -168,7 +210,7 @@
     position: absolute;
     border-radius: 9999px;
     filter: blur(60px);
-    opacity: 0.5;
+    opacity: 0.55;
     pointer-events: none;
   }
   .auth-aurora::before {
@@ -176,7 +218,7 @@
     height: 32rem;
     top: -8rem;
     left: -6rem;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.35), transparent 70%);
+    background: radial-gradient(circle, rgba(232, 255, 71, 0.32), transparent 70%);
     animation: auth-drift-a 16s ease-in-out infinite alternate;
   }
   .auth-aurora::after {
@@ -184,7 +226,7 @@
     height: 26rem;
     bottom: -6rem;
     right: -4rem;
-    background: radial-gradient(circle, rgba(20, 184, 166, 0.28), transparent 70%);
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.26), transparent 70%);
     animation: auth-drift-b 20s ease-in-out infinite alternate;
   }
 
@@ -263,5 +305,141 @@
   .auth-scan::after,
   .auth-float {
     animation: none;
+  }
+}
+
+/* Landing: hide native scrollbar (custom rail replaces it) + Lenis-safe height */
+html.landing-scroll {
+  scrollbar-width: none;
+}
+html.landing-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+html.landing-scroll,
+html.landing-scroll body {
+  height: auto;
+  overflow-x: hidden;
+}
+
+/* Landing theme tokens */
+.landing-shell {
+  --landing-bg: #0a0a0a;
+  --landing-fg: #f4f4f5;
+  --landing-muted: #a1a1aa;
+  --landing-card: #09090b;
+  --landing-card-soft: rgba(255, 255, 255, 0.03);
+  --landing-border: rgba(255, 255, 255, 0.1);
+  --landing-nav: rgba(10, 10, 10, 0.82);
+  --landing-accent: #e8ff47;
+  --landing-accent-fg: #0a0a0a;
+  --landing-rail: rgba(255, 255, 255, 0.1);
+  --landing-grid: rgba(255, 255, 255, 0.04);
+  /* Fills / buttons */
+  --landing-grad-from: #e8ff47;
+  --landing-grad-mid: #a3e635;
+  --landing-grad-to: #34d399;
+  /* Text gradients (must stay readable) */
+  --landing-text-grad-from: #e8ff47;
+  --landing-text-grad-mid: #bef264;
+  --landing-text-grad-to: #6ee7b7;
+}
+
+.landing-shell[data-landing-theme="light"] {
+  --landing-bg: #f4f4f0;
+  --landing-fg: #18181b;
+  --landing-muted: #52525b;
+  --landing-card: #ffffff;
+  --landing-card-soft: rgba(24, 24, 27, 0.04);
+  --landing-border: rgba(24, 24, 27, 0.12);
+  --landing-nav: rgba(244, 244, 240, 0.92);
+  /* Darker accent so icons/labels read on light surfaces */
+  --landing-accent: #3f6212;
+  --landing-accent-fg: #ffffff;
+  --landing-rail: rgba(24, 24, 27, 0.14);
+  --landing-grid: rgba(24, 24, 27, 0.06);
+  --landing-grad-from: #65a30d;
+  --landing-grad-mid: #16a34a;
+  --landing-grad-to: #0f766e;
+  /* High-contrast text gradients for light mode */
+  --landing-text-grad-from: #3f6212;
+  --landing-text-grad-mid: #166534;
+  --landing-text-grad-to: #0f766e;
+}
+
+/* Selective gradient helpers — use only on hero accent / final CTA / featured pricing */
+.landing-text-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--landing-text-grad-from) 0%,
+    var(--landing-text-grad-mid) 48%,
+    var(--landing-text-grad-to) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-btn-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--landing-grad-from) 0%,
+    var(--landing-grad-mid) 50%,
+    var(--landing-grad-to) 100%
+  );
+  color: var(--landing-accent-fg);
+}
+
+.landing-card-gradient {
+  background:
+    radial-gradient(
+      120% 80% at 0% 0%,
+      color-mix(in oklab, var(--landing-grad-from) 16%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      100% 80% at 100% 100%,
+      color-mix(in oklab, var(--landing-grad-to) 14%, transparent),
+      transparent 50%
+    ),
+    var(--landing-card);
+}
+
+/* Brand mark stays vivid lime even in light mode */
+.landing-brand-mark {
+  background: #e8ff47;
+  color: #0a0a0a;
+}
+
+.landing-shell[data-landing-theme="light"] .landing-brand-mark {
+  background: #d4f000;
+  color: #0a0a0a;
+}
+
+@keyframes badge-sparkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  40% {
+    transform: scale(1.18) rotate(8deg);
+    filter: brightness(1.25);
+  }
+  70% {
+    transform: scale(0.96) rotate(-4deg);
+    filter: brightness(1.1);
+  }
+}
+
+.badge-sparkle {
+  display: inline-block;
+  animation: badge-sparkle 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-sparkle,
+  .animate-gradient {
+    animation: none !important;
   }
 }

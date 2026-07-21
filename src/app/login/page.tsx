@@ -1,30 +1,28 @@
-import Link from "next/link";
-import { Receipt } from "lucide-react";
-import { AuthShell } from "@/components/auth/auth-shell";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { login } from "./actions";
+import Link from "next/link"
+
+import { AuthShell } from "@/components/auth/auth-shell"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { login } from "./actions"
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string }>
 }) {
-  const { error } = await searchParams;
+  const { error } = await searchParams
 
   return (
     <AuthShell>
-      <div className="mb-8 flex items-center gap-2 lg:hidden">
-        <span className="flex size-7 items-center justify-center rounded-[8px] bg-primary text-primary-foreground">
-          <Receipt className="size-[15px]" strokeWidth={1.75} />
-        </span>
-        <span className="text-[14px] font-semibold">Invoice Reader</span>
-      </div>
-
-      <div className="mb-6">
-        <h1 className="text-[15px] font-semibold tracking-tight">Welcome back</h1>
-        <p className="mt-[2px] text-[13px] text-muted-foreground">
+      <div className="mb-7">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Sign in
+        </p>
+        <h1 className="mt-2 font-[family-name:var(--font-outfit)] text-2xl font-semibold tracking-tight">
+          Welcome back
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Sign in to your invoice dashboard.
         </p>
       </div>
@@ -33,32 +31,56 @@ export default async function LoginPage({
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input id="email" name="email" type="email" required autoComplete="email" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@company.com"
+              className="h-10"
+            />
           </Field>
           <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <div className="flex items-center justify-between gap-2">
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+            </div>
             <Input
               id="password"
               name="password"
               type="password"
               required
               autoComplete="current-password"
+              placeholder="••••••••"
+              className="h-10"
             />
           </Field>
           {error ? (
-            <p className="text-[13px] text-destructive">{error}</p>
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {error}
+            </div>
           ) : null}
-          <Button type="submit" className="w-full">
+          <Button
+            type="submit"
+            size="lg"
+            className="mt-1 h-11 w-full rounded-full bg-[#E8FF47] text-[#0a0a0a] hover:bg-[#E8FF47]/90"
+          >
             Sign in
           </Button>
-          <p className="text-center text-[13px] text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
+            <Link
+              href="/signup"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
               Sign up
             </Link>
           </p>
         </FieldGroup>
       </form>
     </AuthShell>
-  );
+  )
 }

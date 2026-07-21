@@ -45,3 +45,6 @@ next-env.d.ts
 /.claude/skills/
 # Added by code-review-graph
 .code-review-graph/
+
+# brainstorm visual companion
+.superpowers/

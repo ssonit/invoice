@@ -8,6 +8,15 @@
       ],
       "cwd": "D:\\Project\\invoice",
       "type": "stdio"
+    },
+    "@magicuidesign/mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@magicuidesign/mcp@latest"
+      ]
     }
   }
 }
