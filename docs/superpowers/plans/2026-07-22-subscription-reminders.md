@@ -936,7 +936,7 @@ Prerequisite: local Supabase running (`npx supabase status` shows `API URL` set)
 Insert two synthetic same-vendor invoices ~30 days apart, dated so `nextExpectedDate` falls within today's reminder window, for the seeded admin user:
 
 ```bash
-npx supabase db query "insert into public.invoices (user_id, source, vendor, amount, currency, issue_date, created_at) values ('00000000-0000-0000-0000-000000000001', 'upload', 'Smoke Test SaaS', 19, 'USD', (current_date - interval '33 days')::date, now()), ('00000000-0000-0000-0000-000000000001', 'upload', 'Smoke Test SaaS', 19, 'USD', (current_date - interval '3 days')::date, now())"
+npx supabase db query "insert into public.invoices (user_id, source, vendor, amount, currency, issue_date, created_at) values ('00000000-0000-0000-0000-000000000001', 'upload', 'Smoke Test SaaS', 19, 'USD', (current_date - interval '60 days')::date, now()), ('00000000-0000-0000-0000-000000000001', 'upload', 'Smoke Test SaaS', 19, 'USD', (current_date - interval '30 days')::date, now())"
 ```
 
 Then in the browser: log in as `admin@local.test` / `admin12345`, open `/dashboard/vendors`. Expected: "Needs your confirmation" section shows "Smoke Test SaaS" with a Monthly badge and two buttons. Click "Still using it" → toast confirms, the row disappears from "Needs your confirmation" (still listed under "All vendors"). Reload the page → it stays gone (confirmation persisted).
