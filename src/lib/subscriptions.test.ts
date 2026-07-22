@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectSubscriptions, normalizeVendorKey } from "./subscriptions";
+import { detectSubscriptions, normalizeVendorKey, withConfirmationStatus } from "./subscriptions";
 import type { InvoiceRow } from "./invoices";
 
 function makeInvoice(
@@ -132,5 +132,52 @@ describe("detectSubscriptions", () => {
       makeInvoice({ vendor: "Just Over Yearly", issue_date: "2027-01-17" }), // +381
     ];
     expect(detectSubscriptions(invoices)).toEqual([]);
+  });
+});
+
+describe("withConfirmationStatus", () => {
+  const candidate = {
+    vendorKey: "acme saas",
+    vendorLabel: "Acme SaaS",
+    cycle: "monthly" as const,
+    invoiceCount: 3,
+    lastAmount: 29,
+    currency: "USD",
+    lastIssueDate: "2026-03-16",
+    nextExpectedDate: "2026-04-15",
+  };
+
+  it("marks a subscription as due when today is inside the reminder window and unconfirmed", () => {
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], new Map(), today);
+    expect(result.status).toBe("due");
+    expect(result.needsConfirmation).toBe(true);
+  });
+
+  it("marks a subscription as upcoming when today is before the reminder window", () => {
+    const today = new Date("2026-03-20T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], new Map(), today);
+    expect(result.status).toBe("upcoming");
+    expect(result.needsConfirmation).toBe(false);
+  });
+
+  it("marks a subscription as confirmed_active when confirmed within the current cycle", () => {
+    const confirmations = new Map([
+      ["acme saas", { status: "active" as const, confirmedAt: "2026-03-18T00:00:00.000Z" }],
+    ]);
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], confirmations, today);
+    expect(result.status).toBe("confirmed_active");
+    expect(result.needsConfirmation).toBe(false);
+  });
+
+  it("marks a subscription as cancelled when the user said so, regardless of window", () => {
+    const confirmations = new Map([
+      ["acme saas", { status: "cancelled" as const, confirmedAt: "2026-03-18T00:00:00.000Z" }],
+    ]);
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], confirmations, today);
+    expect(result.status).toBe("cancelled");
+    expect(result.needsConfirmation).toBe(false);
   });
 });

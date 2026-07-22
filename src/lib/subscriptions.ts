@@ -104,3 +104,51 @@ export function detectSubscriptions(invoices: InvoiceRow[]): SubscriptionCandida
 
   return candidates;
 }
+
+export type SubscriptionStatus = "upcoming" | "due" | "confirmed_active" | "cancelled";
+
+export type SubscriptionWithStatus = SubscriptionCandidate & {
+  status: SubscriptionStatus;
+  needsConfirmation: boolean;
+};
+
+export type SubscriptionConfirmation = {
+  status: "active" | "cancelled";
+  confirmedAt: string; // ISO datetime
+};
+
+const REMINDER_WINDOW_BEFORE_DAYS = 3;
+const REMINDER_WINDOW_AFTER_DAYS = 21;
+
+export function withConfirmationStatus(
+  candidates: SubscriptionCandidate[],
+  confirmations: Map<string, SubscriptionConfirmation>,
+  today: Date = new Date(),
+): SubscriptionWithStatus[] {
+  const todayIso = today.toISOString().slice(0, 10);
+
+  return candidates.map((candidate) => {
+    const confirmation = confirmations.get(candidate.vendorKey);
+    const windowStart = addDays(candidate.nextExpectedDate, -REMINDER_WINDOW_BEFORE_DAYS);
+    const windowEnd = addDays(candidate.nextExpectedDate, REMINDER_WINDOW_AFTER_DAYS);
+    const inWindow = todayIso >= windowStart && todayIso <= windowEnd;
+
+    if (confirmation?.status === "cancelled") {
+      return { ...candidate, status: "cancelled" as const, needsConfirmation: false };
+    }
+
+    if (confirmation?.status === "active") {
+      const cycleStart = addDays(candidate.nextExpectedDate, -CYCLE_DAYS[candidate.cycle]);
+      const confirmedAtIso = confirmation.confirmedAt.slice(0, 10);
+      if (confirmedAtIso >= cycleStart) {
+        return { ...candidate, status: "confirmed_active" as const, needsConfirmation: false };
+      }
+    }
+
+    if (inWindow) {
+      return { ...candidate, status: "due" as const, needsConfirmation: true };
+    }
+
+    return { ...candidate, status: "upcoming" as const, needsConfirmation: false };
+  });
+}
