@@ -45,7 +45,7 @@ export const navGroups: NavGroup[] = [
         label: "Vendors",
         href: "/dashboard/vendors",
         icon: Users,
-        status: "soon",
+        status: "live",
       },
     ],
   },
