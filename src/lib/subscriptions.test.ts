@@ -101,4 +101,36 @@ describe("detectSubscriptions", () => {
     expect(result.find((r) => r.vendorKey === "acme saas")?.cycle).toBe("monthly");
     expect(result.find((r) => r.vendorKey === "annual insurance co")?.cycle).toBe("yearly");
   });
+
+  it("classifies a median gap at the inclusive boundary as monthly (25 days)", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Boundary Monthly", issue_date: "2026-01-01" }),
+      makeInvoice({ vendor: "Boundary Monthly", issue_date: "2026-01-26" }), // +25
+    ];
+    expect(detectSubscriptions(invoices)[0]?.cycle).toBe("monthly");
+  });
+
+  it("does not classify a median gap just outside the monthly range (24 days)", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Just Under Monthly", issue_date: "2026-01-01" }),
+      makeInvoice({ vendor: "Just Under Monthly", issue_date: "2026-01-25" }), // +24
+    ];
+    expect(detectSubscriptions(invoices)).toEqual([]);
+  });
+
+  it("classifies a median gap at the inclusive boundary as yearly (350 days)", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Boundary Yearly", issue_date: "2026-01-01" }),
+      makeInvoice({ vendor: "Boundary Yearly", issue_date: "2026-12-17" }), // +350
+    ];
+    expect(detectSubscriptions(invoices)[0]?.cycle).toBe("yearly");
+  });
+
+  it("does not classify a median gap just outside the yearly range (381 days)", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Just Over Yearly", issue_date: "2026-01-01" }),
+      makeInvoice({ vendor: "Just Over Yearly", issue_date: "2027-01-17" }), // +381
+    ];
+    expect(detectSubscriptions(invoices)).toEqual([]);
+  });
 });

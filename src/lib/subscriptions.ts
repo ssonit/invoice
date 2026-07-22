@@ -13,6 +13,8 @@ export type SubscriptionCandidate = {
   nextExpectedDate: string;
 };
 
+// Fixed cycle lengths (not leap-year-adjusted) — intentional, see design spec:
+// projections stay predictable rather than tracking the exact prior gap.
 const CYCLE_DAYS: Record<SubscriptionCycle, number> = {
   monthly: 30,
   yearly: 365,
@@ -68,8 +70,8 @@ export function detectSubscriptions(invoices: InvoiceRow[]): SubscriptionCandida
   for (const [vendorKey, group] of groups) {
     if (group.length < 2) continue;
 
-    const sorted = [...group].sort((a, b) =>
-      a.issue_date! < b.issue_date! ? -1 : a.issue_date! > b.issue_date! ? 1 : 0,
+    const sorted = [...group].sort(
+      (a, b) => toUtcDate(a.issue_date!).getTime() - toUtcDate(b.issue_date!).getTime(),
     );
 
     const gaps: number[] = [];
