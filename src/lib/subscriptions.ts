@@ -134,10 +134,15 @@ export function withConfirmationStatus(
     const inWindow = todayIso >= windowStart && todayIso <= windowEnd;
 
     if (confirmation?.status === "cancelled") {
-      return { ...candidate, status: "cancelled" as const, needsConfirmation: false };
-    }
-
-    if (confirmation?.status === "active") {
+      // Honor "cancelled" only if no newer invoice has arrived since the user
+      // said so. If a new invoice showed up after the cancellation, they're
+      // apparently being charged again — fall through to re-evaluate as
+      // due/upcoming instead of staying silently "cancelled" forever.
+      const cancelledAfterLastInvoice = confirmation.confirmedAt.slice(0, 10) >= candidate.lastIssueDate;
+      if (cancelledAfterLastInvoice) {
+        return { ...candidate, status: "cancelled" as const, needsConfirmation: false };
+      }
+    } else if (confirmation?.status === "active") {
       const cycleStart = addDays(candidate.nextExpectedDate, -CYCLE_DAYS[candidate.cycle]);
       const confirmedAtIso = confirmation.confirmedAt.slice(0, 10);
       if (confirmedAtIso >= cycleStart) {

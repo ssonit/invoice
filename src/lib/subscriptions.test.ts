@@ -180,4 +180,37 @@ describe("withConfirmationStatus", () => {
     expect(result.status).toBe("cancelled");
     expect(result.needsConfirmation).toBe(false);
   });
+
+  it("marks a subscription as due when the active confirmation is from a previous cycle", () => {
+    const confirmations = new Map([
+      ["acme saas", { status: "active" as const, confirmedAt: "2026-02-01T00:00:00.000Z" }],
+    ]);
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], confirmations, today);
+    expect(result.status).toBe("due");
+    expect(result.needsConfirmation).toBe(true);
+  });
+
+  it("re-prompts when a new invoice arrived after the vendor was marked cancelled", () => {
+    const confirmations = new Map([
+      ["acme saas", { status: "cancelled" as const, confirmedAt: "2026-02-01T00:00:00.000Z" }],
+    ]);
+    // candidate.lastIssueDate is "2026-03-16" — after the 2026-02-01 cancellation,
+    // meaning a new invoice arrived despite the user saying they'd cancelled.
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], confirmations, today);
+    expect(result.status).toBe("due");
+    expect(result.needsConfirmation).toBe(true);
+  });
+
+  it("keeps honoring cancelled when no newer invoice has arrived", () => {
+    const confirmations = new Map([
+      ["acme saas", { status: "cancelled" as const, confirmedAt: "2026-04-01T00:00:00.000Z" }],
+    ]);
+    // Cancellation is after candidate.lastIssueDate ("2026-03-16") — no new invoice since.
+    const today = new Date("2026-04-14T00:00:00.000Z");
+    const [result] = withConfirmationStatus([candidate], confirmations, today);
+    expect(result.status).toBe("cancelled");
+    expect(result.needsConfirmation).toBe(false);
+  });
 });
