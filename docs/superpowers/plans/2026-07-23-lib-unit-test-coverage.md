@@ -1,6 +1,6 @@
 # lib/ Unit Test Coverage Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add Vitest unit tests for the `src/lib/` pure-logic modules that currently have none, matching the project's existing test conventions.
 
@@ -17,7 +17,7 @@
 **Files:**
 - Test: `src/lib/invoices.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/invoices.test.ts`:
 ```ts
@@ -253,19 +253,19 @@ describe("inboxGroupLabel / inboxTimeLabel", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/invoices.test.ts`
 Expected: FAIL (module import errors — the functions exist, but run this first to confirm the test file itself is wired correctly and fails for the right reason if any typo exists).
 
-- [ ] **Step 3: Fix any typos/mismatches against the real module and get to green**
+- [x] **Step 3: Fix any typos/mismatches against the real module and get to green**
 
 No production code changes are expected — `src/lib/invoices.ts` already implements all of this. If a test fails on real behavior (not a typo), stop and report the discrepancy rather than changing the test to match a bug.
 
 Run: `npx vitest run src/lib/invoices.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/invoices.test.ts
@@ -279,7 +279,7 @@ git commit -m "test: add unit tests for src/lib/invoices.ts"
 **Files:**
 - Test: `src/lib/vendors/query.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/vendors/query.test.ts`:
 ```ts
@@ -379,19 +379,19 @@ describe("label lookups", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/vendors/query.test.ts`
 Expected: FAIL initially (verify the file is wired up), in particular double-check the `escapeIlike` order-of-replacement expectation against the real implementation (`.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")` — backslash first, so a literal `\%` input becomes `\\` + `%`→`\%`, i.e. `\\\%`).
 
-- [ ] **Step 3: Get to green**
+- [x] **Step 3: Get to green**
 
 No production code changes expected.
 
 Run: `npx vitest run src/lib/vendors/query.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/vendors/query.test.ts
@@ -405,7 +405,7 @@ git commit -m "test: add unit tests for src/lib/vendors/query.ts"
 **Files:**
 - Test: `src/lib/validation/vendors.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/validation/vendors.test.ts`:
 ```ts
@@ -486,17 +486,17 @@ describe("parseDeleteVendorInput", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/validation/vendors.test.ts`
 Expected: FAIL initially (confirms wiring); no bugs expected in the source.
 
-- [ ] **Step 3: Get to green**
+- [x] **Step 3: Get to green**
 
 Run: `npx vitest run src/lib/validation/vendors.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/validation/vendors.test.ts
@@ -510,7 +510,7 @@ git commit -m "test: add unit tests for src/lib/validation/vendors.ts"
 **Files:**
 - Test: `src/lib/vendors.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/vendors.test.ts`:
 ```ts
@@ -554,17 +554,17 @@ describe("ensureVendorRecord", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/vendors.test.ts`
 Expected: FAIL initially (confirms wiring).
 
-- [ ] **Step 3: Get to green**
+- [x] **Step 3: Get to green**
 
 Run: `npx vitest run src/lib/vendors.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/vendors.test.ts
@@ -583,24 +583,32 @@ so the module under test picks up the mocked client transparently.
 **Files:**
 - Test: `src/lib/agentmail.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/agentmail.test.ts`:
+
+Two wiring details that aren't obvious until you run it: (1) `agentmail.ts` has a
+top-level `import "server-only"`, which throws outside the Next.js bundler unless also
+mocked; (2) `vi.mock` factories are hoisted above the file, so any value the factory
+closes over (the mock fns, the error class) must be declared via `vi.hoisted()`, not as
+plain top-level `const`s; (3) `AgentMailClient` is called with `new`, so its mock must be
+a real constructor (a `class`) — an arrow function passed to `mockImplementation` cannot
+be invoked with `new` and throws `TypeError: ... is not a constructor`.
+
 ```ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockCreate = vi.fn();
-const mockList = vi.fn();
+vi.mock("server-only", () => ({}));
 
-class MockIsTakenError extends Error {}
+const { mockCreate, mockList, MockIsTakenError } = vi.hoisted(() => {
+  class MockIsTakenError extends Error {}
+  return { mockCreate: vi.fn(), mockList: vi.fn(), MockIsTakenError };
+});
 
 vi.mock("agentmail", () => ({
-  AgentMailClient: vi.fn().mockImplementation(() => ({
-    inboxes: {
-      create: mockCreate,
-      list: mockList,
-    },
-  })),
+  AgentMailClient: class {
+    inboxes = { create: mockCreate, list: mockList };
+  },
   AgentMail: { IsTakenError: MockIsTakenError },
 }));
 
@@ -659,17 +667,17 @@ describe("createUserInbox", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/agentmail.test.ts`
 Expected: FAIL initially — get the mock wiring right first (in particular, confirm `src/lib/agentmail.ts` imports `AgentMailClient` and `AgentMail` from `"agentmail"` exactly as mocked; adjust the mock shape if the real import differs).
 
-- [ ] **Step 3: Get to green**
+- [x] **Step 3: Get to green**
 
 Run: `npx vitest run src/lib/agentmail.test.ts`
 Expected: PASS (all tests). No production code changes expected.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/agentmail.test.ts
@@ -683,7 +691,7 @@ git commit -m "test: add unit tests for src/lib/agentmail.ts"
 **Files:**
 - Test: `src/lib/nav-config.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src/lib/nav-config.test.ts`:
 ```ts
@@ -723,17 +731,17 @@ describe("findNavItem", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run src/lib/nav-config.test.ts`
 Expected: FAIL initially (confirms wiring).
 
-- [ ] **Step 3: Get to green**
+- [x] **Step 3: Get to green**
 
 Run: `npx vitest run src/lib/nav-config.test.ts`
 Expected: PASS (all tests).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/nav-config.test.ts
@@ -744,17 +752,17 @@ git commit -m "test: add unit tests for src/lib/nav-config.ts"
 
 ## Task 7: Full verification
 
-- [ ] **Step 1: Run the whole suite**
+- [x] **Step 1: Run the whole suite**
 
 Run: `npm run test`
 Expected: all suites pass (existing 7 files + 6 new ones = 13 test files).
 
-- [ ] **Step 2: Type-check**
+- [x] **Step 2: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 3: Coverage sanity check (optional but recommended)**
+- [x] **Step 3: Coverage sanity check (optional but recommended)**
 
 Run: `npm run test:coverage`
 Expected: `src/lib/invoices.ts`, `src/lib/vendors/query.ts`, `src/lib/validation/vendors.ts`, `src/lib/vendors.ts`, `src/lib/agentmail.ts`, and `src/lib/nav-config.ts` all show non-zero coverage.
