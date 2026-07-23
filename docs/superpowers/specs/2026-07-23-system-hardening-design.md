@@ -83,8 +83,17 @@ other. `POST /api/invoices/upload` (`src/app/api/invoices/upload/route.ts`):
 
 ## 3. Invoices page pagination
 
+**Revised during design review:** the existing `InvoicesTable` has a vendor-search input
+and a status filter (`columns.tsx`: `needs_review ? "review" : "ok"`) that today filter
+across the *entire* loaded dataset client-side (`getFilteredRowModel`). Pagination alone
+would silently break them — a vendor search would only match invoices on the currently
+viewed page. So **filtering moves server-side along with pagination**; only column
+*sorting* (Amount / Issue date header click) stays client-side, scoped to the current
+page's 20 rows — a smaller, accepted regression (unchanged from the original decision).
+
 `src/app/dashboard/invoices/page.tsx` currently does one unbounded
-`.from("invoices").select("*").eq("user_id", ...)`. Change to:
+`.from("invoices").select("*").eq("user_id", ...)`. Change to read `page`, `vendor`,
+`status` from `searchParams` and build the query accordingly:
 
 ```ts
 const page = Number(searchParams.page ?? "1");
@@ -92,22 +101,34 @@ const pageSize = 20;
 const from = (page - 1) * pageSize;
 const to = from + pageSize - 1;
 
-const { data, count } = await supabase
+let query = supabase
   .from("invoices")
   .select("*", { count: "exact" })
   .eq("user_id", user!.id)
-  .order("created_at", { ascending: false })
-  .range(from, to);
+  .order("created_at", { ascending: false });
+
+if (searchParams.vendor) {
+  query = query.ilike("vendor", `%${escapeIlike(searchParams.vendor)}%`);
+}
+if (searchParams.status === "review") query = query.eq("needs_review", true);
+if (searchParams.status === "ok") query = query.eq("needs_review", false);
+
+const { data, count } = await query.range(from, to);
 ```
 
-`src/components/dashboard/invoices-table.tsx` switches from client-side pagination
-(`getPaginationRowModel`) to server-driven: `manualPagination: true`, `pageCount` derived
-from `count`/`pageSize`, and the existing "Page X of Y" controls become links/buttons that
-navigate to `?page=N` (Server Component re-fetches on navigation — no client state needed
-for the page number itself). Column sort/filter inside the currently-loaded page stays
-client-side as today; sorting the *entire* dataset server-side is out of scope for this
-round (would need to push `sort`/`filter` into the query too — noted as a natural
-follow-up, not built now).
+Reuses `escapeIlike` from `src/lib/vendors/query.ts` (already unit-tested) rather than
+duplicating LIKE-escaping logic.
+
+`src/components/dashboard/invoices-table.tsx` changes from fully client-driven to a hybrid:
+- `manualPagination: true`, `manualFiltering: true`, `pageCount` derived from `count`/`pageSize`.
+- The vendor input and status buttons update the URL's `?vendor=`/`?status=` query params
+  (via `useRouter().push`, matching the pattern already used by
+  `src/lib/vendors/query.ts` consumers) instead of calling `table.getColumn(...).setFilterValue(...)`.
+  Changing a filter resets `page` back to `1`.
+- "Page X of Y" controls become links that navigate to `?page=N` (preserving the current
+  `vendor`/`status` params) instead of calling `table.nextPage()`/`previousPage()`.
+- Column *sort* (`getSortedRowModel`) is left as-is, operating on the current page's rows
+  only — explicitly accepted, not fixed this round.
 
 ## 4. Account settings
 
