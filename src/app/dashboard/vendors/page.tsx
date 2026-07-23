@@ -2,7 +2,13 @@ import { Users } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/server"
 import { ContentShell } from "@/components/dashboard/content-shell"
+import { AddVendorButton } from "@/components/dashboard/vendors/vendor-form-dialog"
 import { SubscriptionConfirmButtons } from "@/components/dashboard/vendors/subscription-confirm-buttons"
+import {
+  VendorsList,
+  type VendorListItem,
+} from "@/components/dashboard/vendors/vendors-list"
+import { VendorsToolbar } from "@/components/dashboard/vendors/vendors-toolbar"
 import { Badge } from "@/components/ui/badge"
 import {
   Empty,
@@ -18,34 +24,166 @@ import {
   withConfirmationStatus,
   type SubscriptionConfirmation,
 } from "@/lib/subscriptions"
+import {
+  VENDOR_FILTER,
+  VENDOR_SORT,
+  type VendorFilter,
+  type VendorSort,
+} from "@/constants/vendors"
+import {
+  escapeIlike,
+  isDefaultVendorQuery,
+  parseVendorQuery,
+} from "@/lib/vendors/query"
+import {
+  SUBSCRIPTION_CYCLE_LABELS,
+} from "@/constants/subscriptions"
 
-function CycleBadge({ cycle }: { cycle: "monthly" | "yearly" }) {
+function CycleBadge({ cycle }: { cycle: keyof typeof SUBSCRIPTION_CYCLE_LABELS }) {
   return (
     <Badge variant="outline" className="border-[#E8FF47]/35 bg-[#E8FF47]/10 text-[#E8FF47]">
-      {cycle === "monthly" ? "Monthly" : "Yearly"}
+      {SUBSCRIPTION_CYCLE_LABELS[cycle]}
     </Badge>
   )
 }
 
-export default async function VendorsPage() {
+function matchesFilter(vendor: VendorListItem, filter: VendorFilter): boolean {
+  switch (filter) {
+    case VENDOR_FILTER.ALL:
+      return true
+    case VENDOR_FILTER.HAS_INVOICES:
+      return vendor.count > 0
+    case VENDOR_FILTER.NO_INVOICES:
+      return vendor.count === 0
+    case VENDOR_FILTER.SUBSCRIPTION:
+      return vendor.subscription != null && vendor.subscription.status !== "cancelled"
+    case VENDOR_FILTER.NO_SUBSCRIPTION:
+      return vendor.subscription == null
+    case VENDOR_FILTER.NEEDS_CONFIRMATION:
+      return vendor.subscription?.needsConfirmation === true
+    case VENDOR_FILTER.CANCELLED:
+      return vendor.subscription?.status === "cancelled"
+  }
+}
+
+function sortVendors(vendors: VendorListItem[], sort: VendorSort): VendorListItem[] {
+  const list = [...vendors]
+  list.sort((a, b) => {
+    switch (sort) {
+      case VENDOR_SORT.TOTAL_DESC:
+        return b.total - a.total || a.label.localeCompare(b.label)
+      case VENDOR_SORT.TOTAL_ASC:
+        return a.total - b.total || a.label.localeCompare(b.label)
+      case VENDOR_SORT.NAME_ASC:
+        return a.label.localeCompare(b.label)
+      case VENDOR_SORT.NAME_DESC:
+        return b.label.localeCompare(a.label)
+      case VENDOR_SORT.COUNT_DESC:
+        return b.count - a.count || a.label.localeCompare(b.label)
+      case VENDOR_SORT.COUNT_ASC:
+        return a.count - b.count || a.label.localeCompare(b.label)
+      case VENDOR_SORT.LAST_DESC:
+        return (b.lastDate || "").localeCompare(a.lastDate || "") || a.label.localeCompare(b.label)
+      case VENDOR_SORT.LAST_ASC:
+        return (a.lastDate || "").localeCompare(b.lastDate || "") || a.label.localeCompare(b.label)
+      case VENDOR_SORT.CREATED_DESC:
+        return b.createdAt.localeCompare(a.createdAt) || a.label.localeCompare(b.label)
+      case VENDOR_SORT.CREATED_ASC:
+        return a.createdAt.localeCompare(b.createdAt) || a.label.localeCompare(b.label)
+    }
+  })
+  return list
+}
+
+export default async function VendorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; filter?: string; sort?: string }>
+}) {
+  const rawParams = await searchParams
+  const query = parseVendorQuery(rawParams)
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ data: invoiceRows }, { data: confirmationRows }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select("*")
-      .eq("user_id", user!.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("subscription_confirmations")
-      .select("vendor_key, status, confirmed_at")
-      .eq("user_id", user!.id),
-  ])
+  let vendorsQuery = supabase
+    .from("vendors")
+    .select("id, name, name_key, notes, created_at")
+    .eq("user_id", user!.id)
+
+  if (query.q) {
+    const pattern = `%${escapeIlike(query.q).replace(/"/g, "")}%`
+    vendorsQuery = vendorsQuery.or(`name.ilike."${pattern}",notes.ilike."${pattern}"`)
+  }
+
+  if (query.sort === VENDOR_SORT.NAME_ASC) {
+    vendorsQuery = vendorsQuery.order("name", { ascending: true })
+  } else if (query.sort === VENDOR_SORT.NAME_DESC) {
+    vendorsQuery = vendorsQuery.order("name", { ascending: false })
+  } else if (query.sort === VENDOR_SORT.CREATED_ASC) {
+    vendorsQuery = vendorsQuery.order("created_at", { ascending: true })
+  } else if (query.sort === VENDOR_SORT.CREATED_DESC) {
+    vendorsQuery = vendorsQuery.order("created_at", { ascending: false })
+  } else {
+    vendorsQuery = vendorsQuery.order("name", { ascending: true })
+  }
+
+  const [{ data: vendorRowsInitial }, { data: invoiceRows }, { data: confirmationRows }] =
+    await Promise.all([
+      vendorsQuery,
+      supabase
+        .from("invoices")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("subscription_confirmations")
+        .select("vendor_key, status, confirmed_at")
+        .eq("user_id", user!.id),
+    ])
 
   const invoices = (invoiceRows ?? []).map(normalizeInvoice)
+
+  // When searching, skip orphan heal (orphans wouldn't match the filtered query anyway
+  // until upserted). Still heal when browsing the full list.
+  let vendorRows = vendorRowsInitial
+  if (!query.q) {
+    const existingKeys = new Set((vendorRowsInitial ?? []).map((row) => row.name_key))
+    const orphanUpserts: {
+      user_id: string
+      name: string
+      name_key: string
+      updated_at: string
+    }[] = []
+    const seenKeys = new Set<string>()
+    const now = new Date().toISOString()
+    for (const invoice of invoices) {
+      if (!invoice.vendor) continue
+      const key = normalizeVendorKey(invoice.vendor)
+      if (existingKeys.has(key) || seenKeys.has(key)) continue
+      seenKeys.add(key)
+      orphanUpserts.push({
+        user_id: user!.id,
+        name: invoice.vendor.trim(),
+        name_key: key,
+        updated_at: now,
+      })
+    }
+    if (orphanUpserts.length > 0) {
+      await supabase.from("vendors").upsert(orphanUpserts, {
+        onConflict: "user_id,name_key",
+        ignoreDuplicates: true,
+      })
+      const refreshed = await supabase
+        .from("vendors")
+        .select("id, name, name_key, notes, created_at")
+        .eq("user_id", user!.id)
+        .order("name", { ascending: true })
+      vendorRows = refreshed.data
+    }
+  }
 
   const confirmations = new Map<string, SubscriptionConfirmation>(
     (confirmationRows ?? []).map((row) => [
@@ -57,39 +195,107 @@ export default async function VendorsPage() {
   const subscriptions = withConfirmationStatus(detectSubscriptions(invoices), confirmations)
   const due = subscriptions.filter((s) => s.needsConfirmation)
 
-  const vendorTotals = new Map<
+  const invoiceByKey = new Map<
     string,
-    { label: string; total: number; currency: string | null; count: number; lastDate: string }
+    {
+      total: number
+      currency: string | null
+      count: number
+      lastDate: string
+      invoices: VendorListItem["invoices"]
+      label: string
+    }
   >()
+
   for (const invoice of invoices) {
     if (!invoice.vendor) continue
     const key = normalizeVendorKey(invoice.vendor)
-    const existing = vendorTotals.get(key)
+    const existing = invoiceByKey.get(key)
     if (existing) {
       existing.total += invoice.amount ?? 0
       existing.count += 1
       if (invoice.issue_date && invoice.issue_date > existing.lastDate) {
         existing.lastDate = invoice.issue_date
       }
+      existing.invoices.push({
+        id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        amount: invoice.amount,
+        currency: invoice.currency,
+        issue_date: invoice.issue_date,
+        due_date: invoice.due_date,
+      })
     } else {
-      vendorTotals.set(key, {
+      invoiceByKey.set(key, {
         label: invoice.vendor,
         total: invoice.amount ?? 0,
         currency: invoice.currency,
         count: 1,
         lastDate: invoice.issue_date ?? "",
+        invoices: [
+          {
+            id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            amount: invoice.amount,
+            currency: invoice.currency,
+            issue_date: invoice.issue_date,
+            due_date: invoice.due_date,
+          },
+        ],
       })
     }
   }
 
+  const vendorMap = new Map<string, VendorListItem>()
+
+  for (const row of vendorRows ?? []) {
+    const stats = invoiceByKey.get(row.name_key)
+    vendorMap.set(row.name_key, {
+      id: row.id,
+      key: row.name_key,
+      label: row.name,
+      notes: row.notes,
+      createdAt: row.created_at,
+      total: stats?.total ?? 0,
+      currency: stats?.currency ?? null,
+      count: stats?.count ?? 0,
+      lastDate: stats?.lastDate ?? "",
+      subscription: null,
+      invoices: stats?.invoices ?? [],
+    })
+  }
+
+  for (const vendor of vendorMap.values()) {
+    const sub = subscriptions.find((s) => s.vendorKey === vendor.key)
+    if (sub) {
+      vendor.subscription = {
+        cycle: sub.cycle,
+        status: sub.status,
+        needsConfirmation: sub.needsConfirmation,
+        lastAmount: sub.lastAmount,
+        lastIssueDate: sub.lastIssueDate,
+        nextExpectedDate: sub.nextExpectedDate,
+      }
+    }
+    vendor.invoices.sort((a, b) => (b.issue_date ?? "").localeCompare(a.issue_date ?? ""))
+  }
+
+  const vendors = sortVendors(
+    [...vendorMap.values()].filter((v) => matchesFilter(v, query.filter)),
+    query.sort,
+  )
+
+  const hasQuery = !isDefaultVendorQuery(query)
+
   return (
     <ContentShell
       title="Vendors"
-      description="Every vendor seen in your invoices, with subscription reminders for recurring charges."
+      description="Manage vendors and review subscription reminders for recurring charges."
+      actions={<AddVendorButton />}
     >
       <div className="flex flex-col gap-5">
         {due.length > 0 ? (
-          <section className="rounded-xl border border-[#E8FF47]/25 bg-[#E8FF47]/[0.04]">
+          <section className="rounded-xl border border-[#E8FF47]/25 bg-[#E8FF47]/4">
             <div className="border-b border-[#E8FF47]/20 px-4 py-3">
               <h2 className="text-sm font-semibold tracking-tight">Needs your confirmation</h2>
               <p className="text-xs text-muted-foreground">
@@ -120,53 +326,27 @@ export default async function VendorsPage() {
         ) : null}
 
         <section className="rounded-xl border border-border bg-card/40">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="text-sm font-semibold tracking-tight">All vendors</h2>
-            <p className="text-xs text-muted-foreground">{vendorTotals.size} vendor(s)</p>
-          </div>
+          <VendorsToolbar query={query} resultCount={vendors.length} />
 
-          {vendorTotals.size === 0 ? (
+          {vendors.length === 0 ? (
             <Empty className="border-0">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Users />
                 </EmptyMedia>
-                <EmptyTitle>No vendors yet</EmptyTitle>
+                <EmptyTitle>{hasQuery ? "No matching vendors" : "No vendors yet"}</EmptyTitle>
                 <EmptyDescription>
-                  Vendors appear here once you have invoices with a vendor name.
+                  {hasQuery
+                    ? "Try a different search, filter, or sort."
+                    : "Add a vendor manually, or wait for invoices with a vendor name."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
-            <ul className="divide-y divide-border">
-              {[...vendorTotals.entries()]
-                .sort((a, b) => b[1].total - a[1].total)
-                .map(([key, vendor]) => {
-                  const sub = subscriptions.find((s) => s.vendorKey === key)
-                  return (
-                    <li
-                      key={key}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate font-medium">{vendor.label}</p>
-                          {sub ? <CycleBadge cycle={sub.cycle} /> : null}
-                          {sub?.status === "cancelled" ? (
-                            <Badge variant="secondary">Cancelled</Badge>
-                          ) : null}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {vendor.count} invoice(s) · last {vendor.lastDate || "—"}
-                        </p>
-                      </div>
-                      <p className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
-                        {formatInvoiceMoney(vendor.total, vendor.currency)}
-                      </p>
-                    </li>
-                  )
-                })}
-            </ul>
+            <VendorsList
+              key={`${query.q}|${query.filter}|${query.sort}`}
+              vendors={vendors}
+            />
           )}
         </section>
       </div>

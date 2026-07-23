@@ -30,7 +30,8 @@ export function validateUploadFile(file: { type: string; size: number }): Upload
   if (!ALLOWED_UPLOAD_MIME_TYPES.includes(file.type as AllowedUploadMimeType)) {
     return {
       success: false,
-      error: "Unsupported file type — upload a PDF or image (PNG/JPEG/WEBP/GIF)",
+      error:
+        "Unsupported file type — upload an invoice/receipt as PDF or image (PNG/JPEG/WEBP/GIF)",
     };
   }
 

@@ -3,7 +3,9 @@ import { z } from "zod";
 export const InvoiceExtractionSchema = z.object({
   is_invoice: z
     .boolean()
-    .describe("Whether this document/content is actually an invoice or receipt"),
+    .describe(
+      "True only if this is a real invoice, receipt, tax invoice, or bill of sale — not marketing, contracts, resumes, photos, or unrelated docs",
+    ),
   vendor: z.string().nullable(),
   invoice_number: z.string().nullable(),
   amount: z.number().nullable().describe("Total amount due, as a plain number"),
@@ -33,4 +35,13 @@ export type ExtractionInput =
   | { type: "image"; data: Buffer; mimeType: string }
   | { type: "html"; html: string };
 
-export const EXTRACTION_PROMPT = `You are looking at an email or attachment that may or may not be an invoice/receipt. Determine if it is actually an invoice, and if so extract its fields. If it is not an invoice (e.g. a newsletter, a personal email, spam), set is_invoice to false and leave other fields null/empty.`;
+export const EXTRACTION_PROMPT = `You are looking at an email body or file that may or may not be a financial document.
+
+Accept as is_invoice=true only if it is clearly one of:
+- invoice / tax invoice / hoá đơn
+- receipt / biên lai / payment receipt
+- bill / statement of charges for goods or services
+
+Reject (is_invoice=false) everything else, including: newsletters, marketing, contracts, resumes, ID cards, random photos, spreadsheets that are not bills, shipping labels alone, and personal messages.
+
+If rejected, leave other fields null/empty. If accepted, extract the fields carefully.`;

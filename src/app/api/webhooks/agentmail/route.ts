@@ -3,6 +3,11 @@ import { Webhook } from "svix";
 import { agentmail } from "@/lib/agentmail";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice } from "@/lib/extraction";
+import {
+  shouldExtractAttachment,
+  shouldExtractEmailBody,
+} from "@/lib/extraction/document-gate";
+import { ensureVendorRecord } from "@/lib/vendors";
 import type { AgentMail } from "agentmail";
 
 export async function POST(request: NextRequest) {
@@ -46,20 +51,59 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "unknown_inbox" });
   }
 
+  const emailContext = {
+    subject: message.subject,
+    text: message.text ?? message.extractedText,
+    html: message.html ?? message.extractedHtml,
+  };
   const attachments = message.attachments ?? [];
+  let extractedCount = 0;
+  let skippedCount = 0;
 
   if (attachments.length === 0) {
-    const html = message.html ?? message.text ?? "";
-    await processExtraction({
-      supabase,
-      userId: inbox.user_id,
-      messageId: message.messageId,
-      input: { type: "html", html },
-      fileBuffer: null,
-      fileName: null,
-    });
+    if (!shouldExtractEmailBody(emailContext)) {
+      skippedCount += 1;
+      console.info(
+        "Skipping non-invoice email body",
+        message.messageId,
+        message.subject ?? "(no subject)",
+      );
+    } else {
+      const html = emailContext.html ?? emailContext.text ?? "";
+      const saved = await processExtraction({
+        supabase,
+        userId: inbox.user_id,
+        messageId: message.messageId,
+        input: { type: "html", html },
+        fileBuffer: null,
+        fileName: null,
+      });
+      if (saved) extractedCount += 1;
+      else skippedCount += 1;
+    }
   } else {
     for (const attachment of attachments) {
+      const mimeType = attachment.contentType ?? "application/octet-stream";
+      if (
+        !shouldExtractAttachment(
+          {
+            filename: attachment.filename,
+            mimeType,
+            sizeBytes: attachment.size,
+          },
+          emailContext,
+        )
+      ) {
+        skippedCount += 1;
+        console.info(
+          "Skipping non-invoice attachment",
+          message.messageId,
+          attachment.filename ?? attachment.attachmentId,
+          mimeType,
+        );
+        continue;
+      }
+
       const { downloadUrl } = await agentmail.inboxes.messages.getAttachment(
         message.inboxId,
         message.messageId,
@@ -67,7 +111,6 @@ export async function POST(request: NextRequest) {
       );
       const fileRes = await fetch(downloadUrl);
       const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
-      const mimeType = attachment.contentType ?? "application/octet-stream";
 
       const input =
         mimeType === "application/pdf"
@@ -76,9 +119,12 @@ export async function POST(request: NextRequest) {
             ? ({ type: "image", data: fileBuffer, mimeType } as const)
             : null;
 
-      if (!input) continue; // unsupported attachment type, skip
+      if (!input) {
+        skippedCount += 1;
+        continue;
+      }
 
-      await processExtraction({
+      const saved = await processExtraction({
         supabase,
         userId: inbox.user_id,
         messageId: message.messageId,
@@ -86,6 +132,8 @@ export async function POST(request: NextRequest) {
         fileBuffer,
         fileName: attachment.filename ?? attachment.attachmentId,
       });
+      if (saved) extractedCount += 1;
+      else skippedCount += 1;
     }
   }
 
@@ -93,7 +141,11 @@ export async function POST(request: NextRequest) {
     .from("processed_messages")
     .insert({ message_id: message.messageId, inbox_id: message.inboxId });
 
-  return NextResponse.json({ status: "processed" });
+  return NextResponse.json({
+    status: extractedCount > 0 ? "processed" : "skipped_non_invoice",
+    extracted: extractedCount,
+    skipped: skippedCount,
+  });
 }
 
 async function processExtraction(params: {
@@ -103,11 +155,11 @@ async function processExtraction(params: {
   input: Parameters<typeof extractInvoice>[0];
   fileBuffer: Buffer | null;
   fileName: string | null;
-}) {
+}): Promise<boolean> {
   const { supabase, userId, messageId, input, fileBuffer, fileName } = params;
 
   const extracted = await extractInvoice(input);
-  if (!extracted.is_invoice) return;
+  if (!extracted.is_invoice) return false;
 
   // invoice-files is a private bucket — store the object path here and
   // generate a signed URL on read (see src/lib/storage.ts).
@@ -139,4 +191,7 @@ async function processExtraction(params: {
     file_url: fileUrl,
     source_message_id: messageId,
   });
+
+  await ensureVendorRecord(supabase, userId, extracted.vendor);
+  return true;
 }

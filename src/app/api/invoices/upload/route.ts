@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice } from "@/lib/extraction";
+import { ensureVendorRecord } from "@/lib/vendors";
 import { validateUploadFile } from "@/lib/validation/upload";
 
 export async function POST(request: Request) {
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
   const extracted = await extractInvoice(input);
   if (!extracted.is_invoice) {
     return NextResponse.json(
-      { error: "this file does not look like an invoice" },
+      {
+        error:
+          "This file does not look like an invoice or receipt. Upload a bill, invoice, or receipt PDF/image.",
+      },
       { status: 422 },
     );
   }
@@ -69,6 +73,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await ensureVendorRecord(service, user.id, extracted.vendor);
 
   return NextResponse.json({ invoice });
 }

@@ -46,6 +46,15 @@ begin
 
   update public.profiles set role = 'admin' where id = admin_user_id;
 
+  -- AgentMail forwarding inbox (username = inv-{first 8 of user id})
+  insert into public.inboxes (
+    user_id, agentmail_inbox_id, email_address
+  ) values (
+    admin_user_id,
+    'inv-00000000',
+    'inv-00000000@agentmail.to'
+  );
+
   -- Sample invoices for local dashboard / table / chart testing
   insert into public.invoices (
     user_id, source, vendor, invoice_number, amount, currency,
@@ -112,4 +121,22 @@ begin
       '[{"description":"Business plan — Feb","amount":80.00}]'::jsonb,
       now() - interval '140 days'
     );
+
+  insert into public.vendors (user_id, name, name_key)
+  select distinct on (
+    user_id,
+    lower(regexp_replace(trim(vendor), '\s+', ' ', 'g'))
+  )
+    user_id,
+    trim(vendor),
+    lower(regexp_replace(trim(vendor), '\s+', ' ', 'g'))
+  from public.invoices
+  where user_id = admin_user_id
+    and vendor is not null
+    and trim(vendor) <> ''
+  order by
+    user_id,
+    lower(regexp_replace(trim(vendor), '\s+', ' ', 'g')),
+    created_at desc
+  on conflict (user_id, name_key) do nothing;
 end $$;

@@ -18,12 +18,22 @@ import {
 } from "lucide-react"
 
 import {
+  INBOX_DEFAULT_SOURCE_FILTER,
+  INBOX_DEFAULT_STATUS_FILTER,
+  INBOX_LIST_PAGE_SIZE,
+  INBOX_SOURCE_FILTER,
+  INBOX_SOURCE_FILTER_OPTIONS,
+  INBOX_STATUS_FILTER,
+  INBOX_STATUS_FILTER_OPTIONS,
+  type InboxSourceFilter,
+  type InboxStatusFilter,
+} from "@/constants/inbox"
+import {
   formatInvoiceDate,
   formatInvoiceMoney,
   getInboxStatus,
   inboxGroupLabel,
   inboxTimeLabel,
-  type InvoiceInboxStatus,
   type InvoiceRow,
 } from "@/lib/invoices"
 import { cn } from "@/lib/utils"
@@ -42,26 +52,8 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const PAGE_SIZE = 8
-
-type StatusFilter = "all" | InvoiceInboxStatus
-type SourceFilter = "all" | "email" | "upload"
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All statuses" },
-  { value: "review", label: "Review" },
-  { value: "extracted", label: "Extracted" },
-  { value: "approved", label: "Approved" },
-]
-
-const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
-  { value: "all", label: "All sources" },
-  { value: "email", label: "Email" },
-  { value: "upload", label: "Upload" },
-]
-
 function sourceSubtitle(invoice: InvoiceRow): string {
-  if (invoice.source === "upload") return "Manual upload"
+  if (invoice.source === INBOX_SOURCE_FILTER.UPLOAD) return "Manual upload"
   const slug = (invoice.vendor ?? "vendor")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "")
@@ -79,8 +71,12 @@ export function InboxView({
   nowIso: string
 }) {
   const [query, setQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<InboxStatusFilter>(
+    INBOX_DEFAULT_STATUS_FILTER,
+  )
+  const [sourceFilter, setSourceFilter] = useState<InboxSourceFilter>(
+    INBOX_DEFAULT_SOURCE_FILTER,
+  )
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(
     invoices[0]?.id ?? null
@@ -89,10 +85,16 @@ export function InboxView({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return invoices.filter((inv) => {
-      if (statusFilter !== "all" && getInboxStatus(inv) !== statusFilter) {
+      if (
+        statusFilter !== INBOX_STATUS_FILTER.ALL &&
+        getInboxStatus(inv) !== statusFilter
+      ) {
         return false
       }
-      if (sourceFilter !== "all" && inv.source !== sourceFilter) {
+      if (
+        sourceFilter !== INBOX_SOURCE_FILTER.ALL &&
+        inv.source !== sourceFilter
+      ) {
         return false
       }
       if (!q) return true
@@ -104,12 +106,12 @@ export function InboxView({
     })
   }, [invoices, query, statusFilter, sourceFilter])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(filtered.length / INBOX_LIST_PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
 
   const pageItems = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE
-    return filtered.slice(start, start + PAGE_SIZE)
+    const start = (safePage - 1) * INBOX_LIST_PAGE_SIZE
+    return filtered.slice(start, start + INBOX_LIST_PAGE_SIZE)
   }, [filtered, safePage])
 
   const groups = useMemo(() => {
@@ -142,9 +144,12 @@ export function InboxView({
   const selected =
     pageItems.find((inv) => inv.id === selectedId) ?? pageItems[0] ?? null
 
-  const filtersActive = statusFilter !== "all" || sourceFilter !== "all"
-  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length)
+  const filtersActive =
+    statusFilter !== INBOX_STATUS_FILTER.ALL ||
+    sourceFilter !== INBOX_SOURCE_FILTER.ALL
+  const rangeStart =
+    filtered.length === 0 ? 0 : (safePage - 1) * INBOX_LIST_PAGE_SIZE + 1
+  const rangeEnd = Math.min(safePage * INBOX_LIST_PAGE_SIZE, filtered.length)
 
   return (
     <div className="-m-4 flex h-[calc(100dvh-3rem)] min-h-[32rem] flex-col overflow-hidden border-t border-border/60 md:-m-6">
@@ -192,7 +197,7 @@ export function InboxView({
                 <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Status</DropdownMenuLabel>
-                    {STATUS_OPTIONS.map((opt) => (
+                    {INBOX_STATUS_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
                         onClick={() => setStatusFilter(opt.value)}
@@ -207,7 +212,7 @@ export function InboxView({
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Source</DropdownMenuLabel>
-                    {SOURCE_OPTIONS.map((opt) => (
+                    {INBOX_SOURCE_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
                         onClick={() => setSourceFilter(opt.value)}
@@ -224,8 +229,8 @@ export function InboxView({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => {
-                          setStatusFilter("all")
-                          setSourceFilter("all")
+                          setStatusFilter(INBOX_DEFAULT_STATUS_FILTER)
+                          setSourceFilter(INBOX_DEFAULT_SOURCE_FILTER)
                         }}
                       >
                         Clear filters
@@ -238,22 +243,22 @@ export function InboxView({
 
             {filtersActive ? (
               <div className="flex flex-wrap items-center gap-1.5">
-                {statusFilter !== "all" ? (
+                {statusFilter !== INBOX_STATUS_FILTER.ALL ? (
                   <FilterChip
                     label={
-                      STATUS_OPTIONS.find((o) => o.value === statusFilter)
+                      INBOX_STATUS_FILTER_OPTIONS.find((o) => o.value === statusFilter)
                         ?.label ?? statusFilter
                     }
-                    onClear={() => setStatusFilter("all")}
+                    onClear={() => setStatusFilter(INBOX_DEFAULT_STATUS_FILTER)}
                   />
                 ) : null}
-                {sourceFilter !== "all" ? (
+                {sourceFilter !== INBOX_SOURCE_FILTER.ALL ? (
                   <FilterChip
                     label={
-                      SOURCE_OPTIONS.find((o) => o.value === sourceFilter)
+                      INBOX_SOURCE_FILTER_OPTIONS.find((o) => o.value === sourceFilter)
                         ?.label ?? sourceFilter
                     }
-                    onClear={() => setSourceFilter("all")}
+                    onClear={() => setSourceFilter(INBOX_DEFAULT_SOURCE_FILTER)}
                   />
                 ) : null}
               </div>
