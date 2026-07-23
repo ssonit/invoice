@@ -19,6 +19,7 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "@tanstack/react-table": "^8.21.3",
+    "@trigger.dev/sdk": "^4.5.7",
     "agentmail": "^0.5.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
