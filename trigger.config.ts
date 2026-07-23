@@ -2,8 +2,7 @@ import { defineConfig } from "@trigger.dev/sdk";
 
 export default defineConfig({
   // Project ref from the Trigger.dev dashboard (Project settings). Not secret.
-  // Replace <project ref> with your real ref, e.g. "proj_abc123".
-  project: "<project ref>",
+  project: "proj_glkyuruvgwugfznpnrxd",
   runtime: "node-22",
   // Required by current SDK; extraction + LLM calls can take a few minutes.
   maxDuration: 300,
@@ -19,5 +18,9 @@ export default defineConfig({
       factor: 2,
       randomize: true,
     },
+  },
+  build: {
+    // Optional AgentMail peer used only for x402 payments; not needed for inbox replies.
+    external: ["@x402/fetch"],
   },
 });
