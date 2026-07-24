@@ -46,3 +46,37 @@ export function parseSignupForm(formData: FormData): FormValidationResult<Signup
   }
   return { success: true, data: result.data };
 }
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export function parseForgotPasswordForm(
+  formData: FormData,
+): FormValidationResult<ForgotPasswordInput> {
+  const result = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  if (!result.success) {
+    return { success: false, error: firstIssueMessage(result.error) };
+  }
+  return { success: true, data: result.data };
+}
+
+// Also reused by the account-settings "change password" form (Task 8) — same
+// shape, no reason to duplicate it.
+export const resetPasswordSchema = z.object({
+  password: z.string().min(6, "Use at least 6 characters"),
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+export function parseResetPasswordForm(
+  formData: FormData,
+): FormValidationResult<ResetPasswordInput> {
+  const result = resetPasswordSchema.safeParse({ password: formData.get("password") });
+  if (!result.success) {
+    return { success: false, error: firstIssueMessage(result.error) };
+  }
+  return { success: true, data: result.data };
+}

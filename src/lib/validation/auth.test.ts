@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseLoginForm, parseSignupForm } from "./auth";
+import {
+  parseForgotPasswordForm,
+  parseLoginForm,
+  parseResetPasswordForm,
+  parseSignupForm,
+} from "./auth";
 
 function formData(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -50,5 +55,42 @@ describe("parseSignupForm", () => {
   it("rejects an invalid email", () => {
     const result = parseSignupForm(formData({ email: "not-an-email", password: "abcdef" }));
     expect(result.success).toBe(false);
+  });
+});
+
+describe("parseForgotPasswordForm", () => {
+  it("accepts a valid email", () => {
+    const result = parseForgotPasswordForm(formData({ email: "a@example.com" }));
+    expect(result).toEqual({ success: true, data: { email: "a@example.com" } });
+  });
+
+  it("trims the email", () => {
+    const result = parseForgotPasswordForm(formData({ email: "  a@example.com  " }));
+    expect(result).toEqual({ success: true, data: { email: "a@example.com" } });
+  });
+
+  it("rejects an invalid email", () => {
+    expect(parseForgotPasswordForm(formData({ email: "not-an-email" })).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a missing email", () => {
+    expect(parseForgotPasswordForm(formData({})).success).toBe(false);
+  });
+});
+
+describe("parseResetPasswordForm", () => {
+  it("accepts a password of 6+ characters", () => {
+    const result = parseResetPasswordForm(formData({ password: "abcdef" }));
+    expect(result).toEqual({ success: true, data: { password: "abcdef" } });
+  });
+
+  it("rejects a password shorter than 6 characters", () => {
+    expect(parseResetPasswordForm(formData({ password: "abcde" })).success).toBe(false);
+  });
+
+  it("rejects a missing password", () => {
+    expect(parseResetPasswordForm(formData({})).success).toBe(false);
   });
 });
