@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
+import { parseResetPasswordForm } from "@/lib/validation/auth";
 
 export async function logout() {
   const supabase = await createClient();
@@ -75,4 +76,17 @@ export async function createInbox(): Promise<CreateInboxResult> {
         : "Could not create the forwarding address. Please try again.";
     return { ok: false, error: message };
   }
+}
+
+export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
+
+export async function changePassword(formData: FormData): Promise<ChangePasswordResult> {
+  const parsed = parseResetPasswordForm(formData);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
 }
