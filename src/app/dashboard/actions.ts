@@ -90,3 +90,35 @@ export async function changePassword(formData: FormData): Promise<ChangePassword
 
   return { ok: true };
 }
+
+export type DeleteAccountResult = { ok: true } | { ok: false; error: string };
+
+// Soft delete: flips profiles.deleted_at and signs the user out. No row in
+// invoices/vendors/inboxes/auth.users is touched — see the design spec's
+// "no data deletion" constraint.
+export async function deleteAccount(confirmEmail: string): Promise<DeleteAccountResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Never trust a client-side enable/disable check alone for a destructive action.
+  if (confirmEmail.trim().toLowerCase() !== user.email?.toLowerCase()) {
+    return { ok: false, error: "Email confirmation does not match your account." };
+  }
+
+  const service = createServiceClient();
+  const { error } = await service
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("Failed to soft-delete account", user.id, error);
+    return { ok: false, error: "Could not delete your account. Please try again." };
+  }
+
+  await supabase.auth.signOut();
+  redirect("/");
+}

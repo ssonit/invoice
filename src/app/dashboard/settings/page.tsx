@@ -3,6 +3,7 @@ import { ContentShell } from "@/components/dashboard/content-shell";
 import { CopyEmailButton } from "../copy-email-button";
 import { CreateInboxButton } from "./create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
+import { DeleteAccountSection } from "./delete-account-section";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -78,6 +79,17 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <ChangePasswordForm />
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[14px] border-destructive/30 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-[13px] font-semibold text-destructive">
+              Danger zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DeleteAccountSection email={user!.email!} />
           </CardContent>
         </Card>
       </div>
