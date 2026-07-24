@@ -6,7 +6,7 @@
 
 **Architecture:** Each of the four areas gets its own small group of tasks — pure-logic pieces (validation schemas, hashing, pagination math) are unit-tested first, then wired into pages/Server Actions/routes which are verified manually (matching the project's established split).
 
-**Tech Stack:** Next.js 16 App Router, `@supabase/ssr`, Supabase Auth (`resetPasswordForEmail`, `updateUser`, `admin.deleteUser`), Node `crypto`, `@tanstack/react-table` (manual pagination/filtering mode), Vitest.
+**Tech Stack:** Next.js 16 App Router, `@supabase/ssr`, Supabase Auth (`resetPasswordForEmail`, `updateUser`), Node `crypto`, `@tanstack/react-table` (manual pagination/filtering mode), Vitest.
 
 **Design spec:** `docs/superpowers/specs/2026-07-23-system-hardening-design.md`
 
@@ -1499,21 +1499,55 @@ git commit -m "feat: add change-password to account settings"
 
 ---
 
-## Task 9: Account settings — delete account
+## Task 9: Account settings — delete account (soft delete, no data removed)
+
+**No data is physically deleted anywhere in this task.** "Delete account" sets a
+`deleted_at` flag on the user's `profiles` row and blocks future login — `invoices`,
+`vendors`, `inboxes`, and the `auth.users` row itself are all left exactly as they were.
 
 **Files:**
+- Create: `supabase/migrations/20260723130000_profiles_deleted_at.sql`
 - Modify: `src/app/dashboard/actions.ts`
+- Modify: `src/app/login/actions.ts`
 - Create: `src/app/dashboard/settings/delete-account-section.tsx`
 - Modify: `src/app/dashboard/settings/page.tsx`
 
-- [ ] **Step 1: Server Action**
+- [ ] **Step 1: Migration**
+
+`supabase/migrations/20260723130000_profiles_deleted_at.sql`:
+```sql
+-- Soft-delete flag for "Delete account". No row is ever physically removed —
+-- this column blocks future login (checked in src/app/login/actions.ts).
+alter table public.profiles add column deleted_at timestamptz;
+```
+`service_role` already has `update` on `profiles` (granted in
+`20260720110000_grant_table_privileges.sql`) — no new grant needed.
+
+- [ ] **Step 2: Apply and verify**
+
+Prerequisite: Docker Desktop running.
+
+Run:
+```bash
+npx supabase db reset
+```
+Expected: reset completes cleanly.
+
+Run:
+```bash
+npx supabase db query "select column_name from information_schema.columns where table_name='profiles' and column_name='deleted_at'"
+```
+Expected: one row.
+
+- [ ] **Step 3: Server Action (soft delete)**
 
 Append to `src/app/dashboard/actions.ts`:
 ```ts
-import { agentmail } from "@/lib/agentmail";
-
 export type DeleteAccountResult = { ok: true } | { ok: false; error: string };
 
+// Soft delete: flips profiles.deleted_at and signs the user out. No row in
+// invoices/vendors/inboxes/auth.users is touched — see the design spec's
+// "no data deletion" constraint.
 export async function deleteAccount(confirmEmail: string): Promise<DeleteAccountResult> {
   const supabase = await createClient();
   const {
@@ -1527,25 +1561,13 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
   }
 
   const service = createServiceClient();
+  const { error } = await service
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", user.id);
 
-  const { data: inbox } = await service
-    .from("inboxes")
-    .select("agentmail_inbox_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (inbox) {
-    try {
-      await agentmail.inboxes.delete(inbox.agentmail_inbox_id);
-    } catch (err) {
-      // Don't block account deletion on AgentMail cleanup failing — log and continue.
-      console.error("Failed to delete AgentMail inbox for user", user.id, err);
-    }
-  }
-
-  const { error } = await service.auth.admin.deleteUser(user.id);
   if (error) {
-    console.error("Failed to delete user", user.id, error);
+    console.error("Failed to soft-delete account", user.id, error);
     return { ok: false, error: "Could not delete your account. Please try again." };
   }
 
@@ -1553,9 +1575,55 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
   redirect("/");
 }
 ```
-(Add the `agentmail` import alongside the existing imports at the top of the file.)
+(No new imports needed — `createClient`, `createServiceClient`, and `redirect` are already
+imported at the top of this file.)
 
-- [ ] **Step 2: Client component (type-to-confirm)**
+- [ ] **Step 4: Block login for soft-deleted accounts**
+
+Replace `src/app/login/actions.ts` in full:
+```ts
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { parseLoginForm } from "@/lib/validation/auth";
+
+export async function login(formData: FormData) {
+  const parsed = parseLoginForm(formData);
+  if (!parsed.success) {
+    redirect(`/login?error=${encodeURIComponent(parsed.error)}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("deleted_at")
+    .eq("id", user!.id)
+    .maybeSingle();
+
+  if (profile?.deleted_at) {
+    await supabase.auth.signOut();
+    redirect(`/login?error=${encodeURIComponent("This account has been deleted.")}`);
+  }
+
+  redirect("/dashboard");
+}
+```
+This check only runs at login (not on every request via the session middleware) — an
+already-open session on another device stays valid until its token naturally expires;
+called out as a known, accepted limitation rather than fixed here (see design spec).
+
+- [ ] **Step 5: Client component (type-to-confirm)**
 
 `src/app/dashboard/settings/delete-account-section.tsx`:
 ```tsx
@@ -1588,8 +1656,9 @@ export function DeleteAccountSection({ email }: { email: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] text-muted-foreground">
-        This permanently deletes your account, invoices, vendors, and forwarding inbox.
-        This cannot be undone. Type <span className="font-mono">{email}</span> to confirm.
+        This deactivates your account and signs you out — you won't be able to sign back
+        in. Your invoices and other data are kept, not erased. Type{" "}
+        <span className="font-mono">{email}</span> to confirm.
       </p>
       <Input
         value={confirmEmail}
@@ -1613,7 +1682,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
 }
 ```
 
-- [ ] **Step 3: Add the card to the settings page**
+- [ ] **Step 6: Add the card to the settings page**
 
 Task 8 already put a `<div className="flex flex-col gap-4">` around the cards in
 `src/app/dashboard/settings/page.tsx` — add the import at the top:
@@ -1636,16 +1705,16 @@ directly after the closing `</Card>` of the "Password" card (and before the wrap
         </Card>
 ```
 
-- [ ] **Step 4: Type-check**
+- [ ] **Step 7: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/app/dashboard/actions.ts src/app/dashboard/settings/delete-account-section.tsx src/app/dashboard/settings/page.tsx
-git commit -m "feat: add delete-account to account settings"
+git add supabase/migrations/20260723130000_profiles_deleted_at.sql src/app/dashboard/actions.ts src/app/login/actions.ts src/app/dashboard/settings/delete-account-section.tsx src/app/dashboard/settings/page.tsx
+git commit -m "feat: add soft-delete account deactivation (no data removed)"
 ```
 
 ---
@@ -1703,18 +1772,23 @@ Prerequisite: local Supabase running. Run `npx supabase status` and note the Inb
 
 1. On `/dashboard/settings`, use "Update password" with a new password → toast confirms,
    log out/in with the new password to verify.
-2. Create a throwaway test account (sign up with a new email), verify it gets an AgentMail
-   inbox if you create one, then use "Delete account" (type the email to confirm) →
-   redirected to `/`, confirm via `npx supabase db query` that the user's rows are gone
-   and (if applicable) the AgentMail inbox no longer appears in the AgentMail dashboard.
+2. Create a throwaway test account (sign up with a new email), then use "Delete account"
+   (type the email to confirm) → redirected to `/`.
+3. Confirm via
+   `npx supabase db query "select deleted_at from profiles where email = '<test email>'"`
+   that `deleted_at` is now set, and separately that the user's `invoices`/`vendors` rows
+   (if any) and `auth.users` row still exist — nothing was removed.
+4. Try logging back in with that test account's credentials → rejected with "This account
+   has been deleted.", not signed in.
 
 - [ ] **Step 7: Write `docs/system-hardening.md`**
 
 Record: the four features shipped, the content-hash dedup approach and why it also skips
 re-extraction (cost saving), the pagination/filter scope decision (Invoices page only,
 filter moved server-side, sort stays page-local — and why Overview/Vendors/Inbox are
-excluded), and the account-deletion cleanup order (AgentMail inbox, then Supabase user,
-cascades handle the rest). Link the design spec.
+excluded), and that account deletion is a **soft delete** — `profiles.deleted_at` blocks
+login, no row anywhere is physically removed, and why (explicit no-data-deletion
+constraint). Link the design spec.
 
 - [ ] **Step 8: Final commit**
 
@@ -1737,6 +1811,7 @@ git commit -m "docs: record system hardening features"
 - `src/lib/invoices/query.ts` + `.test.ts`
 - `src/components/dashboard/invoices-toolbar.tsx`
 - `src/app/dashboard/settings/change-password-form.tsx`
+- `supabase/migrations/20260723130000_profiles_deleted_at.sql`
 - `src/app/dashboard/settings/delete-account-section.tsx`
 - `docs/system-hardening.md`
 
@@ -1749,4 +1824,5 @@ git commit -m "docs: record system hardening features"
 - `src/components/dashboard/invoices-table.tsx`
 - `src/components/dashboard/columns.tsx`
 - `src/app/dashboard/actions.ts`
+- `src/app/login/actions.ts`
 - `src/app/dashboard/settings/page.tsx`
