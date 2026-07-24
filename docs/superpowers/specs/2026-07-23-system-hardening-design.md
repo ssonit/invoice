@@ -15,8 +15,8 @@ necessity over polish (no customers yet, so scope stays tight):
    treatment.
 3. Every dashboard page fetches a user's entire invoice history on every load, with no
    database-level pagination. Fine today; won't scale.
-4. No account-management page — no way to change password or delete an account (and its
-   AgentMail inbox) without touching the database directly.
+4. No account-management page — no way to change password or deactivate an account
+   without touching the database directly.
 
 ## Scope decisions
 
@@ -25,7 +25,7 @@ necessity over polish (no customers yet, so scope stays tight):
 | Password recovery | Full flow: `/forgot-password`, `/auth/callback` (PKCE code exchange — doesn't exist yet), `/reset-password`. |
 | Upload dedup | Content-hash based (SHA-256 of the raw file buffer), not filename-based — catches exact re-uploads regardless of filename, and lets the route skip the LLM call entirely on a hash hit (cost savings, not just correctness). |
 | Pagination | **`/dashboard/invoices` only.** Overview (stats/trend) and Vendors (`detectSubscriptions` needs the full history to compute median billing-cycle gaps) require the complete dataset and are explicitly out of scope — paginating them would require rewriting stat computation as SQL aggregates, a separate, larger effort. Inbox page also stays unpaginated for this round (kept in sync with Overview/Vendors rather than diverging). |
-| Account deletion | Deletes the AgentMail inbox first (`agentmail.inboxes.delete`), then the Supabase auth user (`auth.admin.deleteUser`) — existing `on delete cascade` FKs handle `invoices`/`vendors`/`subscription_confirmations`/`inboxes` rows. Requires the user to type their email to confirm (irreversible, no soft-delete in v1). |
+| Account deletion | **Revised — no data deletion allowed.** Soft delete only: sets `profiles.deleted_at`, blocks future login, signs out the current session. No row is physically removed (not `invoices`, `vendors`, `inboxes`, nor the `auth.users` row itself), and the AgentMail inbox is left untouched. Requires the user to type their email to confirm. |
 
 ## 1. Password recovery
 
@@ -138,14 +138,40 @@ cards:
 - **Change password:** client form → `supabase.auth.updateUser({ password })` directly
   (the user already has a valid session; Supabase doesn't require re-entering the old
   password for this call).
-- **Delete account:** requires typing the account's own email into a confirmation input
-  before the button enables (mirrors common "type to confirm" destructive-action pattern).
+- **Delete account (soft delete — no data is removed):** requires typing the account's own
+  email into a confirmation input before the button enables (mirrors common "type to
+  confirm" destructive-action pattern), same UX as originally planned. What happens
+  underneath is different:
+
+  New migration:
+  ```sql
+  alter table public.profiles add column deleted_at timestamptz;
+  ```
+  `profiles` already exists (one row per user, auto-created via the `handle_new_user`
+  trigger, `service_role` already has `update` granted) — reused rather than adding a new
+  table.
+
   Server Action:
   1. Re-check the typed email matches `session.user.email` server-side (never trust the
      client-side enable/disable check alone).
-  2. Look up the user's `inboxes` row; if present, `agentmail.inboxes.delete(agentmail_inbox_id)`.
-  3. `createServiceClient().auth.admin.deleteUser(user.id)` — cascades through existing FKs.
-  4. Sign out / clear the session, redirect to `/`.
+  2. `createServiceClient().from("profiles").update({ deleted_at: now }).eq("id", user.id)`.
+     No `invoices`/`vendors`/`inboxes`/`auth.users` row is touched. The AgentMail inbox is
+     left as-is — nothing in this app is authorized to delete it, and there's no AgentMail
+     "pause" API to fall back to, so it stays active (noted as a known limitation, not
+     fixed this round).
+  3. Sign out the current session, redirect to `/`.
+
+  Login must then honor `deleted_at`: `src/app/login/actions.ts`, after a successful
+  `signInWithPassword`, checks `profiles.deleted_at` for the signed-in user; if set, signs
+  them back out immediately and shows "This account has been deleted." instead of
+  proceeding to `/dashboard`. This is checked only at login (not on every request via the
+  session middleware) — cheap, and covers the actual risk (someone signing back in), at
+  the cost of not instantly kicking out an *already-open* session on a second device the
+  moment deletion happens (that session persists until its token naturally expires) —
+  accepted for v1, called out explicitly rather than silently left as a gap.
+
+  No self-service reactivation in v1 — a soft-deleted account stays locked out; restoring
+  one is a manual `update profiles set deleted_at = null` for now.
 
 ## Testing
 
@@ -167,7 +193,8 @@ routes/Server Actions/pages manually):
 - Paginating Overview, Vendors, or Inbox (would require rewriting stats/trend/subscription
   detection as SQL aggregates — separate effort).
 - Server-side sort/filter for the Invoices table (only pagination this round).
-- Soft-delete / account recovery window for account deletion — deletion is immediate and
-  irreversible in v1.
+- Self-service account reactivation after a soft delete (manual DB update only, for now).
+- Deleting or pausing the AgentMail inbox on account deletion — no API for pausing exists,
+  and outright deleting it would violate the no-data-deletion constraint anyway.
 - Rate-limiting the forgot-password or upload endpoints (worth revisiting before real
   public launch, not necessary pre-launch).
