@@ -33,7 +33,6 @@ export const columns: ColumnDef<InvoiceRow>[] = [
     cell: ({ row }) => (
       <span className="font-medium">{row.original.vendor ?? "-"}</span>
     ),
-    filterFn: "includesString",
   },
   {
     accessorKey: "invoice_number",
@@ -84,6 +83,5 @@ export const columns: ColumnDef<InvoiceRow>[] = [
         <Badge variant="outline">OK</Badge>
       ),
     enableSorting: false,
-    filterFn: "equalsString",
   },
 ];
