@@ -1,5 +1,14 @@
 @AGENTS.md
 
+## Development workflow & conventions
+
+Full reference: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — code conventions, rules,
+and the plan → code → test → security review → deploy workflow for this project.
+
+The one rule that must never be forgotten even without reading that file: **never
+physically delete user data without the user explicitly asking for it.** Default to
+additive migrations and soft-delete (a `deleted_at`/status flag), not `DROP`/`DELETE`.
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
