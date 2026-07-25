@@ -50,12 +50,20 @@ export function VendorsToolbar({
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [q, setQ] = useState(query.q)
-  const queryRef = useRef(query)
-  queryRef.current = query
+  const [prevQueryQ, setPrevQueryQ] = useState(query.q)
 
-  useEffect(() => {
+  // Sync the search box when the URL's q changes from outside this component
+  // (browser back/forward). Adjusted during render, per React's guidance,
+  // rather than in an Effect.
+  if (query.q !== prevQueryQ) {
+    setPrevQueryQ(query.q)
     setQ(query.q)
-  }, [query.q])
+  }
+
+  const queryRef = useRef(query)
+  useEffect(() => {
+    queryRef.current = query
+  }, [query])
 
   function navigate(patch: Partial<VendorQuery>) {
     const current = queryRef.current
