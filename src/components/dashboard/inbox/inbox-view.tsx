@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Calendar,
   Check,
@@ -21,12 +22,11 @@ import {
   INBOX_DEFAULT_SOURCE_FILTER,
   INBOX_DEFAULT_STATUS_FILTER,
   INBOX_LIST_PAGE_SIZE,
+  INBOX_SEARCH_DEBOUNCE_MS,
   INBOX_SOURCE_FILTER,
   INBOX_SOURCE_FILTER_OPTIONS,
   INBOX_STATUS_FILTER,
   INBOX_STATUS_FILTER_OPTIONS,
-  type InboxSourceFilter,
-  type InboxStatusFilter,
 } from "@/constants/inbox"
 import {
   formatInvoiceDate,
@@ -36,6 +36,8 @@ import {
   inboxTimeLabel,
   type InvoiceRow,
 } from "@/lib/invoices"
+import type { InboxListQuery } from "@/lib/invoices/inbox-query"
+import { paginationRange } from "@/lib/pagination"
 import { cn } from "@/lib/utils"
 import { InboxStatusBadge } from "@/components/dashboard/inbox/inbox-status-badge"
 import { Button } from "@/components/ui/button"
@@ -61,95 +63,103 @@ function sourceSubtitle(invoice: InvoiceRow): string {
   return `invoices@${slug || "mail"}.com`
 }
 
+function buildHref(pathname: string, next: InboxListQuery): string {
+  const params = new URLSearchParams()
+  if (next.q) params.set("q", next.q)
+  if (next.status !== "all") params.set("status", next.status)
+  if (next.source !== "all") params.set("source", next.source)
+  if (next.page !== 1) params.set("page", String(next.page))
+  const qs = params.toString()
+  return qs ? `${pathname}?${qs}` : pathname
+}
+
 type Group = { label: string; items: InvoiceRow[] }
 
 export function InboxView({
   invoices,
   nowIso,
+  query,
+  totalCount,
+  grandTotal,
+  pageCount,
 }: {
   invoices: InvoiceRow[]
   nowIso: string
+  query: InboxListQuery
+  totalCount: number
+  grandTotal: number
+  pageCount: number
 }) {
-  const [query, setQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<InboxStatusFilter>(
-    INBOX_DEFAULT_STATUS_FILTER,
-  )
-  const [sourceFilter, setSourceFilter] = useState<InboxSourceFilter>(
-    INBOX_DEFAULT_SOURCE_FILTER,
-  )
-  const [page, setPage] = useState(1)
+  const router = useRouter()
+  const pathname = usePathname()
   const [selectedId, setSelectedId] = useState<string | null>(
     invoices[0]?.id ?? null
   )
+  const [searchInput, setSearchInput] = useState(query.q)
+  const [prevQueryQ, setPrevQueryQ] = useState(query.q)
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return invoices.filter((inv) => {
-      if (
-        statusFilter !== INBOX_STATUS_FILTER.ALL &&
-        getInboxStatus(inv) !== statusFilter
-      ) {
-        return false
-      }
-      if (
-        sourceFilter !== INBOX_SOURCE_FILTER.ALL &&
-        inv.source !== sourceFilter
-      ) {
-        return false
-      }
-      if (!q) return true
-      const hay = [inv.vendor, inv.invoice_number, inv.currency, inv.source]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-      return hay.includes(q)
-    })
-  }, [invoices, query, statusFilter, sourceFilter])
+  // Sync the search box when the URL's q changes from outside this component
+  // (browser back/forward). Adjusted during render, per React's guidance,
+  // rather than in an Effect.
+  if (query.q !== prevQueryQ) {
+    setPrevQueryQ(query.q)
+    setSearchInput(query.q)
+  }
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / INBOX_LIST_PAGE_SIZE))
-  const safePage = Math.min(page, pageCount)
+  const queryRef = useRef(query)
+  useEffect(() => {
+    queryRef.current = query
+  }, [query])
 
-  const pageItems = useMemo(() => {
-    const start = (safePage - 1) * INBOX_LIST_PAGE_SIZE
-    return filtered.slice(start, start + INBOX_LIST_PAGE_SIZE)
-  }, [filtered, safePage])
+  function navigate(patch: Partial<InboxListQuery>) {
+    const current = queryRef.current
+    const next: InboxListQuery = {
+      q: patch.q !== undefined ? patch.q.trim() : current.q,
+      status: patch.status ?? current.status,
+      source: patch.source ?? current.source,
+      page: patch.page ?? 1,
+    }
+    router.push(buildHref(pathname, next))
+  }
 
-  const groups = useMemo(() => {
+  useEffect(() => {
+    if (searchInput === query.q) return
+    const handle = window.setTimeout(() => navigate({ q: searchInput }), INBOX_SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce search
+  }, [searchInput, query.q, pathname])
+
+  const groups: Group[] = (() => {
     const map = new Map<string, InvoiceRow[]>()
-    for (const inv of pageItems) {
+    for (const inv of invoices) {
       const label = inboxGroupLabel(inv.created_at, nowIso)
       const list = map.get(label) ?? []
       list.push(inv)
       map.set(label, list)
     }
-    return Array.from(map.entries()).map(
-      ([label, items]): Group => ({ label, items })
-    )
-  }, [pageItems, nowIso])
+    return Array.from(map.entries()).map(([label, items]): Group => ({ label, items }))
+  })()
 
-  useEffect(() => {
-    setPage(1)
-  }, [query, statusFilter, sourceFilter])
-
-  useEffect(() => {
-    if (pageItems.length === 0) {
+  // Reset the selected invoice when the (server-provided) invoices list changes
+  // — e.g. a new page/filter navigation. Adjusted during render, per React's
+  // guidance, rather than in an Effect.
+  const [prevInvoices, setPrevInvoices] = useState(invoices)
+  if (invoices !== prevInvoices) {
+    setPrevInvoices(invoices)
+    if (invoices.length === 0) {
       setSelectedId(null)
-      return
+    } else if (!invoices.some((inv) => inv.id === selectedId)) {
+      setSelectedId(invoices[0].id)
     }
-    if (!pageItems.some((inv) => inv.id === selectedId)) {
-      setSelectedId(pageItems[0].id)
-    }
-  }, [pageItems, selectedId])
+  }
 
   const selected =
-    pageItems.find((inv) => inv.id === selectedId) ?? pageItems[0] ?? null
+    invoices.find((inv) => inv.id === selectedId) ?? invoices[0] ?? null
 
-  const filtersActive =
-    statusFilter !== INBOX_STATUS_FILTER.ALL ||
-    sourceFilter !== INBOX_SOURCE_FILTER.ALL
-  const rangeStart =
-    filtered.length === 0 ? 0 : (safePage - 1) * INBOX_LIST_PAGE_SIZE + 1
-  const rangeEnd = Math.min(safePage * INBOX_LIST_PAGE_SIZE, filtered.length)
+  const filtersActive = query.status !== "all" || query.source !== "all"
+  const { from } = paginationRange(query.page, INBOX_LIST_PAGE_SIZE)
+  const rangeStart = totalCount === 0 ? 0 : from + 1
+  const rangeEnd = Math.min(from + invoices.length, totalCount)
 
   return (
     <div className="-m-4 flex h-[calc(100dvh-3rem)] min-h-[32rem] flex-col overflow-hidden border-t border-border/60 md:-m-6">
@@ -158,7 +168,7 @@ export function InboxView({
           Invoice Inbox
         </h1>
         <p className="text-[12px] text-muted-foreground tabular-nums">
-          {filtered.length} of {invoices.length}
+          {totalCount} of {grandTotal}
         </p>
       </div>
 
@@ -169,8 +179,8 @@ export function InboxView({
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search invoices..."
                   className="h-8 bg-muted/30 pl-8"
                 />
@@ -200,10 +210,10 @@ export function InboxView({
                     {INBOX_STATUS_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
-                        onClick={() => setStatusFilter(opt.value)}
+                        onClick={() => navigate({ status: opt.value })}
                       >
                         <span className="flex-1">{opt.label}</span>
-                        {statusFilter === opt.value ? (
+                        {query.status === opt.value ? (
                           <Check className="size-3.5 text-[#E8FF47]" />
                         ) : null}
                       </DropdownMenuItem>
@@ -215,10 +225,10 @@ export function InboxView({
                     {INBOX_SOURCE_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
-                        onClick={() => setSourceFilter(opt.value)}
+                        onClick={() => navigate({ source: opt.value })}
                       >
                         <span className="flex-1">{opt.label}</span>
-                        {sourceFilter === opt.value ? (
+                        {query.source === opt.value ? (
                           <Check className="size-3.5 text-[#E8FF47]" />
                         ) : null}
                       </DropdownMenuItem>
@@ -228,10 +238,12 @@ export function InboxView({
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => {
-                          setStatusFilter(INBOX_DEFAULT_STATUS_FILTER)
-                          setSourceFilter(INBOX_DEFAULT_SOURCE_FILTER)
-                        }}
+                        onClick={() =>
+                          navigate({
+                            status: INBOX_DEFAULT_STATUS_FILTER,
+                            source: INBOX_DEFAULT_SOURCE_FILTER,
+                          })
+                        }
                       >
                         Clear filters
                       </DropdownMenuItem>
@@ -243,22 +255,22 @@ export function InboxView({
 
             {filtersActive ? (
               <div className="flex flex-wrap items-center gap-1.5">
-                {statusFilter !== INBOX_STATUS_FILTER.ALL ? (
+                {query.status !== INBOX_STATUS_FILTER.ALL ? (
                   <FilterChip
                     label={
-                      INBOX_STATUS_FILTER_OPTIONS.find((o) => o.value === statusFilter)
-                        ?.label ?? statusFilter
+                      INBOX_STATUS_FILTER_OPTIONS.find((o) => o.value === query.status)
+                        ?.label ?? query.status
                     }
-                    onClear={() => setStatusFilter(INBOX_DEFAULT_STATUS_FILTER)}
+                    onClear={() => navigate({ status: INBOX_DEFAULT_STATUS_FILTER })}
                   />
                 ) : null}
-                {sourceFilter !== INBOX_SOURCE_FILTER.ALL ? (
+                {query.source !== INBOX_SOURCE_FILTER.ALL ? (
                   <FilterChip
                     label={
-                      INBOX_SOURCE_FILTER_OPTIONS.find((o) => o.value === sourceFilter)
-                        ?.label ?? sourceFilter
+                      INBOX_SOURCE_FILTER_OPTIONS.find((o) => o.value === query.source)
+                        ?.label ?? query.source
                     }
-                    onClear={() => setSourceFilter(INBOX_DEFAULT_SOURCE_FILTER)}
+                    onClear={() => navigate({ source: INBOX_DEFAULT_SOURCE_FILTER })}
                   />
                 ) : null}
               </div>
@@ -334,28 +346,28 @@ export function InboxView({
 
           <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/60 px-3 py-2">
             <p className="text-[11px] text-muted-foreground tabular-nums">
-              {rangeStart}–{rangeEnd} of {filtered.length}
+              {rangeStart}–{rangeEnd} of {totalCount}
             </p>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Previous page"
-                disabled={safePage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={query.page <= 1}
+                onClick={() => navigate({ page: Math.max(1, query.page - 1) })}
                 className="text-muted-foreground"
               >
                 <ChevronLeft strokeWidth={1.75} />
               </Button>
               <span className="min-w-14 text-center text-[11px] text-muted-foreground tabular-nums">
-                {safePage} / {pageCount}
+                {query.page} / {pageCount}
               </span>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Next page"
-                disabled={safePage >= pageCount}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={query.page >= pageCount}
+                onClick={() => navigate({ page: Math.min(pageCount, query.page + 1) })}
                 className="text-muted-foreground"
               >
                 <ChevronRight strokeWidth={1.75} />
