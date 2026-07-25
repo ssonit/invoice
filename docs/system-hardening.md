@@ -50,6 +50,33 @@ to only match the current page's rows. Column *sort* (Amount / Issue date header
 intentionally stays client-side, scoped to the current page — an accepted, smaller
 regression versus rewriting sort as a server-side query param too.
 
+**Extended to `/dashboard/inbox` (2026-07-25):** same pattern —
+`src/lib/invoices/inbox-query.ts` (page/q/status/source parsing, unit-tested) drives a
+server-side `.range()` + `.or(ilike...)` query in `page.tsx`, with `InboxView` switched
+from local `useState`/`useMemo` filtering to props-driven data + URL navigation (the
+`selectedId` detail-pane selection stays client-only — never reflected in the URL).
+Vendors was evaluated in the same pass and intentionally left out: it already has
+server-side search/sort, and pagination there would only trim HTML sent to the client —
+it can't reduce query cost, since the full invoice history must still be fetched
+regardless of vendor-list page size (subscription detection needs it).
+
+Inbox's status filter (`review`/`extracted`/`approved`, from `getInboxStatus()` in
+`src/lib/invoices.ts`) isn't a single DB column — it combines two columns, translated to
+SQL in `page.tsx` as:
+```
+review:    needs_review = true
+approved:  needs_review = false AND confidence_score >= 0.9
+extracted: needs_review = false AND (confidence_score < 0.9 OR confidence_score IS NULL)
+```
+All three translations were verified directly against Postgres counts during manual
+testing (see Verification below) and matched exactly.
+
+While rewriting `InboxView`'s state management, a second (pre-existing, not
+newly-introduced) instance of the `setState`-inside-`useEffect` anti-pattern was found and
+fixed — the `selectedId` reset-when-the-invoice-list-changes logic now runs during render
+(comparing against a tracked previous-`invoices` value), matching the fix already applied
+to `invoices-toolbar.tsx`'s search-sync effect.
+
 ## Account settings
 
 `/dashboard/settings` gained two cards:
@@ -78,3 +105,11 @@ verified directly against Postgres; and the full soft-delete lifecycle — signu
 throwaway account, delete it, confirm `deleted_at` is set while `profiles` and
 `auth.users` rows remain, then confirm a login attempt is rejected with the correct
 message. All synthetic/test data was cleaned up afterward.
+
+**Inbox (2026-07-25):** `npm run test` (17 files / 156 tests), `npx tsc --noEmit`, and
+`npm run build` all clean. Manually verified with 15 synthetic invoices (mixed
+source/status): page 1/2 split and "N of M" header counts correct; search, source filter,
+status filter, and a combined search+filter+page URL all returned the expected result
+sets, each cross-checked against a direct Postgres `count(*)` query with the equivalent
+`WHERE` clause (all three status-filter branches matched exactly). Synthetic data cleaned
+up afterward.
