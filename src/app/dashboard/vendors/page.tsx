@@ -130,47 +130,41 @@ export default async function VendorsPage({
     vendorsQuery = vendorsQuery.order("name", { ascending: true })
   }
 
-  const [{ data: vendorRowsInitial }, { data: invoiceRows }, { data: confirmationRows }] =
-    await Promise.all([
-      vendorsQuery,
-      supabase
-        .from("invoices")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("subscription_confirmations")
-        .select("vendor_key, status, confirmed_at")
-        .eq("user_id", user!.id),
-    ])
+  const [
+    { data: vendorRowsInitial },
+    { data: statsRows },
+    { data: recentRows },
+    { data: confirmationRows },
+  ] = await Promise.all([
+    vendorsQuery,
+    supabase.from("vendor_invoice_stats").select("*").eq("user_id", user!.id),
+    supabase.from("vendor_recent_invoices").select("*").eq("user_id", user!.id),
+    supabase
+      .from("subscription_confirmations")
+      .select("vendor_key, status, confirmed_at")
+      .eq("user_id", user!.id),
+  ])
 
-  const invoices = (invoiceRows ?? []).map(normalizeInvoice)
+  const stats = statsRows ?? []
+  // vendor_recent_invoices selects invoices.* (plus rn), so each row has the
+  // same shape/coercion needs as a raw invoices row.
+  const recentInvoices = (recentRows ?? []).map(normalizeInvoice)
 
   // When searching, skip orphan heal (orphans wouldn't match the filtered query anyway
-  // until upserted). Still heal when browsing the full list.
+  // until upserted). Still heal when browsing the full list. Sourced from the small
+  // aggregate view (one row per distinct vendor) instead of the full invoice history.
   let vendorRows = vendorRowsInitial
   if (!query.q) {
     const existingKeys = new Set((vendorRowsInitial ?? []).map((row) => row.name_key))
-    const orphanUpserts: {
-      user_id: string
-      name: string
-      name_key: string
-      updated_at: string
-    }[] = []
-    const seenKeys = new Set<string>()
     const now = new Date().toISOString()
-    for (const invoice of invoices) {
-      if (!invoice.vendor) continue
-      const key = normalizeVendorKey(invoice.vendor)
-      if (existingKeys.has(key) || seenKeys.has(key)) continue
-      seenKeys.add(key)
-      orphanUpserts.push({
+    const orphanUpserts = stats
+      .filter((row) => !existingKeys.has(row.vendor_key))
+      .map((row) => ({
         user_id: user!.id,
-        name: invoice.vendor.trim(),
-        name_key: key,
+        name: row.label.trim(),
+        name_key: row.vendor_key,
         updated_at: now,
-      })
-    }
+      }))
     if (orphanUpserts.length > 0) {
       await supabase.from("vendors").upsert(orphanUpserts, {
         onConflict: "user_id,name_key",
@@ -192,76 +186,50 @@ export default async function VendorsPage({
     ]),
   )
 
-  const subscriptions = withConfirmationStatus(detectSubscriptions(invoices), confirmations)
+  const subscriptions = withConfirmationStatus(
+    detectSubscriptions(recentInvoices),
+    confirmations,
+  )
   const due = subscriptions.filter((s) => s.needsConfirmation)
 
-  const invoiceByKey = new Map<
-    string,
-    {
-      total: number
-      currency: string | null
-      count: number
-      lastDate: string
-      invoices: VendorListItem["invoices"]
-      label: string
-    }
-  >()
+  const statsByKey = new Map(stats.map((row) => [row.vendor_key, row]))
 
-  for (const invoice of invoices) {
+  const recentByKey = new Map<string, VendorListItem["invoices"]>()
+  for (const invoice of recentInvoices) {
     if (!invoice.vendor) continue
     const key = normalizeVendorKey(invoice.vendor)
-    const existing = invoiceByKey.get(key)
-    if (existing) {
-      existing.total += invoice.amount ?? 0
-      existing.count += 1
-      if (invoice.issue_date && invoice.issue_date > existing.lastDate) {
-        existing.lastDate = invoice.issue_date
-      }
-      existing.invoices.push({
-        id: invoice.id,
-        invoice_number: invoice.invoice_number,
-        amount: invoice.amount,
-        currency: invoice.currency,
-        issue_date: invoice.issue_date,
-        due_date: invoice.due_date,
-      })
-    } else {
-      invoiceByKey.set(key, {
-        label: invoice.vendor,
-        total: invoice.amount ?? 0,
-        currency: invoice.currency,
-        count: 1,
-        lastDate: invoice.issue_date ?? "",
-        invoices: [
-          {
-            id: invoice.id,
-            invoice_number: invoice.invoice_number,
-            amount: invoice.amount,
-            currency: invoice.currency,
-            issue_date: invoice.issue_date,
-            due_date: invoice.due_date,
-          },
-        ],
-      })
-    }
+    const list = recentByKey.get(key) ?? []
+    list.push({
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      issue_date: invoice.issue_date,
+      due_date: invoice.due_date,
+    })
+    recentByKey.set(key, list)
   }
 
   const vendorMap = new Map<string, VendorListItem>()
 
   for (const row of vendorRows ?? []) {
-    const stats = invoiceByKey.get(row.name_key)
+    const stat = statsByKey.get(row.name_key)
     vendorMap.set(row.name_key, {
       id: row.id,
       key: row.name_key,
       label: row.name,
       notes: row.notes,
       createdAt: row.created_at,
-      total: stats?.total ?? 0,
-      currency: stats?.currency ?? null,
-      count: stats?.count ?? 0,
-      lastDate: stats?.lastDate ?? "",
+      // sum()/count() come back from PostgREST as numeric strings — coerce,
+      // same reason normalizeInvoice() coerces amount/tax/confidence_score.
+      total: stat ? Number(stat.total) : 0,
+      currency: stat?.currency ?? null,
+      count: stat ? Number(stat.count) : 0,
+      lastDate: stat?.last_date ?? "",
       subscription: null,
-      invoices: stats?.invoices ?? [],
+      // Windowed (≤6) invoices for immediate display — VendorsList lazy-loads
+      // the full per-vendor history when a vendor's detail Sheet is opened.
+      invoices: recentByKey.get(row.name_key) ?? [],
     })
   }
 
