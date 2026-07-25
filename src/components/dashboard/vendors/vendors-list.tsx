@@ -10,7 +10,7 @@ import {
   SUBSCRIPTION_CYCLE_LABELS,
   type SubscriptionCycleConstant,
 } from "@/constants/subscriptions"
-import { deleteVendor } from "@/app/dashboard/vendors/actions"
+import { deleteVendor, getVendorInvoices } from "@/app/dashboard/vendors/actions"
 import { SubscriptionConfirmButtons } from "@/components/dashboard/vendors/subscription-confirm-buttons"
 import { VendorFormDialog } from "@/components/dashboard/vendors/vendor-form-dialog"
 import {
@@ -93,9 +93,22 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
   const router = useRouter()
   const [page, setPage] = useState(0)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [fullInvoices, setFullInvoices] = useState<VendorListInvoice[] | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, startDelete] = useTransition()
+  const [isLoadingInvoices, startLoadInvoices] = useTransition()
+
+  // Triggered directly from the row click (not an Effect) — this responds to
+  // a discrete user action, not something to "synchronize" on every render.
+  function selectVendor(key: string) {
+    setSelectedKey(key)
+    setFullInvoices(null)
+    startLoadInvoices(async () => {
+      const result = await getVendorInvoices(key)
+      if (result.ok) setFullInvoices(result.invoices)
+    })
+  }
 
   const pageCount = Math.max(1, Math.ceil(vendors.length / VENDOR_LIST_PAGE_SIZE))
   const pageIndex = Math.min(page, pageCount - 1)
@@ -132,7 +145,7 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
             <li key={vendor.id}>
               <button
                 type="button"
-                onClick={() => setSelectedKey(vendor.key)}
+                onClick={() => selectVendor(vendor.key)}
                 className={cn(
                   "flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left text-sm",
                   "transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none",
@@ -276,14 +289,19 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
                 ) : null}
 
                 <div>
-                  <p className="mb-2 text-sm font-medium">Invoices</p>
-                  {selected.invoices.length === 0 ? (
+                  <div className="mb-2 flex items-center gap-2">
+                    <p className="text-sm font-medium">Invoices</p>
+                    {isLoadingInvoices ? (
+                      <Spinner className="size-3.5 text-muted-foreground" />
+                    ) : null}
+                  </div>
+                  {(fullInvoices ?? selected.invoices).length === 0 ? (
                     <p className="rounded-lg border border-border px-3 py-3 text-xs text-muted-foreground">
                       No invoices linked yet.
                     </p>
                   ) : (
                     <ul className="rounded-lg border border-border">
-                      {selected.invoices.map((invoice, index) => (
+                      {(fullInvoices ?? selected.invoices).map((invoice, index) => (
                         <li key={invoice.id}>
                           {index > 0 ? <Separator /> : null}
                           <div className="flex items-start justify-between gap-3 px-3 py-2.5">
