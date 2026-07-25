@@ -12,6 +12,7 @@ import {
   parseUpdateVendorInput,
 } from "@/lib/validation/vendors";
 import type { SubscriptionConfirmationStatus } from "@/constants/subscriptions";
+import type { VendorListInvoice } from "@/components/dashboard/vendors/vendors-list";
 
 export type ConfirmSubscriptionResult = { ok: true } | { ok: false; error: string };
 export type VendorMutationResult =
@@ -135,27 +136,14 @@ export async function updateVendor(input: {
   }
 
   if (oldKey !== newKey) {
-    const { data: invoices } = await service
+    // vendor_key is a generated column — updating `vendor` recomputes it
+    // automatically, so this single bulk update replaces the old
+    // fetch-all-then-filter-then-update-one-by-one pattern.
+    await service
       .from("invoices")
-      .select("id, vendor")
+      .update({ vendor: parsed.data.name })
       .eq("user_id", user.id)
-      .not("vendor", "is", null);
-
-    const toRename = (invoices ?? []).filter(
-      (row) => row.vendor && normalizeVendorKey(row.vendor) === oldKey,
-    );
-
-    if (toRename.length > 0) {
-      await Promise.all(
-        toRename.map((row) =>
-          service
-            .from("invoices")
-            .update({ vendor: parsed.data.name })
-            .eq("id", row.id)
-            .eq("user_id", user.id),
-        ),
-      );
-    }
+      .eq("vendor_key", oldKey);
 
     await service
       .from("subscription_confirmations")
@@ -189,27 +177,11 @@ export async function deleteVendor(input: { id: string }): Promise<VendorMutatio
 
   const nameKey = existing.name_key as string;
 
-  const { data: invoices } = await service
+  await service
     .from("invoices")
-    .select("id, vendor")
+    .update({ vendor: null })
     .eq("user_id", user.id)
-    .not("vendor", "is", null);
-
-  const linked = (invoices ?? []).filter(
-    (row) => row.vendor && normalizeVendorKey(row.vendor) === nameKey,
-  );
-
-  if (linked.length > 0) {
-    await Promise.all(
-      linked.map((row) =>
-        service
-          .from("invoices")
-          .update({ vendor: null })
-          .eq("id", row.id)
-          .eq("user_id", user.id),
-      ),
-    );
-  }
+    .eq("vendor_key", nameKey);
 
   await service
     .from("subscription_confirmations")
@@ -231,4 +203,34 @@ export async function deleteVendor(input: { id: string }): Promise<VendorMutatio
   revalidatePath("/dashboard/vendors");
   revalidatePath("/dashboard/invoices");
   return { ok: true };
+}
+
+export type GetVendorInvoicesResult =
+  | { ok: true; invoices: VendorListInvoice[] }
+  | { ok: false; error: string };
+
+// On-demand fetch for the vendor detail Sheet's full invoice history — the
+// page-level query only ever loads a bounded, windowed sample per vendor
+// (see vendor_recent_invoices), so the full list is fetched only when a
+// user actually opens a vendor's detail view.
+export async function getVendorInvoices(vendorKey: string): Promise<GetVendorInvoicesResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, amount, currency, issue_date, due_date")
+    .eq("user_id", user.id)
+    .eq("vendor_key", vendorKey)
+    .order("issue_date", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load vendor invoices", user.id, vendorKey, error);
+    return { ok: false, error: "Could not load invoices. Please try again." };
+  }
+
+  return { ok: true, invoices: data ?? [] };
 }
