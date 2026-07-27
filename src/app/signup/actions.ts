@@ -3,11 +3,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseSignupForm } from "@/lib/validation/auth";
+import { checkSignupRateLimit } from "@/lib/rate-limit";
 
 export async function signup(formData: FormData) {
   const parsed = parseSignupForm(formData);
   if (!parsed.success) {
     redirect(`/signup?error=${encodeURIComponent(parsed.error)}`);
+  }
+
+  const rateLimitResult = await checkSignupRateLimit(parsed.data.email);
+  if (rateLimitResult.limited) {
+    redirect(
+      `/signup?error=${encodeURIComponent("Too many attempts — please wait a while and try again.")}`,
+    );
   }
 
   const supabase = await createClient();
