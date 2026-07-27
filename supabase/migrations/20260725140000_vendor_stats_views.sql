@@ -26,7 +26,7 @@ latest as (
   select distinct on (user_id, vendor_key) user_id, vendor_key, vendor as label, currency
   from public.invoices
   where vendor_key is not null
-  order by user_id, vendor_key, created_at desc
+  order by user_id, vendor_key, issue_date desc nulls last, created_at desc
 )
 select agg.user_id, agg.vendor_key, latest.label, latest.currency, agg.total, agg.count, agg.last_date
 from agg join latest using (user_id, vendor_key);
