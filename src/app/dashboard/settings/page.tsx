@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle2 } from "lucide-react";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const rawParams = await searchParams;
+  const justCheckedOut = rawParams.checkout === "success";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -88,7 +95,7 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             {subscription ? (
-              <BillingCard subscription={subscription} />
+              <BillingCard subscription={subscription} justCheckedOut={justCheckedOut} />
             ) : (
               <p className="text-[13px] text-muted-foreground">
                 Could not load your billing status. Please refresh the page.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import { createCheckoutUrl } from "@/app/dashboard/actions";
 import { hasActiveTeamPlan, type BillingSubscriptionRow } from "@/lib/billing";
@@ -9,9 +9,23 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { formatInvoiceDate } from "@/lib/invoices";
 
-export function BillingCard({ subscription }: { subscription: BillingSubscriptionRow }) {
+export function BillingCard({
+  subscription,
+  justCheckedOut,
+}: {
+  subscription: BillingSubscriptionRow;
+  justCheckedOut?: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
+
+  useEffect(() => {
+    if (justCheckedOut) {
+      toast.info(
+        "Processing your payment — this page will update automatically once it's confirmed.",
+      );
+    }
+  }, [justCheckedOut]);
   // Whether to send the user to their existing subscription's Lemon Squeezy
   // portal (to fix/manage it) vs. start a brand-new checkout. Deliberately
   // NOT the same check as isTeam/hasActiveTeamPlan — a paused or unpaid
