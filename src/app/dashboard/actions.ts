@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
+import { parseDeleteAccountInput } from "@/lib/validation/account";
 import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy";
 
 export async function logout() {
@@ -108,6 +109,9 @@ export type DeleteAccountResult = { ok: true } | { ok: false; error: string };
 // invoices/vendors/inboxes/auth.users is touched — see the design spec's
 // "no data deletion" constraint.
 export async function deleteAccount(confirmEmail: string): Promise<DeleteAccountResult> {
+  const parsed = parseDeleteAccountInput({ confirmEmail });
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -115,7 +119,7 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
   if (!user) redirect("/login");
 
   // Never trust a client-side enable/disable check alone for a destructive action.
-  if (confirmEmail.trim().toLowerCase() !== user.email?.toLowerCase()) {
+  if (parsed.data.confirmEmail.toLowerCase() !== user.email?.toLowerCase()) {
     return { ok: false, error: "Email confirmation does not match your account." };
   }
 

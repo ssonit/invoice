@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
-import { validateUploadFile } from "@/lib/validation/upload";
+import { MAX_UPLOAD_BYTES } from "@/lib/validation/upload";
+import { checkContentLength, parseUploadForm } from "@/lib/validation/common";
+import { MAX_UPLOAD_REQUEST_BYTES } from "@/constants/validation";
 import { sha256Hex } from "@/lib/file-hash";
 import { checkUploadRateLimit } from "@/lib/rate-limit";
 
@@ -27,19 +29,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "missing file" }, { status: 400 });
+  const contentLength = checkContentLength(request, MAX_UPLOAD_REQUEST_BYTES);
+  if (!contentLength.success) {
+    return NextResponse.json({ error: contentLength.error }, { status: 413 });
   }
 
-  const mimeType = file.type || "application/octet-stream";
-  const validated = validateUploadFile({ type: mimeType, size: file.size });
-  if (!validated.success) {
-    return NextResponse.json({ error: validated.error }, { status: 400 });
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
+
+  const parsed = parseUploadForm(formData);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const { file, sanitizedFilename, mimeType } = parsed.data;
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  if (buffer.length > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: "File is too large — max 15MB" }, { status: 413 });
+  }
+
   const contentHash = sha256Hex(buffer);
 
   const service = createServiceClient();
@@ -72,7 +85,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const path = `${user.id}/upload-${Date.now()}-${file.name}`;
+  const path = `${user.id}/upload-${Date.now()}-${sanitizedFilename}`;
   const { data: uploaded } = await service.storage
     .from("invoice-files")
     .upload(path, buffer, { upsert: true, contentType: mimeType });

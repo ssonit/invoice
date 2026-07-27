@@ -3,9 +3,20 @@ import { Webhook } from "svix";
 import { tasks } from "@trigger.dev/sdk";
 import type { AgentMail } from "agentmail";
 import type { processInboundEmail } from "@/trigger/process-inbound-email";
+import { checkContentLength } from "@/lib/validation/common";
+import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
 
 export async function POST(request: NextRequest) {
+  const contentLength = checkContentLength(request, MAX_WEBHOOK_BODY_BYTES);
+  if (!contentLength.success) {
+    return NextResponse.json({ error: contentLength.error }, { status: 413 });
+  }
+
   const payload = await request.text();
+  if (payload.length > MAX_WEBHOOK_BODY_BYTES) {
+    return NextResponse.json({ error: "Request payload is too large" }, { status: 413 });
+  }
+
   const headers = Object.fromEntries(request.headers);
 
   let event: { event_type: string; message: AgentMail.Message };

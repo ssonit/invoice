@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { SUBSCRIPTION_CONFIRMATION_STATUS } from "@/constants/subscriptions";
+import { vendorKeySchema } from "@/lib/validation/common";
 
 export const confirmSubscriptionSchema = z.object({
-  vendorKey: z.string().trim().min(1, "vendorKey is required").max(200),
+  vendorKey: vendorKeySchema,
   status: z.enum([
     SUBSCRIPTION_CONFIRMATION_STATUS.ACTIVE,
     SUBSCRIPTION_CONFIRMATION_STATUS.CANCELLED,

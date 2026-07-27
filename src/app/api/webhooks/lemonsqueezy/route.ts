@@ -1,27 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyWebhookSignature } from "@/lib/lemonsqueezy-webhook";
-import type { BillingSubscriptionStatus } from "@/lib/billing";
-
-type LemonSqueezySubscriptionEvent = {
-  meta: {
-    event_name: string;
-    custom_data?: { user_id?: string };
-  };
-  data: {
-    id: string;
-    attributes: {
-      status: BillingSubscriptionStatus;
-      customer_id: number;
-      renews_at: string | null;
-      ends_at: string | null;
-      urls: { customer_portal: string };
-    };
-  };
-};
+import { checkContentLength } from "@/lib/validation/common";
+import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
+import {
+  parseLemonSqueezyWebhook,
+  parseWebhookJson,
+} from "@/lib/validation/webhooks";
 
 export async function POST(request: NextRequest) {
+  const contentLength = checkContentLength(request, MAX_WEBHOOK_BODY_BYTES);
+  if (!contentLength.success) {
+    return NextResponse.json({ error: contentLength.error }, { status: 413 });
+  }
+
   const rawBody = await request.text();
+  if (rawBody.length > MAX_WEBHOOK_BODY_BYTES) {
+    return NextResponse.json({ error: "Request payload is too large" }, { status: 413 });
+  }
+
   const signature = request.headers.get("x-signature");
 
   const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
@@ -34,7 +31,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
   }
 
-  const event = JSON.parse(rawBody) as LemonSqueezySubscriptionEvent;
+  const json = parseWebhookJson(rawBody);
+  if (!json.success) {
+    return NextResponse.json({ error: json.error }, { status: 400 });
+  }
+
+  const parsed = parseLemonSqueezyWebhook(json.data);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const event = parsed.data;
 
   if (!event.meta.event_name.startsWith("subscription_")) {
     return NextResponse.json({ status: "ignored" });

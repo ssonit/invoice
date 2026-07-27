@@ -11,6 +11,7 @@ import {
   parseDeleteVendorInput,
   parseUpdateVendorInput,
 } from "@/lib/validation/vendors";
+import { parseVendorKeyInput } from "@/lib/validation/common";
 import type { SubscriptionConfirmationStatus } from "@/constants/subscriptions";
 import type { VendorListInvoice } from "@/components/dashboard/vendors/vendors-list";
 
@@ -214,6 +215,9 @@ export type GetVendorInvoicesResult =
 // (see vendor_recent_invoices), so the full list is fetched only when a
 // user actually opens a vendor's detail view.
 export async function getVendorInvoices(vendorKey: string): Promise<GetVendorInvoicesResult> {
+  const parsed = parseVendorKeyInput(vendorKey);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -224,7 +228,7 @@ export async function getVendorInvoices(vendorKey: string): Promise<GetVendorInv
     .from("invoices")
     .select("id, invoice_number, amount, currency, issue_date, due_date")
     .eq("user_id", user.id)
-    .eq("vendor_key", vendorKey)
+    .eq("vendor_key", parsed.data.vendorKey)
     .order("issue_date", { ascending: false });
 
   if (error) {
