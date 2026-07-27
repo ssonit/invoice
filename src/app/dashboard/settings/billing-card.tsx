@@ -12,6 +12,12 @@ import { formatInvoiceDate } from "@/lib/invoices";
 export function BillingCard({ subscription }: { subscription: BillingSubscriptionRow }) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
+  // Whether to send the user to their existing subscription's Lemon Squeezy
+  // portal (to fix/manage it) vs. start a brand-new checkout. Deliberately
+  // NOT the same check as isTeam/hasActiveTeamPlan — a paused or unpaid
+  // subscriber has lost access (isTeam is false) but already has a real
+  // subscription and should be routed to fix it, not sold a duplicate.
+  const hasExistingSubscription = subscription.status !== "none";
 
   function handleUpgrade() {
     startTransition(async () => {
@@ -33,20 +39,22 @@ export function BillingCard({ subscription }: { subscription: BillingSubscriptio
         {subscription.status === "past_due" ? (
           <Badge variant="destructive">Payment failed — please update your card</Badge>
         ) : null}
+        {subscription.status === "unpaid" ? (
+          <Badge variant="destructive">Subscription unpaid — please update your card</Badge>
+        ) : null}
+        {subscription.status === "paused" ? (
+          <Badge variant="secondary">Subscription paused</Badge>
+        ) : null}
         {subscription.status === "cancelled" && subscription.ends_at ? (
           <Badge variant="secondary">Ends {formatInvoiceDate(subscription.ends_at)}</Badge>
         ) : null}
       </div>
 
-      {isTeam ? (
-        // Button wraps @base-ui/react/button, which uses a `render` prop for
-        // polymorphism, not Radix's `asChild` — a plain anchor styled with
-        // buttonVariants() avoids depending on that (untested here) merge
-        // behavior for something this simple.
+      {hasExistingSubscription ? (
         <a
           href={subscription.customer_portal_url ?? "#"}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className={buttonVariants({ variant: "outline", size: "sm", className: "w-fit" })}
         >
           Manage subscription

@@ -22,7 +22,7 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: inbox }, { data: subscription }] = await Promise.all([
+  const [{ data: inbox }, { data: subscription, error: subscriptionError }] = await Promise.all([
     supabase.from("inboxes").select("email_address").eq("user_id", user!.id).maybeSingle(),
     supabase
       .from("billing_subscriptions")
@@ -30,6 +30,10 @@ export default async function SettingsPage() {
       .eq("user_id", user!.id)
       .single<BillingSubscriptionRow>(),
   ]);
+
+  if (subscriptionError) {
+    console.error("Failed to load billing subscription", user!.id, subscriptionError);
+  }
 
   return (
     <ContentShell
