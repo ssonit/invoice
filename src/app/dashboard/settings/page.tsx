@@ -4,6 +4,8 @@ import { CopyEmailButton } from "../copy-email-button";
 import { CreateInboxButton } from "./create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
+import { BillingCard } from "./billing-card";
+import type { BillingSubscriptionRow } from "@/lib/billing";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,11 +22,14 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: inbox } = await supabase
-    .from("inboxes")
-    .select("email_address")
-    .eq("user_id", user!.id)
-    .maybeSingle();
+  const [{ data: inbox }, { data: subscription }] = await Promise.all([
+    supabase.from("inboxes").select("email_address").eq("user_id", user!.id).maybeSingle(),
+    supabase
+      .from("billing_subscriptions")
+      .select("plan, status, customer_portal_url, renews_at, ends_at")
+      .eq("user_id", user!.id)
+      .single<BillingSubscriptionRow>(),
+  ]);
 
   return (
     <ContentShell
@@ -66,6 +71,24 @@ export default async function SettingsPage() {
               </div>
             ) : (
               <CreateInboxButton />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[14px] shadow-none">
+          <CardHeader>
+            <CardTitle className="text-[13px] font-semibold">Billing</CardTitle>
+            <CardDescription className="text-[13px]">
+              Manage your plan and payment method.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {subscription ? (
+              <BillingCard subscription={subscription} />
+            ) : (
+              <p className="text-[13px] text-muted-foreground">
+                Could not load your billing status. Please refresh the page.
+              </p>
             )}
           </CardContent>
         </Card>

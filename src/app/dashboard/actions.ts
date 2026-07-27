@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
+import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy";
 
 export async function logout() {
   const supabase = await createClient();
@@ -85,8 +87,17 @@ export async function changePassword(formData: FormData): Promise<ChangePassword
   if (!parsed.success) return { ok: false, error: parsed.error };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    console.error("Failed to change password", user?.id, error);
+    return {
+      ok: false,
+      error: "Could not update your password. Please try again.",
+    };
+  }
 
   return { ok: true };
 }
@@ -121,4 +132,30 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
 
   await supabase.auth.signOut();
   redirect("/");
+}
+
+export type CreateCheckoutUrlResult = { ok: true; url: string } | { ok: false; error: string };
+
+// Starts a Lemon Squeezy hosted checkout for the Team plan. Card data never
+// touches this server — the user completes payment on Lemon Squeezy's page.
+export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const origin = (await headers()).get("origin");
+
+  try {
+    const url = await createLemonSqueezyCheckout({
+      userId: user.id,
+      email: user.email!,
+      redirectUrl: `${origin}/dashboard/settings?checkout=success`,
+    });
+    return { ok: true, url };
+  } catch (err) {
+    console.error("Failed to create checkout", user.id, err);
+    return { ok: false, error: "Could not start checkout. Please try again." };
+  }
 }
