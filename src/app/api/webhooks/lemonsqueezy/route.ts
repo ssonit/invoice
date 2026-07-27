@@ -24,7 +24,13 @@ export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const signature = request.headers.get("x-signature");
 
-  if (!verifyWebhookSignature(rawBody, signature, process.env.LEMONSQUEEZY_WEBHOOK_SECRET!)) {
+  const webhookSecret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("Failed to verify Lemon Squeezy webhook: LEMONSQUEEZY_WEBHOOK_SECRET is not set");
+    return NextResponse.json({ status: "error" }, { status: 500 });
+  }
+
+  if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
   }
 
