@@ -14,11 +14,20 @@ export async function signup(formData: FormData) {
   const { data, error } = await supabase.auth.signUp(parsed.data);
 
   if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+    // Never surface Supabase auth messages (e.g. "User already registered") —
+    // that would enable account enumeration. forgot-password already uses the
+    // same generic pattern.
+    console.error("Signup failed", parsed.data.email, error);
+    redirect(
+      `/signup?error=${encodeURIComponent("Could not create your account. Please try again.")}`,
+    );
   }
 
   if (!data.user) {
-    redirect("/signup?error=Signup%20failed");
+    console.error("Signup returned no user", parsed.data.email);
+    redirect(
+      `/signup?error=${encodeURIComponent("Could not create your account. Please try again.")}`,
+    );
   }
 
   // The AgentMail forwarding inbox is provisioned on demand from the

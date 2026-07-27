@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Invoice Reader
 
-## Getting Started
+AI-powered invoice inbox: forward bills to a unique email address or upload PDFs/images, extract vendor/amount/dates with an LLM, and review everything in a dashboard.
 
-First, run the development server:
+## Stack
+
+- **Next.js** (App Router) + React + Tailwind / shadcn
+- **Supabase** — Auth, Postgres, Storage, RLS
+- **AgentMail** — inbound email forwarding + webhooks
+- **Trigger.dev** — background processing for inbound email
+- **LLM extraction** — Anthropic / Gemini / DeepSeek (see `EXTRACTION_PROVIDER`)
+
+## Prerequisites
+
+- Node.js 20+
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (local stack)
+- Accounts/keys for AgentMail, Trigger.dev, and at least one extraction provider
+
+## Setup
+
+```bash
+npm install
+cp .env.local.example .env.local
+# Fill in values from .env.local.example comments
+```
+
+Start local Supabase (applies migrations from `supabase/migrations/`):
+
+```bash
+npx supabase start
+# Copy the printed API URL + anon/service-role keys into .env.local
+```
+
+Run the app (and Trigger.dev when testing inbound email):
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# In a second terminal, when needed:
+npx trigger.dev@latest dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All required variables are listed in [`.env.local.example`](.env.local.example):
 
-## Learn More
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser + server Supabase client |
+| `SUPABASE_SERVICE_ROLE_KEY` | Privileged server paths (bypass RLS carefully) |
+| `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification |
+| `TRIGGER_SECRET_KEY` / `TRIGGER_PROJECT_REF` | Trigger.dev task queue |
+| `EXTRACTION_PROVIDER` + provider API keys | Invoice OCR / extraction |
 
-To learn more about Next.js, take a look at the following resources:
+Never commit `.env.local`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Next.js dev server |
+| `npm run build` / `npm start` | Production build + serve |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest (pure `src/lib/` logic) |
+| `npx tsc --noEmit` | Typecheck |
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Target is **Vercel** (not fully wired yet). Checklist from [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Mirror `.env.local.example` into Vercel env (Preview + Production).
+2. Apply migrations to the target Supabase project (`npx supabase db push`).
+3. Deploy Trigger.dev tasks separately: `npx trigger.dev@latest deploy`.
+4. Confirm `npm run lint`, `npm run test`, `npx tsc --noEmit`, and `npm run build` are clean.
+
+## Docs
+
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — plan → code → test → security review → deploy
+- [`docs/DASHBOARD.md`](docs/DASHBOARD.md) — dashboard UI map
+- [`docs/system-hardening.md`](docs/system-hardening.md) — auth recovery, upload dedup, account soft-delete
+- [`.claude/rules/`](.claude/rules/) — standing code conventions

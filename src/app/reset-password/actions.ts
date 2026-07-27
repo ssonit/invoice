@@ -11,10 +11,16 @@ export async function updatePassword(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
 
   if (error) {
-    redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
+    console.error("Password reset update failed", user?.id, error);
+    redirect(
+      `/reset-password?error=${encodeURIComponent("Could not update your password. Please try again.")}`,
+    );
   }
 
   redirect("/dashboard");

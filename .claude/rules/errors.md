@@ -47,7 +47,7 @@ redirect("/dashboard");
 ```
 No violation of this exists in the codebase today — keep it that way.
 
-**Known gap:** no `error.tsx` or `global-error.tsx` exists yet anywhere under `src/app/`,
-so a genuinely unexpected/unhandled exception in a Server/Client Component currently falls
-through to Next.js's default error UI rather than an app-styled one. Worth adding before a
-real launch; not fabricated as already present here.
+**Error UI:** `src/app/error.tsx`, `global-error.tsx`, and `not-found.tsx` catch
+unhandled exceptions and missing routes with an app-styled fallback. They log the
+real error server/client-side and never render `error.message` to the user.
+

@@ -91,7 +91,11 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Failed to save uploaded invoice", user.id, error);
+    return NextResponse.json(
+      { error: "Could not save the invoice. Please try again." },
+      { status: 500 },
+    );
   }
 
   await ensureVendorRecord(service, user.id, extracted.vendor);

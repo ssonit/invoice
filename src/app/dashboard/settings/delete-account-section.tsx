@@ -27,8 +27,8 @@ export function DeleteAccountSection({ email }: { email: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] text-muted-foreground">
-        This deactivates your account and signs you out — you won't be able to sign back
-        in. Your invoices and other data are kept, not erased. Type{" "}
+        This deactivates your account and signs you out — you will not be able to sign
+        back in. Your invoices and other data are kept, not erased. Type{" "}
         <span className="font-mono">{email}</span> to confirm.
       </p>
       <Input

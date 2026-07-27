@@ -4,8 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
 
@@ -16,6 +15,7 @@ import {
 } from "@/lib/landing/dictionary"
 
 const STORAGE_KEY = "invoice-landing-locale"
+const CHANGE_EVENT = "invoice-landing-locale-change"
 
 type LandingI18nValue = {
   locale: LandingLocale
@@ -25,19 +25,38 @@ type LandingI18nValue = {
 
 const LandingI18nContext = createContext<LandingI18nValue | null>(null)
 
-export function LandingI18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<LandingLocale>("en")
+function isLocale(value: string | null): value is LandingLocale {
+  return value === "en" || value === "vi"
+}
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === "en" || stored === "vi") {
-      setLocaleState(stored)
-    }
-  }, [])
+function subscribe(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange)
+  window.addEventListener(CHANGE_EVENT, onStoreChange)
+  return () => {
+    window.removeEventListener("storage", onStoreChange)
+    window.removeEventListener(CHANGE_EVENT, onStoreChange)
+  }
+}
+
+function getLocaleSnapshot(): LandingLocale {
+  const stored = window.localStorage.getItem(STORAGE_KEY)
+  return isLocale(stored) ? stored : "en"
+}
+
+function getServerLocaleSnapshot(): LandingLocale {
+  return "en"
+}
+
+export function LandingI18nProvider({ children }: { children: ReactNode }) {
+  const locale = useSyncExternalStore(
+    subscribe,
+    getLocaleSnapshot,
+    getServerLocaleSnapshot
+  )
 
   const setLocale = useCallback((next: LandingLocale) => {
-    setLocaleState(next)
     window.localStorage.setItem(STORAGE_KEY, next)
+    window.dispatchEvent(new Event(CHANGE_EVENT))
   }, [])
 
   return (

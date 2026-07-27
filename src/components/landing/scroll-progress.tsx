@@ -23,17 +23,17 @@ export function LandingScrollbar() {
     setThumbRatio(Math.min(Math.max(view / (view + limit), 0.12), 1))
   }, [lenis])
 
+  // Measure on resize / when Lenis becomes available. Initial measure runs in
+  // the event callback path (rAF), not as a synchronous setState in the effect.
   useEffect(() => {
-    refreshThumb()
-    window.addEventListener("resize", refreshThumb)
-    return () => window.removeEventListener("resize", refreshThumb)
+    const onResize = () => refreshThumb()
+    window.addEventListener("resize", onResize)
+    const frame = window.requestAnimationFrame(onResize)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener("resize", onResize)
+    }
   }, [refreshThumb])
-
-  useEffect(() => {
-    if (!lenis) return
-    setProgress(lenis.progress)
-    refreshThumb()
-  }, [lenis, refreshThumb])
 
   const scrollToProgress = useCallback(
     (next: number) => {

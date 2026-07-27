@@ -20,10 +20,6 @@ export function LandingNav() {
   })
 
   useEffect(() => {
-    setScrolled(window.scrollY > 24)
-  }, [])
-
-  useEffect(() => {
     if (!menuOpen) return
 
     const previous = document.body.style.overflow
