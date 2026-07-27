@@ -185,10 +185,8 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           featured: true,
           features: [
             "Everything in Starter",
-            "Shared workspace",
             "Trend charts",
             "Export-ready rows",
-            "Priority parsing",
           ],
         },
       ],
@@ -329,10 +327,8 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           featured: true,
           features: [
             "Mọi thứ trong Starter",
-            "Workspace dùng chung",
             "Biểu đồ xu hướng",
             "Xuất dữ liệu sẵn sàng",
-            "Ưu tiên xử lý",
           ],
         },
       ],
