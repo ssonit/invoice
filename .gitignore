@@ -47,6 +47,9 @@ next-env.d.ts
 # Added by code-review-graph
 .code-review-graph/
 
+# graphify knowledge graph output
+/graphify-out/
+
 # brainstorm visual companion
 .superpowers/
 

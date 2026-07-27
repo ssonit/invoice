@@ -1,0 +1,40 @@
+---
+description: Prefer graphify over Grep/Read and over code-review-graph for codebase exploration
+alwaysApply: true
+---
+
+# Graphify first (Cursor)
+
+This project has a graphify knowledge graph at `graphify-out/`.
+
+**Priority order when exploring or answering codebase questions:**
+
+1. **graphify** (required first) — `graphify query`, `path`, `explain`
+2. **code-review-graph MCP** — only for PR/review impact, blast radius, flows, test coverage
+3. **Read / Grep / Glob** — only after graphify oriented you, or if `graphify-out/graph.json` is missing
+
+## Mandatory before Read / Grep / Glob / Bash exploration
+
+Run graphify first:
+
+- `graphify query "<question>"` — scoped subgraph for architecture or “how does X work?”
+- `graphify path "<A>" "<B>"` — dependency path between two symbols
+- `graphify explain "<concept>"` — neighbors of one concept
+
+This applies to you and every subagent. Include this rule in subagent prompts that explore code. Do not skip graphify because files are “already known” or because you are executing a plan.
+
+## When code-review-graph is appropriate
+
+Use MCP `user-code-review-graph` **after** (or instead of) graphify only for:
+
+- `detect_changes_tool` / `get_review_context_tool` — PR / diff review
+- `get_impact_radius_tool` / `get_affected_flows_tool` — blast radius of a change
+- `query_graph_tool` with `tests_for` — coverage gaps
+
+Do **not** use code-review-graph as the default explorer when graphify can answer.
+
+## After edits
+
+- `graphify update .` — keep the AST graph current (no API cost)
+- If `graphify-out/wiki/index.md` exists, navigate it before raw source browsing
+- Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review when query/path/explain are not enough

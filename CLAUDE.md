@@ -9,41 +9,40 @@
 - Plan → code → test → security review → deploy workflow:
   [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
+## Knowledge graphs — priority order
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+**Graphify is the default.** Use it before Grep/Glob/Read and before code-review-graph MCP for ordinary codebase exploration.
 
-### When to use graph tools FIRST
+| Priority | Tool | Use for |
+| -------- | ---- | ------- |
+| 1 | **graphify** CLI | Architecture, “how does X work?”, paths between symbols, concept explain |
+| 2 | **code-review-graph** MCP | PR/diff review, blast radius, execution flows, test coverage |
+| 3 | Grep / Glob / Read | After graphify oriented you, or if `graphify-out/graph.json` is missing |
 
-- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
-- **Understanding impact**: `get_impact_radius_tool` instead of manually tracing imports
-- **Code review**: `detect_changes_tool` + `get_review_context_tool` instead of reading entire files
-- **Finding relationships**: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview_tool` + `list_communities_tool`
+### 1. graphify (default)
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+When `graphify-out/graph.json` exists:
 
-### Key Tools
+- `graphify query "<question>"` — scoped subgraph (prefer over raw grep)
+- `graphify path "<A>" "<B>"` — relationship between two symbols
+- `graphify explain "<concept>"` — focused neighborhood
 
-| Tool | Use when |
-| ------ | ---------- |
-| `detect_changes_tool` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context_tool` | Need source snippets for review — token-efficient |
-| `get_impact_radius_tool` | Understanding blast radius of a change |
-| `get_affected_flows_tool` | Finding which execution paths are impacted |
-| `query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
-| `get_architecture_overview_tool` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
+Also:
 
-### Workflow
+- If `graphify-out/wiki/index.md` exists, navigate it instead of raw source browsing
+- Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review when query/path/explain are not enough
+- After modifying code, run `graphify update .` (AST-only, no API cost)
+- Skill trigger: `/graphify` → `.claude/skills/graphify/SKILL.md`
 
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes_tool` for code review.
-3. Use `get_affected_flows_tool` to understand impact.
-4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+### 2. code-review-graph MCP (secondary)
+
+Use **after** graphify, or when the task is explicitly review/impact:
+
+- Exploring still stuck after graphify → `semantic_search_nodes_tool` / `query_graph_tool`
+- Understanding impact of a change → `get_impact_radius_tool`
+- Code review / PR → `detect_changes_tool` + `get_review_context_tool`
+- Execution paths → `get_affected_flows_tool` / `list_flows_tool`
+- Architecture overview communities → `get_architecture_overview_tool` + `list_communities_tool`
+- Coverage → `query_graph_tool` pattern=`tests_for`
+
+Fall back to Grep/Glob/Read **only** when neither graph covers what you need.
