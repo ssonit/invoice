@@ -119,6 +119,22 @@ describe("processExtraction", () => {
     expect(sb.upsert.mock.calls[0]![0]).toMatchObject({ file_url: "u/p.pdf" });
   });
 
+  it("sanitizes a path-traversal filename before building the storage path", async () => {
+    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    const sb = mockSupabase();
+    await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-1",
+      sourceRef: "att-1",
+      input: { type: "pdf", data: Buffer.from("x") },
+      fileBuffer: Buffer.from("x"),
+      fileName: "../../../victim-user/evil.pdf",
+    });
+    const [storagePath] = sb.upload.mock.calls[0]!;
+    expect(storagePath).toBe("user-1/msg-1-evil.pdf");
+  });
+
   it("leaves file_url null when there is no file buffer", async () => {
     mockedExtract.mockResolvedValue(invoiceResult() as never);
     const sb = mockSupabase();

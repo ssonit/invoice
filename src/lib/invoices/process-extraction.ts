@@ -1,6 +1,7 @@
 import type { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice, type ExtractionInput } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
+import { sanitizeFilename } from "@/lib/validation/common";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -33,11 +34,14 @@ export async function processExtraction(params: {
   const extracted = await extractInvoice(input);
   if (!extracted.is_invoice) return { saved: false };
 
-  // invoice-files is a private bucket — store the object path; a signed URL is
-  // generated on read (see src/lib/storage.ts).
+  // invoice-files is a private bucket — store the object path only.
+  // sanitizeFilename() strips any directory components from the
+  // attacker-controlled email attachment filename before it reaches the
+  // storage path — otherwise a "../../other-user/x.pdf" filename would let
+  // an unauthenticated sender overwrite another user's stored file.
   let fileUrl: string | null = null;
   if (fileBuffer && fileName) {
-    const path = `${userId}/${messageId}-${fileName}`;
+    const path = `${userId}/${messageId}-${sanitizeFilename(fileName)}`;
     const { data: uploaded } = await supabase.storage
       .from("invoice-files")
       .upload(path, fileBuffer, { upsert: true });
