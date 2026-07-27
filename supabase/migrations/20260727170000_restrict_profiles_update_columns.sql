@@ -1,0 +1,11 @@
+-- profiles.role (used for future admin checks) and profiles.deleted_at
+-- (account soft-delete flag) must never be writable by the authenticated
+-- user themselves — the existing table-level UPDATE grant + row-scoped RLS
+-- policy let a signed-in user PATCH their own row via PostgREST with
+-- {"role": "admin"} or {"deleted_at": null}, self-granting admin and
+-- silently undoing "Delete account" from another still-logged-in session.
+-- No app code updates profiles via the RLS client today — deleteAccount()
+-- already goes through the service-role client (src/app/dashboard/actions.ts),
+-- which is unaffected by this and keeps full access. Revoke outright rather
+-- than narrowing to a column no feature actually needs.
+revoke update on public.profiles from authenticated;
