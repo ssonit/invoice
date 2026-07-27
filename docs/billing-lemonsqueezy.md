@@ -92,6 +92,7 @@ exists or is already correctly marked `ComingSoon` elsewhere — "Shared workspa
 | `src/lib/lemonsqueezy.ts` | `createLemonSqueezyCheckout()` — thin `fetch` wrapper around the checkout API, `server-only` |
 | `src/app/api/webhooks/lemonsqueezy/route.ts` | Webhook route — verify signature, upsert current state |
 | `src/app/dashboard/actions.ts` | `createCheckoutUrl()` Server Action |
+| `src/app/dashboard/settings/page.tsx` | Fetches the user's `billing_subscriptions` row and renders the Billing card |
 | `src/app/dashboard/settings/billing-card.tsx` | Settings UI — Upgrade to Team / Manage subscription |
 | `src/lib/landing/dictionary.ts` | Trimmed Team plan feature copy (both locales) |
 
