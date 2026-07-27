@@ -87,17 +87,8 @@ export async function changePassword(formData: FormData): Promise<ChangePassword
   if (!parsed.success) return { ok: false, error: parsed.error };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
-  if (error) {
-    console.error("Failed to change password", user?.id, error);
-    return {
-      ok: false,
-      error: "Could not update your password. Please try again.",
-    };
-  }
+  if (error) return { ok: false, error: error.message };
 
   return { ok: true };
 }
