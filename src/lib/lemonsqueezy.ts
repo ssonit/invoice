@@ -2,6 +2,7 @@ import "server-only";
 
 // Thin wrapper around Lemon Squeezy's JSON:API checkout endpoint — no SDK
 // dependency, this is the only call this app makes against their API.
+/** Creates a Lemon Squeezy checkout and returns its hosted checkout URL. Throws on a non-OK response. */
 export async function createLemonSqueezyCheckout({
   userId,
   email,
@@ -43,7 +44,8 @@ export async function createLemonSqueezyCheckout({
   });
 
   if (!response.ok) {
-    throw new Error(`Lemon Squeezy checkout request failed: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`Lemon Squeezy checkout request failed: ${response.status} ${body}`);
   }
 
   const json = (await response.json()) as { data: { attributes: { url: string } } };
