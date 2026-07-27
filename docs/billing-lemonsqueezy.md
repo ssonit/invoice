@@ -95,6 +95,7 @@ exists or is already correctly marked `ComingSoon` elsewhere — "Shared workspa
 | `src/app/dashboard/settings/page.tsx` | Fetches the user's `billing_subscriptions` row and renders the Billing card |
 | `src/app/dashboard/settings/billing-card.tsx` | Settings UI — Upgrade to Team / Manage subscription |
 | `src/lib/landing/dictionary.ts` | Trimmed Team plan feature copy (both locales) |
+| `supabase/migrations/20260725160000_billing_subscriptions_backfill.sql` | One-time additive backfill for users who signed up before the table existed |
 
 ## Review-driven fixes
 
@@ -118,6 +119,24 @@ original design spec called for:
   fetch discarded any Supabase error, so a real failure would render the same "Could not
   load your billing status" fallback as a legitimately-missing row, with nothing in the
   logs. Fixed to log the error server-side.
+
+A final holistic review, done after all 8 tasks individually passed, caught two more issues
+only visible by tracing the whole system together:
+
+- **Existing users had no `billing_subscriptions` row (Critical).** `handle_new_user()` only
+  creates a row for *new* signups going forward — anyone who registered before the migration
+  ran had none, which meant their Settings billing card permanently showed "Could not load
+  your billing status" and never offered an Upgrade button. Exactly the population most
+  likely to want to pay. Fixed with an additive, idempotent backfill migration
+  (`supabase/migrations/20260725160000_billing_subscriptions_backfill.sql`) that gives every
+  existing `profiles` row a default `billing_subscriptions` row.
+- **No feedback after the checkout redirect (Important).** The design spec called for a
+  toast after Lemon Squeezy redirects back to `?checkout=success`, since the webhook that
+  actually flips `billing_subscriptions.status` lands a few seconds later — this fell through
+  between design and plan and was never built. A user who just paid saw no acknowledgement
+  and could plausibly click "Upgrade to Team" again, risking a duplicate subscription. Fixed:
+  `settings/page.tsx` now reads `searchParams.checkout`, and `BillingCard` shows a
+  "processing" toast once when present.
 
 ## Manual verification still needed
 
