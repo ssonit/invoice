@@ -24,7 +24,7 @@ tested module free of a `server-only` import.
 **Files:**
 - Create: `supabase/migrations/20260725150000_billing_subscriptions.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 ```sql
 -- Payment/subscription state for the app's own billing (Lemon Squeezy), one
@@ -77,7 +77,7 @@ end;
 $$;
 ```
 
-- [ ] **Step 2: Apply and verify**
+- [x] **Step 2: Apply and verify**
 
 Prerequisite: Docker Desktop running.
 
@@ -99,7 +99,7 @@ npx supabase db query "select grantee, privilege_type from information_schema.ro
 ```
 Expected: `authenticated` has `SELECT` only; `service_role` has `SELECT`, `INSERT`, `UPDATE`, `DELETE`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add supabase/migrations/20260725150000_billing_subscriptions.sql
@@ -114,7 +114,7 @@ git commit -m "feat: add billing_subscriptions table for Lemon Squeezy billing"
 - Create: `src/lib/billing.ts`
 - Test: `src/lib/billing.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -159,12 +159,12 @@ describe("hasActiveTeamPlan", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/lib/billing.test.ts`
 Expected: FAIL — `Cannot find module './billing'`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 export type BillingSubscriptionStatus =
@@ -209,12 +209,12 @@ export function hasActiveTeamPlan(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/lib/billing.test.ts`
-Expected: PASS, 10 tests.
+Expected: PASS, 11 tests. (Correction: this doc originally said 10 — miscounted; `it.each` with 3 statuses × 2 blocks + 5 standalone `it`s = 11.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/billing.ts src/lib/billing.test.ts
@@ -229,7 +229,7 @@ git commit -m "feat: add hasActiveTeamPlan billing gating helper"
 - Create: `src/lib/lemonsqueezy-webhook.ts`
 - Test: `src/lib/lemonsqueezy-webhook.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { createHmac } from "node:crypto";
@@ -274,12 +274,12 @@ describe("verifyWebhookSignature", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/lib/lemonsqueezy-webhook.test.ts`
 Expected: FAIL — `Cannot find module './lemonsqueezy-webhook'`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -306,12 +306,12 @@ export function verifyWebhookSignature(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/lib/lemonsqueezy-webhook.test.ts`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/lemonsqueezy-webhook.ts src/lib/lemonsqueezy-webhook.test.ts
@@ -326,7 +326,7 @@ git commit -m "feat: add Lemon Squeezy webhook signature verification"
 - Create: `src/lib/lemonsqueezy.ts`
 - Modify: `.env.local.example`
 
-- [ ] **Step 1: Add env vars**
+- [x] **Step 1: Add env vars**
 
 Append to `.env.local.example`:
 ```
@@ -340,7 +340,7 @@ LEMONSQUEEZY_TEAM_VARIANT_ID=
 LEMONSQUEEZY_WEBHOOK_SECRET=
 ```
 
-- [ ] **Step 2: Write `createLemonSqueezyCheckout()`**
+- [x] **Step 2: Write `createLemonSqueezyCheckout()`** (code review found the failure branch discarded the response body; fixed in a follow-up commit `cc413eb` — see file for current state)
 
 ```ts
 import "server-only";
@@ -396,12 +396,12 @@ export async function createLemonSqueezyCheckout({
 }
 ```
 
-- [ ] **Step 3: Type-check**
+- [x] **Step 3: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/lemonsqueezy.ts .env.local.example
@@ -415,7 +415,7 @@ git commit -m "feat: add Lemon Squeezy checkout API client"
 **Files:**
 - Create: `src/app/api/webhooks/lemonsqueezy/route.ts`
 
-- [ ] **Step 1: Write the route**
+- [x] **Step 1: Write the route** (code review found an unhandled crash if `LEMONSQUEEZY_WEBHOOK_SECRET` is unset; fixed in follow-up commit `ec433ac` with an explicit guard before signature verification — see file for current state)
 
 ```ts
 import { NextResponse, type NextRequest } from "next/server";
@@ -487,12 +487,12 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Type-check**
+- [x] **Step 2: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/api/webhooks/lemonsqueezy/route.ts
@@ -508,7 +508,7 @@ git commit -m "feat: add Lemon Squeezy webhook handler"
 - Create: `src/app/dashboard/settings/billing-card.tsx`
 - Modify: `src/app/dashboard/settings/page.tsx`
 
-- [ ] **Step 1: Add `createCheckoutUrl()` to `src/app/dashboard/actions.ts`**
+- [x] **Step 1: Add `createCheckoutUrl()` to `src/app/dashboard/actions.ts`**
 
 Add this import alongside the existing ones at the top of the file:
 ```ts
@@ -545,7 +545,7 @@ export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
 }
 ```
 
-- [ ] **Step 2: Write `BillingCard`**
+- [x] **Step 2: Write `BillingCard`** (code review found `paused`/`unpaid` subscribers were routed to a duplicate-checkout button instead of their existing portal; fixed in follow-up commit `119813e` — the CTA now uses a separate `hasExistingSubscription` check, decoupled from `isTeam`. See file for current state.)
 
 ```tsx
 "use client";
@@ -612,7 +612,7 @@ export function BillingCard({ subscription }: { subscription: BillingSubscriptio
 }
 ```
 
-- [ ] **Step 3: Wire into `src/app/dashboard/settings/page.tsx`**
+- [x] **Step 3: Wire into `src/app/dashboard/settings/page.tsx`** (code review found the `billing_subscriptions` query's error was silently discarded; fixed in follow-up commit `119813e` to log it server-side)
 
 Add this import alongside the existing ones:
 ```ts
@@ -661,12 +661,12 @@ Add a new card between the "Forwarding address" card and the "Password" card:
         </Card>
 ```
 
-- [ ] **Step 4: Type-check**
+- [x] **Step 4: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/app/dashboard/actions.ts src/app/dashboard/settings/billing-card.tsx src/app/dashboard/settings/page.tsx
@@ -680,7 +680,7 @@ git commit -m "feat: add checkout action and Settings billing card"
 **Files:**
 - Modify: `src/lib/landing/dictionary.ts`
 
-- [ ] **Step 1: Trim the English Team plan features**
+- [x] **Step 1: Trim the English Team plan features**
 
 Change (around line 186-192):
 ```ts
@@ -701,7 +701,7 @@ to:
           ],
 ```
 
-- [ ] **Step 2: Trim the Vietnamese Team plan features**
+- [x] **Step 2: Trim the Vietnamese Team plan features**
 
 Change (around line 330-336):
 ```ts
@@ -722,12 +722,12 @@ to:
           ],
 ```
 
-- [ ] **Step 3: Type-check**
+- [x] **Step 3: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/landing/dictionary.ts
@@ -742,17 +742,17 @@ git commit -m "fix: trim landing Team plan copy to features that actually exist"
 - Modify: `docs/third-party-services.md`
 - Create: `docs/billing-lemonsqueezy.md`
 
-- [ ] **Step 1: Run the whole test suite**
+- [x] **Step 1: Run the whole test suite**
 
 Run: `npm run test`
 Expected: all suites pass, including the two new ones (`billing.test.ts`, `lemonsqueezy-webhook.test.ts`).
 
-- [ ] **Step 2: Type-check and production build**
+- [x] **Step 2: Type-check and production build**
 
 Run: `npx tsc --noEmit && npm run build`
 Expected: both succeed.
 
-- [ ] **Step 3: Add a Lemon Squeezy section to `docs/third-party-services.md`**
+- [x] **Step 3: Add a Lemon Squeezy section to `docs/third-party-services.md`**
 
 Append:
 ```markdown
@@ -775,7 +775,7 @@ Append:
 - Architecture details: [`docs/billing-lemonsqueezy.md`](billing-lemonsqueezy.md).
 ```
 
-- [ ] **Step 4: Manual smoke test**
+- [ ] **Step 4: Manual smoke test** (NOT yet run — needs a real Lemon Squeezy test-mode store, webhook tunnel, and `.env.local` values that don't exist in this environment. Genuine outstanding to-do before this is launch-ready — see `docs/billing-lemonsqueezy.md`'s "Manual verification still needed" section.)
 
 Prerequisite: Lemon Squeezy test-mode store configured with a Team variant, webhook
 pointed at a local tunnel, `.env.local` filled in, dev server running.
@@ -796,7 +796,7 @@ pointed at a local tunnel, `.env.local` filled in, dev server running.
 7. Clean up: cancel/delete the test subscription in the Lemon Squeezy test-mode
    dashboard if it leaves any lingering state you don't want.
 
-- [ ] **Step 5: Write `docs/billing-lemonsqueezy.md`**
+- [x] **Step 5: Write `docs/billing-lemonsqueezy.md`**
 
 Record: the problem (no way to collect payment despite a pricing page),
 the Merchant-of-Record choice and why, the `billing_subscriptions` data model,
@@ -805,7 +805,7 @@ branch per event, the explicit "no feature gating in this pass" scope decision
 and what was descoped from the landing page copy as a result, and a pointer to
 the design spec. Follow the structure of `docs/vendor-stats-scalability.md`.
 
-- [ ] **Step 6: Final commit**
+- [x] **Step 6: Final commit**
 
 ```bash
 git add docs/third-party-services.md docs/billing-lemonsqueezy.md
