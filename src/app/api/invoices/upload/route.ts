@@ -5,6 +5,7 @@ import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { validateUploadFile } from "@/lib/validation/upload";
 import { sha256Hex } from "@/lib/file-hash";
+import { checkUploadRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -13,6 +14,17 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const rateLimitResult = await checkUploadRateLimit(user.id);
+  if (rateLimitResult.limited) {
+    return NextResponse.json(
+      { error: "Too many uploads — please wait a moment and try again." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimitResult.retryAfterSeconds) },
+      },
+    );
   }
 
   const formData = await request.formData();
