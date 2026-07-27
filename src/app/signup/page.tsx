@@ -5,6 +5,7 @@ import { AuthShell } from "@/components/auth/auth-shell"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { PASSWORD_MIN_LENGTH } from "@/constants/validation"
 import { signup } from "./actions"
 
 export default async function SignupPage({
@@ -72,13 +73,13 @@ export default async function SignupPage({
                   name="password"
                   type="password"
                   required
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
                   autoComplete="new-password"
-                  placeholder="At least 6 characters"
+                  placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
                   className="h-10"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Use at least 6 characters.
+                  Use at least {PASSWORD_MIN_LENGTH} characters.
                 </p>
               </Field>
               {error ? (

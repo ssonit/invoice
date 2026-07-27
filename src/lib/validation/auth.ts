@@ -1,17 +1,27 @@
 import { z } from "zod";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/constants/validation";
+import { emailSchema } from "@/lib/validation/common";
 
 // Server-side validation for the login/signup Server Actions. Browser
 // `required`/`minLength` attributes are UX only and can be bypassed, so
 // these are the actual enforcement point.
 
+const passwordSchema = z
+  .string()
+  .min(1, "Password is required")
+  .max(PASSWORD_MAX_LENGTH, "Password is too long");
+
 export const loginSchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  email: emailSchema,
+  password: passwordSchema,
 });
 
 export const signupSchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
-  password: z.string().min(6, "Use at least 6 characters"),
+  email: emailSchema,
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
+    .max(PASSWORD_MAX_LENGTH, "Password is too long"),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -48,7 +58,7 @@ export function parseSignupForm(formData: FormData): FormValidationResult<Signup
 }
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
+  email: emailSchema,
 });
 
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
@@ -66,7 +76,10 @@ export function parseForgotPasswordForm(
 // Also reused by the account-settings "change password" form (Task 8) — same
 // shape, no reason to duplicate it.
 export const resetPasswordSchema = z.object({
-  password: z.string().min(6, "Use at least 6 characters"),
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
+    .max(PASSWORD_MAX_LENGTH, "Password is too long"),
 });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
