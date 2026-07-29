@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MailPlus } from "lucide-react";
-import { createInbox } from "../actions";
+import { createInbox } from "@/app/dashboard/actions";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 

@@ -41,6 +41,7 @@ export async function createInbox(): Promise<CreateInboxResult> {
     .maybeSingle();
   if (existing) {
     revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/automation");
     return { ok: true, email: existing.email_address, alreadyExisted: true };
   }
 
@@ -60,6 +61,7 @@ export async function createInbox(): Promise<CreateInboxResult> {
           .eq("user_id", user.id)
           .maybeSingle();
         revalidatePath("/dashboard/settings");
+        revalidatePath("/dashboard/automation");
         return {
           ok: true,
           email: row?.email_address ?? inbox.email,
@@ -70,6 +72,7 @@ export async function createInbox(): Promise<CreateInboxResult> {
     }
 
     revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard/automation");
     return { ok: true, email: inbox.email, alreadyExisted: false };
   } catch (err) {
     console.error("Failed to create inbox for user", user.id, err);
