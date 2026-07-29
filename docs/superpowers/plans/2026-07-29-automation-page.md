@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `/dashboard/automation` — a page that hands the user their forwarding address, a ready-to-paste prompt for eight AI agents, and a workspace-level "is this working yet?" status.
+**Goal:** Ship `/dashboard/automation` - a page that hands the user their forwarding address, a ready-to-paste prompt for eight AI agents, and a workspace-level "is this working yet?" status.
 
 **Architecture:** Server Component reads the user's inbox row and a count of email-sourced invoices, then renders pure presentational components. The agent registry and prompt builder are pure functions in `src/lib/automation/` (unit-tested with Vitest); the only client components are copy buttons and the existing inbox-creation button. No new API route, no new table, no migration.
 
@@ -10,17 +10,29 @@
 
 **Spec:** [`docs/superpowers/specs/2026-07-29-automation-page-design.md`](../specs/2026-07-29-automation-page-design.md)
 
+**Layout references:** grouped card sections and one-sentence action copy from the
+[Linear integrations directory](https://linear.app/integrations); single-description,
+single-target cards from [Vercel Marketplace](https://vercel.com/marketplace); one
+verb-first primary action per card from
+[Cursor's MCP install links](https://cursor.com/docs/context/mcp/install-links); the
+intake address shown once with a status pill from
+[Linear email intake](https://linear.app/integrations/create-issues-via-email). Visual
+style stays inside [`docs/DESIGN-SYSTEM.md`](../../DESIGN-SYSTEM.md) tokens
+(`rounded-[14px]`, `shadow-none`, 11/12/13px type, 150ms transitions, no gradients).
+
 ---
 
 ## File Structure
 
 | File | Created / Modified | Responsibility |
 | --- | --- | --- |
-| `src/constants/automation.ts` | Create | Agent ids and status labels — no bare literals repeated across files |
-| `src/lib/automation/agents.ts` | Create | `AutomationAgent` type, `AUTOMATION_AGENTS` registry, `findAutomationAgent()` |
-| `src/lib/automation/agents.test.ts` | Create | Registry invariants |
+| `src/constants/automation.ts` | Create | Agent ids, kinds, group labels, status labels - no bare literals repeated across files |
+| `src/lib/automation/agents.ts` | Create | `AutomationAgent` type, `AUTOMATION_AGENTS` registry, `findAutomationAgent()`, `groupAgentsByKind()` |
+| `src/lib/automation/agents.test.ts` | Create | Registry invariants + grouping |
 | `src/lib/automation/prompt.ts` | Create | `buildForwardPrompt(forwardAddress)` |
 | `src/lib/automation/prompt.test.ts` | Create | Prompt content + failure mode |
+| `src/lib/automation/brand-glyph.ts` | Create | `resolveBrandGlyph(slug)` over `simple-icons`, `null` when absent |
+| `src/lib/automation/brand-glyph.test.ts` | Create | Known slug resolves, unknown slug returns null |
 | `src/lib/nav-config.ts` | Modify | Add the Automation nav item |
 | `src/lib/nav-config.test.ts` | Modify | Cover the new item |
 | `src/components/dashboard/copy-button.tsx` | Create | Reusable copy-to-clipboard button (generalizes `copy-email-button.tsx`) |
@@ -29,9 +41,12 @@
 | `src/app/dashboard/settings/create-inbox-button.tsx` | Delete | Moved to `src/components/dashboard/` |
 | `src/app/dashboard/settings/page.tsx` | Modify | Use the two moved/renamed components |
 | `src/app/dashboard/actions.ts` | Modify | `createInbox()` also revalidates `/dashboard/automation` |
-| `src/components/dashboard/automation/connection-panel.tsx` | Create | Address + copy + status badge, or the create-address CTA |
-| `src/components/dashboard/automation/agent-card.tsx` | Create | One agent: monogram, description, copy prompt / copy address / install link |
-| `src/components/dashboard/automation/automation-view.tsx` | Create | Page layout — props only, no queries |
+| `src/components/dashboard/automation/connection-panel.tsx` | Create | Address + copy + status pill (shown once), or the create-address CTA |
+| `src/components/dashboard/automation/setup-steps.tsx` | Create | Three verb-first steps: copy, paste, forward |
+| `src/components/dashboard/automation/brand-glyph.tsx` | Create | Brand mark when one exists, letter tile otherwise |
+| `src/components/dashboard/automation/agent-card.tsx` | Create | One agent: mark, name, one-line description, one *Copy prompt* action, quiet setup link |
+| `src/components/dashboard/automation/agent-grid.tsx` | Create | Groups cards by kind into labelled sections |
+| `src/components/dashboard/automation/automation-view.tsx` | Create | Page layout - props only, no queries |
 | `src/app/dashboard/automation/page.tsx` | Create | Server Component: auth guard + two queries + render |
 | `docs/automation.md` | Create | Feature record (how it works, what it deliberately doesn't do) |
 
@@ -50,8 +65,12 @@
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { AUTOMATION_AGENT_ID } from "@/constants/automation";
-import { AUTOMATION_AGENTS, findAutomationAgent } from "./agents";
+import { AUTOMATION_AGENT_ID, AUTOMATION_AGENT_KIND } from "@/constants/automation";
+import {
+  AUTOMATION_AGENTS,
+  findAutomationAgent,
+  groupAgentsByKind,
+} from "./agents";
 
 describe("AUTOMATION_AGENTS", () => {
   it("covers every declared agent id exactly once", () => {
@@ -66,6 +85,13 @@ describe("AUTOMATION_AGENTS", () => {
     }
   });
 
+  it("keeps descriptions to one short sentence", () => {
+    // The reference directories (Linear, Vercel) run ~80-100 characters.
+    for (const agent of AUTOMATION_AGENTS) {
+      expect(agent.description.length).toBeLessThanOrEqual(110);
+    }
+  });
+
   it("only ever links out over https", () => {
     for (const agent of AUTOMATION_AGENTS) {
       if (!agent.docsUrl) continue;
@@ -73,8 +99,32 @@ describe("AUTOMATION_AGENTS", () => {
     }
   });
 
+  it("gives every agent a known kind", () => {
+    const kinds = Object.values(AUTOMATION_AGENT_KIND);
+    for (const agent of AUTOMATION_AGENTS) {
+      expect(kinds).toContain(agent.kind);
+    }
+  });
+
   it("has no install link for the generic catch-all agent", () => {
     expect(findAutomationAgent(AUTOMATION_AGENT_ID.OTHER)?.docsUrl).toBeUndefined();
+  });
+});
+
+describe("groupAgentsByKind", () => {
+  it("returns groups in declared kind order, each non-empty", () => {
+    const groups = groupAgentsByKind(AUTOMATION_AGENTS);
+    expect(groups.map((group) => group.kind)).toEqual(
+      Object.values(AUTOMATION_AGENT_KIND),
+    );
+    for (const group of groups) {
+      expect(group.agents.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps every agent, losing none", () => {
+    const grouped = groupAgentsByKind(AUTOMATION_AGENTS).flatMap((g) => g.agents);
+    expect(grouped).toHaveLength(AUTOMATION_AGENTS.length);
   });
 });
 
@@ -92,7 +142,7 @@ describe("findAutomationAgent", () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/lib/automation/agents.test.ts`
-Expected: FAIL — `Failed to resolve import "@/constants/automation"`.
+Expected: FAIL - `Failed to resolve import "@/constants/automation"`.
 
 - [ ] **Step 3: Write the constants**
 
@@ -113,10 +163,42 @@ export const AUTOMATION_AGENT_ID = {
 export type AutomationAgentId =
   (typeof AUTOMATION_AGENT_ID)[keyof typeof AUTOMATION_AGENT_ID];
 
+// Grid grouping, in render order - mirrors how integration directories group
+// entries instead of running one flat list of tiles.
+export const AUTOMATION_AGENT_KIND = {
+  CHAT: "chat",
+  CODING: "coding",
+  GENERIC: "generic",
+} as const;
+
+export type AutomationAgentKind =
+  (typeof AUTOMATION_AGENT_KIND)[keyof typeof AUTOMATION_AGENT_KIND];
+
+export const AUTOMATION_KIND_LABEL: Record<AutomationAgentKind, string> = {
+  [AUTOMATION_AGENT_KIND.CHAT]: "Chat agents",
+  [AUTOMATION_AGENT_KIND.CODING]: "Coding agents",
+  [AUTOMATION_AGENT_KIND.GENERIC]: "Anything else",
+};
+
 export const AUTOMATION_STATUS = {
   WAITING_LABEL: "Waiting for your first forwarded email",
   CONNECTED_LABEL: "Connected",
 } as const;
+
+export const AUTOMATION_SETUP_STEPS: ReadonlyArray<{ title: string; body: string }> = [
+  {
+    title: "Copy the prompt",
+    body: "Pick the agent that reads your email and copy its setup prompt.",
+  },
+  {
+    title: "Paste it into your agent",
+    body: "Store it where the agent keeps standing instructions, not in a one-off chat.",
+  },
+  {
+    title: "Forward one invoice",
+    body: "The first email that arrives flips this page to connected.",
+  },
+];
 ```
 
 - [ ] **Step 4: Write the registry**
@@ -124,80 +206,121 @@ export const AUTOMATION_STATUS = {
 `src/lib/automation/agents.ts`:
 
 ```ts
-import { AUTOMATION_AGENT_ID, type AutomationAgentId } from "@/constants/automation";
+import {
+  AUTOMATION_AGENT_ID,
+  AUTOMATION_AGENT_KIND,
+  type AutomationAgentId,
+  type AutomationAgentKind,
+} from "@/constants/automation";
 
 export type AutomationAgent = {
   id: AutomationAgentId;
   name: string;
-  /** One line telling the user where this agent's forwarding rule lives. */
+  /** One action-oriented sentence, ~80-100 chars, like the reference directories. */
   description: string;
+  kind: AutomationAgentKind;
+  /**
+   * simple-icons slug for the brand mark. Optional: the icon set has no
+   * OpenAI/ChatGPT, Codex or OpenClaw mark, and redrawing one by hand is not
+   * an option, so those cards fall back to a letter tile.
+   */
+  iconSlug?: string;
   /**
    * Official docs page for making an instruction persistent in this agent.
    * Optional on purpose: an agent whose docs page can't be verified ships
-   * without a link rather than with a guessed one (see Task 8).
+   * without a link rather than with a guessed one (see Task 9).
    */
   docsUrl?: string;
+};
+
+export type AutomationAgentGroup = {
+  kind: AutomationAgentKind;
+  agents: AutomationAgent[];
 };
 
 export const AUTOMATION_AGENTS: readonly AutomationAgent[] = [
   {
     id: AUTOMATION_AGENT_ID.CLAUDE,
     name: "Claude",
-    description: "Add the rule to a project or to your Claude memory so it applies to every inbox check.",
+    description: "Keep the rule in a project or in memory so it applies to every inbox check.",
+    kind: AUTOMATION_AGENT_KIND.CHAT,
+    iconSlug: "claude",
     docsUrl: "https://docs.claude.com/",
-  },
-  {
-    id: AUTOMATION_AGENT_ID.OPENCLAW,
-    name: "OpenClaw",
-    description: "Paste the rule into your agent's standing instructions.",
-    docsUrl: "https://openclaw.ai/",
   },
   {
     id: AUTOMATION_AGENT_ID.CHATGPT,
     name: "ChatGPT",
-    description: "Add the rule to Custom Instructions, or to the GPT that reads your mail.",
+    description: "Store the rule in Custom Instructions, or in the GPT that reads your mail.",
+    kind: AUTOMATION_AGENT_KIND.CHAT,
     docsUrl: "https://help.openai.com/",
   },
   {
     id: AUTOMATION_AGENT_ID.GEMINI,
     name: "Gemini",
-    description: "Add the rule as a saved instruction in Gemini or Gemini for Workspace.",
+    description: "Save the rule as a standing instruction in Gemini or Gemini for Workspace.",
+    kind: AUTOMATION_AGENT_KIND.CHAT,
+    iconSlug: "googlegemini",
     docsUrl: "https://support.google.com/gemini",
   },
   {
     id: AUTOMATION_AGENT_ID.CURSOR,
     name: "Cursor",
-    description: "Drop the rule into a project rules file so the agent always applies it.",
+    description: "Drop the rule into a rules file so the agent applies it in every session.",
+    kind: AUTOMATION_AGENT_KIND.CODING,
+    iconSlug: "cursor",
     docsUrl: "https://docs.cursor.com/",
   },
   {
     id: AUTOMATION_AGENT_ID.CODEX,
     name: "Codex",
-    description: "Add the rule to your agent instructions file.",
+    description: "Add the rule to your agent instructions file so it survives new runs.",
+    kind: AUTOMATION_AGENT_KIND.CODING,
     docsUrl: "https://developers.openai.com/codex/",
   },
   {
     id: AUTOMATION_AGENT_ID.CLINE,
     name: "Cline",
     description: "Add the rule to your Cline rules so it survives new sessions.",
+    kind: AUTOMATION_AGENT_KIND.CODING,
+    iconSlug: "cline",
     docsUrl: "https://docs.cline.bot/",
+  },
+  {
+    id: AUTOMATION_AGENT_ID.OPENCLAW,
+    name: "OpenClaw",
+    description: "Paste the rule into the agent's standing instructions.",
+    kind: AUTOMATION_AGENT_KIND.CODING,
+    docsUrl: "https://openclaw.ai/",
   },
   {
     id: AUTOMATION_AGENT_ID.OTHER,
     name: "Other agents",
-    description: "Any agent that can read and forward mail works — paste the same prompt.",
+    description: "Any agent that can read and forward mail works. Paste the same prompt.",
+    kind: AUTOMATION_AGENT_KIND.GENERIC,
   },
 ];
 
 export function findAutomationAgent(id: string): AutomationAgent | undefined {
   return AUTOMATION_AGENTS.find((agent) => agent.id === id);
 }
+
+/** Groups the registry for the grid, in declared kind order. */
+export function groupAgentsByKind(
+  agents: readonly AutomationAgent[],
+): AutomationAgentGroup[] {
+  return Object.values(AUTOMATION_AGENT_KIND)
+    .map((kind) => ({
+      kind,
+      agents: agents.filter((agent) => agent.kind === kind),
+    }))
+    .filter((group) => group.agents.length > 0);
+}
 ```
 
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `npx vitest run src/lib/automation/agents.test.ts`
-Expected: PASS — 6 tests.
+Expected: PASS - 10 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -270,7 +393,7 @@ describe("buildForwardPrompt", () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/lib/automation/prompt.test.ts`
-Expected: FAIL — `Failed to resolve import "./prompt"`.
+Expected: FAIL - `Failed to resolve import "./prompt"`.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -279,13 +402,13 @@ Expected: FAIL — `Failed to resolve import "./prompt"`.
 ```ts
 /**
  * The instruction a user pastes into their own AI agent so it forwards only
- * invoice mail to their workspace address. One template for every agent —
+ * invoice mail to their workspace address. One template for every agent -
  * agents differ in where you paste it, not in what it says.
  */
 export function buildForwardPrompt(forwardAddress: string): string {
   const address = forwardAddress.trim();
   // Callers only render a prompt once an inbox exists, so an empty address is
-  // a programming error, not an anticipated outcome — throw rather than
+  // a programming error, not an anticipated outcome - throw rather than
   // return a prompt that would silently forward nowhere.
   if (!address) {
     throw new Error("buildForwardPrompt requires a non-empty forwarding address");
@@ -307,7 +430,7 @@ Rules:
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run src/lib/automation/prompt.test.ts`
-Expected: PASS — 7 tests.
+Expected: PASS - 7 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -318,7 +441,118 @@ git commit -m "feat: add agent forwarding prompt builder"
 
 ---
 
-## Task 3: Navigation entry
+## Task 3: Brand glyph resolution
+
+Integration directories show real brand marks. `simple-icons` ships them as SVG path data,
+so nothing is fetched from a CDN at runtime. The set has no OpenAI/ChatGPT, Codex or
+OpenClaw mark, so this function returns `null` for those and the card falls back to a
+letter tile.
+
+**Files:**
+- Modify: `package.json` (add `simple-icons`)
+- Create: `src/lib/automation/brand-glyph.ts`
+- Test: `src/lib/automation/brand-glyph.test.ts`
+
+- [ ] **Step 1: Install the icon set**
+
+```bash
+npm install simple-icons
+```
+
+Expected: `simple-icons` appears in `dependencies` (16.27.1 or newer).
+
+- [ ] **Step 2: Write the failing test**
+
+`src/lib/automation/brand-glyph.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { AUTOMATION_AGENTS } from "./agents";
+import { resolveBrandGlyph } from "./brand-glyph";
+
+describe("resolveBrandGlyph", () => {
+  it("resolves a slug the icon set ships", () => {
+    const glyph = resolveBrandGlyph("claude");
+    expect(glyph).not.toBeNull();
+    expect(glyph!.path.length).toBeGreaterThan(0);
+    expect(glyph!.hex).toMatch(/^[0-9A-Fa-f]{6}$/);
+  });
+
+  it("resolves every slug the registry references", () => {
+    for (const agent of AUTOMATION_AGENTS) {
+      if (!agent.iconSlug) continue;
+      expect(resolveBrandGlyph(agent.iconSlug), agent.name).not.toBeNull();
+    }
+  });
+
+  it("returns null for a brand the set does not ship", () => {
+    // Simple Icons carries no OpenAI mark, and hand-redrawing one is not an
+    // option, so ChatGPT and Codex cards use a letter tile instead.
+    expect(resolveBrandGlyph("openai")).toBeNull();
+  });
+
+  it("returns null for an empty slug", () => {
+    expect(resolveBrandGlyph("")).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 3: Run the test to verify it fails**
+
+Run: `npx vitest run src/lib/automation/brand-glyph.test.ts`
+Expected: FAIL - `Failed to resolve import "./brand-glyph"`.
+
+- [ ] **Step 4: Write the implementation**
+
+`src/lib/automation/brand-glyph.ts` - import only the four marks actually used, so the
+other ~3000 icons never enter the bundle:
+
+```ts
+import {
+  siClaude,
+  siCline,
+  siCursor,
+  siGooglegemini,
+  type SimpleIcon,
+} from "simple-icons";
+
+export type BrandGlyph = { title: string; path: string; hex: string };
+
+// Only the marks the icon set actually ships for our agents. Adding an agent
+// with a mark means adding it here; brand-glyph.test.ts fails if a registry
+// iconSlug has no entry.
+const GLYPHS: Record<string, SimpleIcon> = {
+  claude: siClaude,
+  cline: siCline,
+  cursor: siCursor,
+  googlegemini: siGooglegemini,
+};
+
+export function resolveBrandGlyph(slug: string): BrandGlyph | null {
+  const icon = GLYPHS[slug];
+  if (!icon) return null;
+  return { title: icon.title, path: icon.path, hex: icon.hex };
+}
+```
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+Run: `npx vitest run src/lib/automation/brand-glyph.test.ts`
+Expected: PASS - 4 tests.
+
+If the `SimpleIcon` type or the `si<Slug>` export names differ in the installed version,
+check `node_modules/simple-icons/index.d.ts` and adjust the import, not the test.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add package.json package-lock.json src/lib/automation/brand-glyph.ts src/lib/automation/brand-glyph.test.ts
+git commit -m "feat: resolve agent brand marks from simple-icons"
+```
+
+---
+
+## Task 4: Navigation entry
 
 **Files:**
 - Modify: `src/lib/nav-config.ts`
@@ -339,11 +573,11 @@ Append to `src/lib/nav-config.test.ts`, inside the existing `describe("findNavIt
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/lib/nav-config.test.ts`
-Expected: FAIL — `expected undefined to be 'Automation'`.
+Expected: FAIL - `expected undefined to be 'Automation'`.
 
 - [ ] **Step 3: Add the nav item**
 
-In `src/lib/nav-config.ts`, add `Bot` to the existing `lucide-react` import (alphabetical — it goes first, before `BarChart3`):
+In `src/lib/nav-config.ts`, add `Bot` to the existing `lucide-react` import (alphabetical - it goes first, before `BarChart3`):
 
 ```ts
 import {
@@ -385,7 +619,7 @@ git commit -m "feat: add Automation to dashboard navigation"
 
 ---
 
-## Task 4: Shared copy button
+## Task 5: Shared copy button
 
 `src/app/dashboard/copy-email-button.tsx` is used in exactly one place
 (`src/app/dashboard/settings/page.tsx:77`). Generalize it instead of writing a second
@@ -425,7 +659,7 @@ export function CopyButton({
       await navigator.clipboard.writeText(value);
     } catch (error) {
       // Clipboard API is unavailable outside secure contexts and can be
-      // permission-denied — the value stays on screen to copy by hand.
+      // permission-denied - the value stays on screen to copy by hand.
       console.error("Failed to copy value to clipboard", error);
       toast.error("Could not copy. Select the text and copy it manually.");
       return;
@@ -494,7 +728,7 @@ git commit -m "refactor: generalize copy-email button into a shared CopyButton"
 
 ---
 
-## Task 5: Share the inbox-creation button
+## Task 6: Share the inbox-creation button
 
 The Automation page needs the same "Create forwarding address" CTA that Settings has.
 Move the component out of the Settings route folder rather than importing across routes,
@@ -508,7 +742,7 @@ and make `createInbox()` revalidate both pages.
 
 - [ ] **Step 1: Create the moved component**
 
-`src/components/dashboard/create-inbox-button.tsx` — identical to the current file except
+`src/components/dashboard/create-inbox-button.tsx` - identical to the current file except
 for the `createInbox` import path:
 
 ```tsx
@@ -598,14 +832,24 @@ git commit -m "refactor: share CreateInboxButton and revalidate the automation p
 
 ---
 
-## Task 6: Automation page components
+## Task 7: Automation page components
 
-Three presentational components. None of them queries anything — the page passes data in.
+Five presentational components. None of them queries anything. Layout follows the
+references in the header: the address and its status appear once at the top, three
+verb-first steps sit under it, and the grid is grouped by agent kind with exactly one
+primary action per card.
 
 **Files:**
 - Create: `src/components/dashboard/automation/connection-panel.tsx`
+- Create: `src/components/dashboard/automation/setup-steps.tsx`
+- Create: `src/components/dashboard/automation/brand-glyph.tsx`
 - Create: `src/components/dashboard/automation/agent-card.tsx`
+- Create: `src/components/dashboard/automation/agent-grid.tsx`
 - Create: `src/components/dashboard/automation/automation-view.tsx`
+
+All of them use design-system tokens only: `rounded-[14px]` cards with no shadow,
+`rounded-[8px]` on small tiles and code, 13px titles, 12px body, 11px mono labels,
+`duration-150` transitions. No gradients, no shadows, no em-dash characters in copy.
 
 - [ ] **Step 1: Create the connection panel**
 
@@ -625,6 +869,8 @@ import { CopyButton } from "@/components/dashboard/copy-button";
 import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
 import { AUTOMATION_STATUS } from "@/constants/automation";
 
+// The address is a workspace-level resource, so it is presented once, here,
+// with its status. Agent cards never repeat it.
 export function ConnectionPanel({
   forwardAddress,
   receivedCount,
@@ -637,8 +883,10 @@ export function ConnectionPanel({
   return (
     <Card className="rounded-[14px] shadow-none">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle className="text-[13px] font-semibold">Your forwarding address</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-[13px] font-semibold">
+            Your forwarding address
+          </CardTitle>
           {forwardAddress ? (
             <Badge
               variant="outline"
@@ -654,14 +902,14 @@ export function ConnectionPanel({
                 <Clock className="size-3" />
               )}
               {isConnected
-                ? `${AUTOMATION_STATUS.CONNECTED_LABEL} — ${receivedCount} received`
+                ? `${AUTOMATION_STATUS.CONNECTED_LABEL}, ${receivedCount} received`
                 : AUTOMATION_STATUS.WAITING_LABEL}
             </Badge>
           ) : null}
         </div>
         <CardDescription className="text-[13px]">
           Give this address to your AI agent. It decides which emails are invoices and
-          forwards only those — we never touch the rest of your mailbox.
+          forwards only those. Nothing else in your mailbox is touched.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -670,7 +918,11 @@ export function ConnectionPanel({
             <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-[13px]">
               {forwardAddress}
             </code>
-            <CopyButton value={forwardAddress} label="Copy address" copiedLabel="Address copied" />
+            <CopyButton
+              value={forwardAddress}
+              label="Copy address"
+              copiedLabel="Address copied"
+            />
           </div>
         ) : (
           <CreateInboxButton />
@@ -681,22 +933,78 @@ export function ConnectionPanel({
 }
 ```
 
-- [ ] **Step 2: Create the agent card**
+- [ ] **Step 2: Create the setup steps**
 
-`src/components/dashboard/automation/agent-card.tsx`:
+`src/components/dashboard/automation/setup-steps.tsx`:
 
 ```tsx
-import { ExternalLink } from "lucide-react";
+import { AUTOMATION_SETUP_STEPS } from "@/constants/automation";
+
+export function SetupSteps() {
+  return (
+    <ol className="grid gap-3 sm:grid-cols-3">
+      {AUTOMATION_SETUP_STEPS.map((step, index) => (
+        <li key={step.title} className="rounded-[14px] border border-border p-4">
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {index + 1}
+          </span>
+          <h3 className="mt-1 text-[13px] font-semibold tracking-tight">{step.title}</h3>
+          <p className="mt-1 text-[12px] text-muted-foreground">{step.body}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+```
+
+- [ ] **Step 3: Create the brand glyph**
+
+`src/components/dashboard/automation/brand-glyph.tsx`:
+
+```tsx
+import { resolveBrandGlyph } from "@/lib/automation/brand-glyph";
+
+/**
+ * Brand mark for an agent, or a letter tile when the icon set ships none.
+ * Both render in the same 28px rounded tile so a mixed grid stays aligned.
+ * The mark inherits the foreground token rather than its brand hex, so it
+ * reads correctly in both themes and does not introduce a second accent.
+ */
+export function BrandGlyph({ name, slug }: { name: string; slug?: string }) {
+  const glyph = slug ? resolveBrandGlyph(slug) : null;
+
+  if (!glyph) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-muted font-mono text-[11px] font-medium uppercase text-muted-foreground"
+      >
+        {name.slice(0, 2)}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-muted">
+      <svg role="img" aria-label={glyph.title} viewBox="0 0 24 24" className="size-4 fill-foreground">
+        <path d={glyph.path} />
+      </svg>
+    </span>
+  );
+}
+```
+
+- [ ] **Step 4: Create the agent card**
+
+`src/components/dashboard/automation/agent-card.tsx` - one primary action, one quiet
+link, matching how the reference directories present an entry:
+
+```tsx
+import { ArrowUpRight } from "lucide-react";
 import type { AutomationAgent } from "@/lib/automation/agents";
 import { buildForwardPrompt } from "@/lib/automation/prompt";
 import { CopyButton } from "@/components/dashboard/copy-button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { BrandGlyph } from "./brand-glyph";
 
 export function AgentCard({
   agent,
@@ -706,52 +1014,81 @@ export function AgentCard({
   forwardAddress: string;
 }) {
   return (
-    <Card className="rounded-[14px] shadow-none">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-[8px] bg-muted font-mono text-[11px] font-semibold uppercase text-muted-foreground">
-            {agent.name.slice(0, 2)}
-          </span>
-          <CardTitle className="text-[13px] font-semibold">{agent.name}</CardTitle>
-        </div>
-        <CardDescription className="text-[13px]">{agent.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-3 rounded-[14px] border border-border p-4 transition-colors duration-150 hover:bg-muted/40">
+      <div className="flex items-center gap-2">
+        <BrandGlyph name={agent.name} slug={agent.iconSlug} />
+        <h3 className="text-[13px] font-semibold tracking-tight">{agent.name}</h3>
+      </div>
+      <p className="text-[12px] leading-relaxed text-muted-foreground">
+        {agent.description}
+      </p>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         <CopyButton
           value={buildForwardPrompt(forwardAddress)}
           label="Copy prompt"
           copiedLabel="Prompt copied"
-        />
-        <CopyButton
-          value={forwardAddress}
-          label="Copy address"
-          copiedLabel="Address copied"
         />
         {agent.docsUrl ? (
           <a
             href={agent.docsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="inline-flex items-center gap-1 text-[12px] text-muted-foreground underline-offset-4 transition-colors duration-150 hover:text-foreground hover:underline"
           >
-            Install guide
-            <ExternalLink className="size-3" />
+            Setup guide
+            <ArrowUpRight className="size-3" />
           </a>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 ```
 
-- [ ] **Step 3: Create the view**
+- [ ] **Step 5: Create the grid**
+
+`src/components/dashboard/automation/agent-grid.tsx`:
+
+```tsx
+import { groupAgentsByKind, type AutomationAgent } from "@/lib/automation/agents";
+import { AUTOMATION_KIND_LABEL } from "@/constants/automation";
+import { AgentCard } from "./agent-card";
+
+export function AgentGrid({
+  agents,
+  forwardAddress,
+}: {
+  agents: readonly AutomationAgent[];
+  forwardAddress: string;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {groupAgentsByKind(agents).map((group) => (
+        <section key={group.kind} className="flex flex-col gap-3">
+          <h2 className="text-[13px] font-semibold tracking-tight">
+            {AUTOMATION_KIND_LABEL[group.kind]}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {group.agents.map((agent) => (
+              <AgentCard key={agent.id} agent={agent} forwardAddress={forwardAddress} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: Create the view**
 
 `src/components/dashboard/automation/automation-view.tsx`:
 
 ```tsx
 import { ContentShell } from "@/components/dashboard/content-shell";
 import { ConnectionPanel } from "./connection-panel";
-import { AgentCard } from "./agent-card";
+import { SetupSteps } from "./setup-steps";
+import { AgentGrid } from "./agent-grid";
 import type { AutomationAgent } from "@/lib/automation/agents";
 
 export function AutomationView({
@@ -766,29 +1103,19 @@ export function AutomationView({
   return (
     <ContentShell
       title="Automation"
-      description="Let your AI agent forward invoices for you — no mailbox access required."
+      description="Let your AI agent forward invoices for you. No mailbox access required."
     >
       <div className="flex flex-col gap-5">
         <ConnectionPanel forwardAddress={forwardAddress} receivedCount={receivedCount} />
 
         {forwardAddress ? (
-          <section className="flex flex-col gap-3">
-            <div>
-              <h2 className="text-[13px] font-semibold tracking-tight">Set up your agent</h2>
-              <p className="text-[12px] text-muted-foreground">
-                Copy the prompt into whichever agent reads your email. The prompt is the
-                same everywhere — only the place you paste it differs.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {agents.map((agent) => (
-                <AgentCard key={agent.id} agent={agent} forwardAddress={forwardAddress} />
-              ))}
-            </div>
-          </section>
+          <>
+            <SetupSteps />
+            <AgentGrid agents={agents} forwardAddress={forwardAddress} />
+          </>
         ) : (
           <p className="text-[13px] text-muted-foreground">
-            Create your forwarding address above to get the agent setup prompt.
+            Create your forwarding address above to get the agent setup prompts.
           </p>
         )}
       </div>
@@ -797,15 +1124,15 @@ export function AutomationView({
 }
 ```
 
-Note the `forwardAddress ?` guard: agent cards render only once an address exists, which
-is what keeps `buildForwardPrompt()`'s throw unreachable in normal operation.
+The `forwardAddress ?` guard is what keeps `buildForwardPrompt()`'s throw unreachable in
+normal operation: no address means no cards.
 
-- [ ] **Step 4: Typecheck**
+- [ ] **Step 7: Typecheck**
 
 Run: `npx tsc --noEmit`
 Expected: no output (clean).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/components/dashboard/automation
@@ -814,7 +1141,7 @@ git commit -m "feat: add automation page components"
 
 ---
 
-## Task 7: The page route
+## Task 8: The page route
 
 **Files:**
 - Create: `src/app/dashboard/automation/page.tsx`
@@ -850,7 +1177,7 @@ export default async function AutomationPage() {
       .eq("source", INBOX_SOURCE_FILTER.EMAIL),
   ]);
 
-  // A failed count must not break the page — the address and prompts are
+  // A failed count must not break the page - the address and prompts are
   // still useful, so fall back to the "waiting" state.
   if (countError) {
     console.error("Failed to load automation status", user.id, countError);
@@ -866,7 +1193,7 @@ export default async function AutomationPage() {
 }
 ```
 
-`redirect()` is a top-level statement, never inside a `try` — per `.claude/rules/errors.md`.
+`redirect()` is a top-level statement, never inside a `try` - per `.claude/rules/errors.md`.
 
 - [ ] **Step 2: Typecheck and build**
 
@@ -882,7 +1209,7 @@ git commit -m "feat: add /dashboard/automation page"
 
 ---
 
-## Task 8: Verify every install link
+## Task 9: Verify every install link
 
 The registry ships candidate URLs. Each one must be confirmed to load and to be the page a
 user actually needs (persistent instructions / rules / automations), or removed.
@@ -915,7 +1242,7 @@ link. Example of the removal form:
 - [ ] **Step 3: Re-run the registry tests**
 
 Run: `npx vitest run src/lib/automation/agents.test.ts`
-Expected: PASS — the https assertion still holds for whatever links remain.
+Expected: PASS - the https assertion still holds for whatever links remain.
 
 - [ ] **Step 4: Commit**
 
@@ -926,10 +1253,10 @@ git commit -m "fix: verify agent install links"
 
 ---
 
-## Task 9: Manual verification in the browser
+## Task 10: Manual verification in the browser
 
 UI, Server Components, and Server Actions aren't unit-tested in this project
-(`.claude/rules/testing.md`) — they get a manual pass instead.
+(`.claude/rules/testing.md`) - they get a manual pass instead.
 
 **Files:** none (verification only)
 
@@ -945,7 +1272,7 @@ Then start the dev server with the preview tool (never `npm run dev` via Bash) a
 - [ ] **Step 2: Verify the no-inbox state**
 
 Sign in as a user with no row in `inboxes`. Expected: no status badge, the
-"Create forwarding address" button, and the "Create your forwarding address above…"
+"Create forwarding address" button, and the "Create your forwarding address above..."
 message instead of agent cards. Click the button. Expected: success toast, page refreshes,
 address appears, cards appear.
 
@@ -957,28 +1284,36 @@ With an inbox but zero invoices where `source='email'`. Expected: badge reads
 - [ ] **Step 4: Verify the connected state**
 
 Insert or forward at least one email-sourced invoice for the user, reload. Expected: green
-badge "Connected — N received", N matching the row count.
+badge "Connected - N received", N matching the row count.
 
 - [ ] **Step 5: Verify copy actions**
 
 Click *Copy prompt* on two different cards. Expected: label flips to "Prompt copied" for
 ~2s; pasted text is the full prompt with the real address, no placeholder. Click
-*Copy address*. Expected: exactly the address.
+*Copy address* in the top panel. Expected: exactly the address. Confirm no card carries a
+second copy button.
 
-- [ ] **Step 6: Verify links, theme, and narrow viewport**
+- [ ] **Step 6: Verify grouping and brand marks**
 
-Every *Install guide* link opens in a new tab. Toggle dark/light — badge, monogram, and
-code block stay legible. Resize to mobile width — the card grid collapses to one column and
-the page does not scroll horizontally.
+Expected: three labelled groups (Chat agents, Coding agents, Anything else) in that order,
+eight cards total. Claude, Gemini, Cursor and Cline show a brand mark; ChatGPT, Codex,
+OpenClaw and Other agents show a letter tile at the same 28px size, so rows stay aligned.
 
-- [ ] **Step 7: Check the console and server logs**
+- [ ] **Step 7: Verify links, theme, and narrow viewport**
+
+Every *Setup guide* link opens in a new tab. Toggle dark/light: badge, brand marks, letter
+tiles, step numbers and the code block all stay legible (the marks inherit the foreground
+token, so they must not disappear in either theme). Resize to mobile width: the step row
+and card grid each collapse to one column and the page does not scroll horizontally.
+
+- [ ] **Step 8: Check the console and server logs**
 
 Read console messages and dev-server logs. Expected: no errors, no React hydration
 warnings.
 
 ---
 
-## Task 10: Record the feature and run the full gate
+## Task 11: Record the feature and run the full gate
 
 **Files:**
 - Create: `docs/automation.md`
@@ -999,10 +1334,25 @@ address. No Gmail OAuth, no mailbox access.
 - Shows the user's AgentMail forwarding address, or provisions one via the shared
   `CreateInboxButton` (`createInbox()` in `src/app/dashboard/actions.ts`).
 - Renders one card per supported agent (`AUTOMATION_AGENTS` in
-  `src/lib/automation/agents.ts`) with a copy-to-clipboard prompt from
-  `buildForwardPrompt()` and a link to that agent's instructions docs.
+  `src/lib/automation/agents.ts`), grouped by kind, each with a copy-to-clipboard prompt
+  from `buildForwardPrompt()` and a link to that agent's instructions docs.
 - Reports connection status for the workspace: "waiting" until at least one invoice with
   `source='email'` exists, "connected" after that.
+
+## Layout references
+
+Structure is taken from shipping products, not invented: grouped card sections and
+one-sentence action copy from the [Linear integrations directory](https://linear.app/integrations);
+single-description cards from [Vercel Marketplace](https://vercel.com/marketplace); one
+verb-first action per card from [Cursor's MCP install links](https://cursor.com/docs/context/mcp/install-links);
+and the intake address shown once with a status pill from
+[Linear email intake](https://linear.app/integrations/create-issues-via-email). Visual
+style stays inside [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) tokens rather than copying those
+products' styling.
+
+Brand marks come from `simple-icons` as local SVG paths. The set has no OpenAI/ChatGPT,
+Codex or OpenClaw mark, so those cards use a letter tile of the same size; marks are never
+redrawn by hand.
 
 ## Deliberate limitations
 
@@ -1020,10 +1370,11 @@ address. No Gmail OAuth, no mailbox access.
 | File | Role |
 | --- | --- |
 | `src/app/dashboard/automation/page.tsx` | Server Component: auth guard, inbox + count queries |
-| `src/components/dashboard/automation/` | View, connection panel, agent card |
-| `src/lib/automation/agents.ts` | Agent registry (unit-tested) |
+| `src/components/dashboard/automation/` | View, connection panel, setup steps, grid, card, brand glyph |
+| `src/lib/automation/agents.ts` | Agent registry and grouping (unit-tested) |
 | `src/lib/automation/prompt.ts` | Forwarding prompt template (unit-tested) |
-| `src/constants/automation.ts` | Agent ids, status labels |
+| `src/lib/automation/brand-glyph.ts` | simple-icons lookup with null fallback (unit-tested) |
+| `src/constants/automation.ts` | Agent ids, kinds, group labels, setup steps, status labels |
 ```
 
 - [ ] **Step 2: Run the full gate**
@@ -1032,7 +1383,7 @@ address. No Gmail OAuth, no mailbox access.
 npm run test && npx tsc --noEmit && npm run lint && npm run build
 ```
 
-Expected: all four succeed. Fix anything that fails before continuing — do not commit over
+Expected: all four succeed. Fix anything that fails before continuing - do not commit over
 a red gate.
 
 - [ ] **Step 3: Commit**
@@ -1047,5 +1398,6 @@ git commit -m "docs: record the automation page"
 ## Done when
 
 - [ ] `npm run test`, `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass.
-- [ ] Task 9's six browser checks all pass on the local dev server.
-- [ ] Every `docsUrl` still in the registry was fetched and confirmed in Task 8.
+- [ ] Task 10's eight browser checks all pass on the local dev server.
+- [ ] Every `docsUrl` still in the registry was fetched and confirmed in Task 9.
+- [ ] No card repeats the forwarding address, and the grid renders three labelled groups.
