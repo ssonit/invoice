@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       ? ({ type: "pdf", data: buffer } as const)
       : ({ type: "image", data: buffer, mimeType } as const);
 
-  const extracted = await extractInvoice(input);
+  const { extraction: extracted } = await extractInvoice(input);
   if (!extracted.is_invoice) {
     return NextResponse.json(
       {

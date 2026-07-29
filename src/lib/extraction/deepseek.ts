@@ -2,7 +2,7 @@ import {
   EXTRACTION_PROMPT,
   InvoiceExtractionSchema,
   type ExtractionInput,
-  type InvoiceExtraction,
+  type ExtractionResult,
 } from "./schema";
 
 const DEFAULT_MODEL = "deepseek-chat";
@@ -27,7 +27,7 @@ const SCHEMA_HINT = `Return a JSON object with exactly these keys:
 
 export async function extractWithDeepseek(
   input: ExtractionInput,
-): Promise<InvoiceExtraction> {
+): Promise<ExtractionResult> {
   if (input.type !== "html") {
     throw new Error(
       "DeepSeek cannot read PDF/image attachments — set EXTRACTION_PROVIDER=anthropic or google for file input.",
@@ -58,11 +58,20 @@ export async function extractWithDeepseek(
 
   const body = (await response.json()) as {
     choices?: { message?: { content?: string } }[];
+    model?: string;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const content = body.choices?.[0]?.message?.content;
   if (!content) {
     throw new Error("DeepSeek extraction returned no content");
   }
 
-  return InvoiceExtractionSchema.parse(JSON.parse(content));
+  return {
+    extraction: InvoiceExtractionSchema.parse(JSON.parse(content)),
+    usage: {
+      model: body.model ?? process.env.DEEPSEEK_EXTRACTION_MODEL ?? DEFAULT_MODEL,
+      inputTokens: body.usage?.prompt_tokens ?? null,
+      outputTokens: body.usage?.completion_tokens ?? null,
+    },
+  };
 }

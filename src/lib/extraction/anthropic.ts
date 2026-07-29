@@ -4,7 +4,7 @@ import {
   EXTRACTION_PROMPT,
   InvoiceExtractionSchema,
   type ExtractionInput,
-  type InvoiceExtraction,
+  type ExtractionResult,
 } from "./schema";
 
 const DEFAULT_MODEL = "claude-haiku-4-5";
@@ -17,7 +17,7 @@ function getClient() {
 
 export async function extractWithAnthropic(
   input: ExtractionInput,
-): Promise<InvoiceExtraction> {
+): Promise<ExtractionResult> {
   const content: Anthropic.Messages.ContentBlockParam[] = [];
 
   if (input.type === "pdf") {
@@ -59,5 +59,12 @@ export async function extractWithAnthropic(
     );
   }
 
-  return response.parsed_output;
+  return {
+    extraction: response.parsed_output,
+    usage: {
+      model: response.model,
+      inputTokens: response.usage?.input_tokens ?? null,
+      outputTokens: response.usage?.output_tokens ?? null,
+    },
+  };
 }

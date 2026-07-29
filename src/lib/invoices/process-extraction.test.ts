@@ -25,6 +25,19 @@ function invoiceResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function extractOutcome(overrides: Record<string, unknown> = {}) {
+  return {
+    extraction: invoiceResult(overrides),
+    metrics: {
+      provider: "anthropic",
+      model: "test-model",
+      inputTokens: 10,
+      outputTokens: 5,
+      durationMs: 1,
+    },
+  };
+}
+
 function mockSupabase() {
   const upsert = vi.fn().mockResolvedValue({ error: null });
   const from = vi.fn().mockReturnValue({ upsert });
@@ -44,7 +57,7 @@ beforeEach(() => {
 
 describe("processExtraction", () => {
   it("returns saved:false and writes nothing when not an invoice", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult({ is_invoice: false }) as never);
+    mockedExtract.mockResolvedValue(extractOutcome({ is_invoice: false }) as never);
     const sb = mockSupabase();
     const result = await processExtraction({
       supabase: sb.client,
@@ -60,7 +73,7 @@ describe("processExtraction", () => {
   });
 
   it("upserts on the composite conflict target and returns the summary", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     const result = await processExtraction({
       supabase: sb.client,
@@ -89,7 +102,7 @@ describe("processExtraction", () => {
   });
 
   it("flags low-confidence invoices for review", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult({ confidence_score: 0.4 }) as never);
+    mockedExtract.mockResolvedValue(extractOutcome({ confidence_score: 0.4 }) as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -104,7 +117,7 @@ describe("processExtraction", () => {
   });
 
   it("stores the uploaded file path when a buffer is provided", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -120,7 +133,7 @@ describe("processExtraction", () => {
   });
 
   it("sanitizes a path-traversal filename before building the storage path", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -136,7 +149,7 @@ describe("processExtraction", () => {
   });
 
   it("leaves file_url null when there is no file buffer", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,

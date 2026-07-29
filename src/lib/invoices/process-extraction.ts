@@ -31,7 +31,7 @@ export async function processExtraction(params: {
 }): Promise<ProcessExtractionResult> {
   const { supabase, userId, messageId, sourceRef, input, fileBuffer, fileName } = params;
 
-  const extracted = await extractInvoice(input);
+  const { extraction: extracted } = await extractInvoice(input);
   if (!extracted.is_invoice) return { saved: false };
 
   // invoice-files is a private bucket — store the object path only.

@@ -3,7 +3,7 @@ import {
   EXTRACTION_PROMPT,
   InvoiceExtractionSchema,
   type ExtractionInput,
-  type InvoiceExtraction,
+  type ExtractionResult,
 } from "./schema";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
@@ -48,7 +48,7 @@ function getClient() {
 
 export async function extractWithGoogle(
   input: ExtractionInput,
-): Promise<InvoiceExtraction> {
+): Promise<ExtractionResult> {
   const parts: Part[] = [];
 
   if (input.type === "pdf") {
@@ -79,5 +79,12 @@ export async function extractWithGoogle(
     throw new Error("Google extraction returned no text");
   }
 
-  return InvoiceExtractionSchema.parse(JSON.parse(text));
+  return {
+    extraction: InvoiceExtractionSchema.parse(JSON.parse(text)),
+    usage: {
+      model: process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL,
+      inputTokens: response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: response.usageMetadata?.candidatesTokenCount ?? null,
+    },
+  };
 }
