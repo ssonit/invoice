@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
-import { CopyEmailButton } from "../copy-email-button";
+import { CopyButton } from "@/components/dashboard/copy-button";
 import { CreateInboxButton } from "./create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
@@ -74,7 +74,7 @@ export default async function SettingsPage({
                   <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-[13px]">
                     {inbox.email_address}
                   </code>
-                  <CopyEmailButton email={inbox.email_address} />
+                  <CopyButton value={inbox.email_address} />
                 </div>
                 <p className="text-[12px] text-muted-foreground">
                   This is your permanent forwarding address — you only get one per account.
