@@ -30,7 +30,7 @@ export function AgentCard({
           <a
             href={agent.docsUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[12px] text-muted-foreground underline-offset-4 transition-colors duration-150 hover:text-foreground hover:underline"
           >
             Setup guide
