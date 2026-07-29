@@ -23,11 +23,20 @@ export const AUTOMATION_AGENT_KIND = {
 export type AutomationAgentKind =
   (typeof AUTOMATION_AGENT_KIND)[keyof typeof AUTOMATION_AGENT_KIND];
 
-export const AUTOMATION_KIND_LABEL: Record<AutomationAgentKind, string> = {
-  [AUTOMATION_AGENT_KIND.CHAT]: "Chat agents",
-  [AUTOMATION_AGENT_KIND.CODING]: "Coding agents",
-  [AUTOMATION_AGENT_KIND.GENERIC]: "Anything else",
-};
+export const AUTOMATION_AGENT_KIND_OPTIONS: ReadonlyArray<{
+  value: AutomationAgentKind;
+  label: string;
+}> = [
+  { value: AUTOMATION_AGENT_KIND.CHAT, label: "Chat agents" },
+  { value: AUTOMATION_AGENT_KIND.CODING, label: "Coding agents" },
+  { value: AUTOMATION_AGENT_KIND.GENERIC, label: "Anything else" },
+];
+
+// Derived from the options array above — don't hand-maintain a second mapping
+// that can drift out of sync with it.
+export const AUTOMATION_KIND_LABEL: Record<AutomationAgentKind, string> = Object.fromEntries(
+  AUTOMATION_AGENT_KIND_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<AutomationAgentKind, string>;
 
 export const AUTOMATION_STATUS = {
   WAITING_LABEL: "Waiting for your first forwarded email",

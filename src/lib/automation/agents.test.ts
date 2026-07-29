@@ -60,6 +60,15 @@ describe("groupAgentsByKind", () => {
     const grouped = groupAgentsByKind(AUTOMATION_AGENTS).flatMap((g) => g.agents);
     expect(grouped).toHaveLength(AUTOMATION_AGENTS.length);
   });
+
+  it("drops a kind entirely when no agent belongs to it", () => {
+    const [onlyClaude] = AUTOMATION_AGENTS.filter(
+      (agent) => agent.id === AUTOMATION_AGENT_ID.CLAUDE,
+    );
+    const groups = groupAgentsByKind([onlyClaude]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.kind).toBe(AUTOMATION_AGENT_KIND.CHAT);
+  });
 });
 
 describe("findAutomationAgent", () => {
