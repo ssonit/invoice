@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bot,
   Download,
   FileText,
   Inbox,
@@ -41,6 +42,12 @@ export const navGroups: NavGroup[] = [
         status: "live",
       },
       { label: "Inbox", href: "/dashboard/inbox", icon: Inbox, status: "live" },
+      {
+        label: "Automation",
+        href: "/dashboard/automation",
+        icon: Bot,
+        status: "live",
+      },
       {
         label: "Vendors",
         href: "/dashboard/vendors",

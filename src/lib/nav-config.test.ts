@@ -31,4 +31,10 @@ describe("findNavItem", () => {
     // which it isn't per isNavItemActive) and "/dashboard/vendors" — longest wins.
     expect(findNavItem("/dashboard/vendors/123")?.href).toBe("/dashboard/vendors");
   });
+
+  it("exposes Automation as a live workspace route", () => {
+    const item = findNavItem("/dashboard/automation");
+    expect(item?.label).toBe("Automation");
+    expect(item?.status).toBe("live");
+  });
 });
