@@ -31,7 +31,7 @@ export async function processExtraction(params: {
 }): Promise<ProcessExtractionResult> {
   const { supabase, userId, messageId, sourceRef, input, fileBuffer, fileName } = params;
 
-  const { extraction: extracted } = await extractInvoice(input);
+  const { extraction: extracted, metrics } = await extractInvoice(input);
   if (!extracted.is_invoice) return { saved: false };
 
   // invoice-files is a private bucket — store the object path only.
@@ -63,6 +63,11 @@ export async function processExtraction(params: {
       confidence_score: extracted.confidence_score,
       needs_review: extracted.confidence_score < 0.7,
       raw_extracted_json: extracted,
+      extraction_provider: metrics.provider,
+      extraction_model: metrics.model,
+      extraction_input_tokens: metrics.inputTokens,
+      extraction_output_tokens: metrics.outputTokens,
+      extraction_ms: metrics.durationMs,
       file_url: fileUrl,
       source_message_id: messageId,
       source_ref: sourceRef,
