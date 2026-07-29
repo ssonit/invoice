@@ -35,6 +35,18 @@ export type ExtractionInput =
   | { type: "image"; data: Buffer; mimeType: string }
   | { type: "html"; html: string };
 
+/** What a provider reports about the call it just made. */
+export type ExtractionUsage = {
+  model: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+};
+
+export type ExtractionResult = {
+  extraction: InvoiceExtraction;
+  usage: ExtractionUsage;
+};
+
 export const EXTRACTION_PROMPT = `You are looking at an email body or file that may or may not be a financial document.
 
 Accept as is_invoice=true only if it is clearly one of:
