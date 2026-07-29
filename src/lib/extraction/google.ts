@@ -65,8 +65,10 @@ export async function extractWithGoogle(
 
   parts.push({ text: EXTRACTION_PROMPT });
 
+  const requestedModel = process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL;
+
   const response = await getClient().models.generateContent({
-    model: process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL,
+    model: requestedModel,
     contents: [{ role: "user", parts }],
     config: {
       responseMimeType: "application/json",
@@ -82,7 +84,10 @@ export async function extractWithGoogle(
   return {
     extraction: InvoiceExtractionSchema.parse(JSON.parse(text)),
     usage: {
-      model: process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL,
+      // modelVersion is the model that actually ran, which can differ from
+      // what was requested (e.g. an alias resolving to a pinned version) —
+      // recording it, not the request, keeps cost attribution accurate.
+      model: response.modelVersion ?? requestedModel,
       inputTokens: response.usageMetadata?.promptTokenCount ?? null,
       outputTokens: response.usageMetadata?.candidatesTokenCount ?? null,
     },
