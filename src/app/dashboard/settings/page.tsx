@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
 import { CopyButton } from "@/components/dashboard/copy-button";
-import { CreateInboxButton } from "./create-inbox-button";
+import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
 import { BillingCard } from "./billing-card";
