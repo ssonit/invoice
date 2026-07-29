@@ -150,6 +150,12 @@ Following `.claude/rules/errors.md`:
   Postgres error code `23505`, re-read the existing row, and treat it as a duplicate — the
   same pattern `createInbox()` already uses at
   [`src/app/dashboard/actions.ts:56`](../../../src/app/dashboard/actions.ts).
+- **A task retry is not a duplicate arrival.** Trigger.dev re-runs the whole task function on
+  retry, so attempt two hashes the same attachment and finds the row attempt one already
+  saved. Incrementing `duplicate_hit_count` there would count our own retries as user
+  duplicates and corrupt the only metric this feature exists to produce. The counter is
+  therefore incremented **only when the existing row came from a different
+  `(source_message_id, source_ref)`**; a same-source hit returns the invoice untouched.
 - **Usage missing from an SDK response.** Store `null` and continue. Metrics must never block
   saving an invoice; the invoice is the product, the numbers are diagnostics.
 - **The `duplicate_hit_count` increment fails.** Log with context
