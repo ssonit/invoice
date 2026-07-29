@@ -1,8 +1,35 @@
 # Content-Aware Extraction Routing
 
 **Date:** 2026-07-29
-**Status:** Approved for implementation
+**Status:** Deferred (design approved, implementation postponed 2026-07-29)
 **Source:** `Invoice_Reader_Product_Ideas.md` §1 (Processing Architecture)
+
+## Why this is deferred
+
+The design holds up; the timing doesn't. Three things argue against building it now:
+
+- **There is no traffic to optimize.** The product isn't in production yet
+  ([`README.md`](../../../README.md) still lists Vercel as "not fully wired yet"). A large
+  percentage saving on near-zero volume is near-zero money, while the complexity is paid
+  immediately and permanently.
+- **It can cost more than it saves.** Flattened PDF text loses layout, and layout is how a
+  model tells a line-item price from an invoice total. `processExtraction` flags anything
+  under `confidence_score < 0.7` as `needs_review`, which converts a bad extraction into
+  human work. Human review time dwarfs the price of an inference call, so a few points of
+  accuracy regression wipes out the saving and then some.
+- **Availability becomes the product of two vendors.** Under `auto`, an outage at either
+  DeepSeek or Gemini breaks extraction, where today only one provider can fail.
+
+**Nothing here was measured.** `src/lib/extraction/` records no token usage, cost, or latency,
+and the ratio of text-layer PDFs to scans in real user mail is unknown — that ratio is the
+multiplier on the entire saving.
+
+**Revisit when:** the monthly extraction bill is large enough to notice, and telemetry shows
+what share of documents are text-layer PDFs. Then the thresholds in this spec can be set from
+data instead of guessed.
+
+**Doing first instead:** SHA256 dedupe on the email path and extraction telemetry — see
+[`2026-07-29-extraction-cost-visibility-design.md`](2026-07-29-extraction-cost-visibility-design.md).
 
 ## Goal
 
