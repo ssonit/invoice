@@ -85,7 +85,7 @@ real invoice email → AgentMail webhook → `process-inbound-email` → `invoic
 | `src/components/dashboard/automation/agent-card.tsx` | Monogram, name, one-line description, and three actions: *Install guide* (external link, `target="_blank" rel="noreferrer"`), *Copy prompt*, *Copy address*. Monogram rather than third-party brand logos. |
 | `src/components/dashboard/copy-button.tsx` | Generalized from `src/app/dashboard/copy-email-button.tsx`: `CopyButton({ value, label, copiedLabel })`. `settings/page.tsx:77` migrates to it and the old file is removed. |
 | `src/lib/automation/agents.ts` | `type AutomationAgent = { id; name; description; docsUrl?: string }` (optional — see the registry section), `AUTOMATION_AGENTS`, `findAutomationAgent(id)`. |
-| `src/lib/automation/prompt.ts` | `buildForwardPrompt({ agentName, forwardAddress }): string`. |
+| `src/lib/automation/prompt.ts` | `buildForwardPrompt(forwardAddress: string): string`. The template is identical for every agent, so it takes no agent argument. |
 | `src/constants/automation.ts` | Status labels and agent ids — no bare literals repeated across files. |
 | `src/lib/nav-config.ts` | New "Automation" item in the Workspace group, `status: "live"`. |
 
