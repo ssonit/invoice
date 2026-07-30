@@ -40,7 +40,14 @@ function extractOutcome(overrides: Record<string, unknown> = {}) {
 
 function mockSupabase() {
   const upsert = vi.fn().mockResolvedValue({ error: null });
-  const from = vi.fn().mockReturnValue({ upsert });
+  // Dedupe lookup chain: .from("invoices").select(...).eq(...).eq(...).maybeSingle()
+  // Defaults to "no existing row" so tests that don't care about dedupe keep
+  // exercising the normal extract-and-save path.
+  const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+  const selectEq2 = vi.fn().mockReturnValue({ maybeSingle });
+  const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
+  const select = vi.fn().mockReturnValue({ eq: selectEq1 });
+  const from = vi.fn().mockReturnValue({ upsert, select });
   const upload = vi.fn().mockResolvedValue({ data: { path: "u/p.pdf" }, error: null });
   const storageFrom = vi.fn().mockReturnValue({ upload });
   return {
@@ -48,6 +55,8 @@ function mockSupabase() {
     upsert,
     from,
     upload,
+    select,
+    maybeSingle,
   };
 }
 
