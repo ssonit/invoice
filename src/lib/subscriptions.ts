@@ -157,3 +157,62 @@ export function withConfirmationStatus(
     return { ...candidate, status: "upcoming" as const, needsConfirmation: false };
   });
 }
+
+export type ManualSubscriptionRow = {
+  vendor_key: string;
+  cycle: string;
+  status: string;
+};
+
+/** Build synthetic SubscriptionCandidates from manually-marked rows.
+ *  Each manual row uses the latest invoice for that vendorKey to derive
+ *  lastAmount/currency/lastIssueDate/nextExpectedDate. Vendors with zero
+ *  invoices are silently dropped — the Server Action guards this upstream. */
+export function buildManualCandidates(
+  invoices: InvoiceRow[],
+  manualRows: ManualSubscriptionRow[],
+): SubscriptionCandidate[] {
+  // Group invoices by vendor key, keep only the latest per vendor
+  const latestByKey = new Map<string, InvoiceRow>();
+  for (const invoice of invoices) {
+    if (!invoice.vendor || !invoice.issue_date) continue;
+    const key = normalizeVendorKey(invoice.vendor);
+    const existing = latestByKey.get(key);
+    if (!existing || invoice.issue_date > existing.issue_date!) {
+      latestByKey.set(key, invoice);
+    }
+  }
+
+  const candidates: SubscriptionCandidate[] = [];
+
+  for (const row of manualRows) {
+    const key = normalizeVendorKey(row.vendor_key);
+    const latest = latestByKey.get(key);
+    if (!latest) continue; // no invoices — skip (Server Action guards upstream)
+
+    const cycle = row.cycle as SubscriptionCycle;
+    candidates.push({
+      vendorKey: key,
+      vendorLabel: latest.vendor!,
+      cycle,
+      invoiceCount: 1, // manual mark — we don't count all invoices
+      lastAmount: latest.amount,
+      currency: latest.currency,
+      lastIssueDate: latest.issue_date!,
+      nextExpectedDate: addDays(latest.issue_date!, CYCLE_DAYS[cycle]),
+    });
+  }
+
+  return candidates;
+}
+
+/** Merge detected and manual candidates. Manual overrides detected for the
+ *  same vendorKey (manual mark wins when both exist). */
+export function mergeSubscriptionCandidates(
+  detected: SubscriptionCandidate[],
+  manual: SubscriptionCandidate[],
+): SubscriptionCandidate[] {
+  const manualKeys = new Set(manual.map((m) => m.vendorKey));
+  const filtered = detected.filter((d) => !manualKeys.has(d.vendorKey));
+  return [...filtered, ...manual];
+}

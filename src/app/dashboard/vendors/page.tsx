@@ -19,9 +19,12 @@ import {
 } from "@/components/ui/empty"
 import { formatInvoiceMoney, normalizeInvoice } from "@/lib/invoices"
 import {
+  buildManualCandidates,
   detectSubscriptions,
+  mergeSubscriptionCandidates,
   normalizeVendorKey,
   withConfirmationStatus,
+  type ManualSubscriptionRow,
   type SubscriptionConfirmation,
 } from "@/lib/subscriptions"
 import {
@@ -144,7 +147,7 @@ export default async function VendorsPage({
     supabase.from("vendor_recent_invoices").select("*").eq("user_id", user!.id),
     supabase
       .from("subscription_confirmations")
-      .select("vendor_key, status, confirmed_at")
+      .select("vendor_key, status, confirmed_at, origin, cycle")
       .eq("user_id", user!.id),
   ])
 
@@ -189,10 +192,21 @@ export default async function VendorsPage({
     ]),
   )
 
-  const subscriptions = withConfirmationStatus(
+  const manualRows: ManualSubscriptionRow[] = (confirmationRows ?? [])
+    .filter((row) => row.origin === "manual")
+    .map((row) => ({
+      vendor_key: row.vendor_key,
+      cycle: row.cycle ?? "monthly",
+      status: row.status,
+    }))
+
+  const manualCandidates = buildManualCandidates(recentInvoices, manualRows)
+  const allCandidates = mergeSubscriptionCandidates(
     detectSubscriptions(recentInvoices),
-    confirmations,
+    manualCandidates,
   )
+
+  const subscriptions = withConfirmationStatus(allCandidates, confirmations)
   const due = subscriptions.filter((s) => s.needsConfirmation)
 
   const statsByKey = new Map(stats.map((row) => [row.vendor_key, row]))

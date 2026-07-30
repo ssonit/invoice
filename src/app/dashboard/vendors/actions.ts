@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeVendorKey } from "@/lib/subscriptions";
-import { parseConfirmSubscriptionInput } from "@/lib/validation/subscriptions";
+import { parseConfirmSubscriptionInput, parseMarkSubscriptionInput } from "@/lib/validation/subscriptions";
 import {
   parseCreateVendorInput,
   parseDeleteVendorInput,
@@ -56,6 +56,39 @@ export async function confirmSubscription(
   if (error) {
     console.error("Failed to save subscription confirmation", user.id, error);
     return { ok: false, error: "Could not save your answer. Please try again." };
+  }
+
+  revalidatePath("/dashboard/vendors");
+  return { ok: true };
+}
+
+export async function markVendorAsSubscription(
+  vendorKey: string,
+  cycle: "monthly" | "yearly",
+): Promise<ConfirmSubscriptionResult> {
+  const parsed = parseMarkSubscriptionInput({ vendorKey, cycle });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error };
+  }
+
+  const user = await requireUser();
+  const service = createServiceClient();
+
+  const { error } = await service.from("subscription_confirmations").upsert(
+    {
+      user_id: user.id,
+      vendor_key: parsed.data.vendorKey,
+      status: "active",
+      origin: "manual",
+      cycle: parsed.data.cycle,
+      confirmed_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,vendor_key" },
+  );
+
+  if (error) {
+    console.error("Failed to mark vendor as subscription", user.id, error);
+    return { ok: false, error: "Could not mark as subscription. Please try again." };
   }
 
   revalidatePath("/dashboard/vendors");
