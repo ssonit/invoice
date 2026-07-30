@@ -91,10 +91,10 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     },
     hero: {
       badge: "Introducing Invoice Reader",
-      headline: "The new way to",
-      headlineAccent: "read invoices.",
+      headline: "Your AI already reads",
+      headlineAccent: "your inbox.",
       subtext:
-        "Forward vendor emails. AI extracts totals, vendors, and due dates into a clean dashboard.",
+        "Tell it to forward invoices too. No Gmail OAuth, no mailbox access — just the bills that matter, landing in one dashboard.",
       cta: "Get started",
     },
     trust: {
@@ -105,14 +105,14 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       subtitle: "Three steps. No spreadsheet gymnastics.",
       steps: [
         {
-          title: "Forward the email",
-          body: "Send vendor invoices to your dedicated AgentMail inbox. PDF or image, same flow.",
+          title: "Set up your AI agent once",
+          body: "Paste one prompt into Claude, ChatGPT, or Gemini. From then on, it forwards invoices for you — you never touch this again.",
           points: [
-            "Works with PDF and image attachments",
-            "Dedicated inbox per workspace",
-            "No manual upload ritual",
+            "Works with Claude, ChatGPT, Gemini, and more",
+            "One prompt, forwards forever",
+            "Your AI decides what's an invoice",
           ],
-          preview: "invoice@inbox → AgentMail",
+          preview: "Claude → invoice@inbox",
         },
         {
           title: "AI extracts the fields",
@@ -205,7 +205,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     footer: {
       product: "Invoice Reader",
       rights: "All rights reserved.",
-      tagline: "AI inbox for invoices.",
+      tagline: "AI inbox for finance.",
       productLabel: "Product",
       accountLabel: "Account",
       legalLabel: "Legal",
@@ -233,10 +233,10 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     },
     hero: {
       badge: "Ra mắt Invoice Reader",
-      headline: "Cách mới để",
-      headlineAccent: "đọc hóa đơn.",
+      headline: "AI của bạn đã đọc",
+      headlineAccent: "hộp thư rồi.",
       subtext:
-        "Chuyển tiếp email NCC. AI trích xuất tổng tiền, nhà cung cấp và hạn thanh toán vào dashboard gọn.",
+        "Hãy để nó chuyển tiếp cả hóa đơn. Không cần cấp quyền Gmail, không đụng tới hộp thư — chỉ hóa đơn thật sự cần, gom vào một dashboard.",
       cta: "Bắt đầu",
     },
     trust: {
@@ -247,14 +247,14 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       subtitle: "Ba bước. Không cần nhảy spreadsheet.",
       steps: [
         {
-          title: "Chuyển tiếp email",
-          body: "Gửi hóa đơn tới hộp thư AgentMail riêng. PDF hay ảnh, cùng một luồng.",
+          title: "Cấu hình AI agent một lần",
+          body: "Dán một prompt vào Claude, ChatGPT hoặc Gemini. Từ đó AI tự chuyển tiếp hóa đơn cho bạn — không cần làm lại nữa.",
           points: [
-            "Hỗ trợ PDF và ảnh đính kèm",
-            "Hộp thư riêng theo workspace",
-            "Không cần upload thủ công",
+            "Dùng được với Claude, ChatGPT, Gemini và nhiều AI khác",
+            "Một prompt, chuyển tiếp mãi mãi",
+            "AI của bạn tự quyết định đâu là hóa đơn",
           ],
-          preview: "invoice@inbox → AgentMail",
+          preview: "Claude → invoice@inbox",
         },
         {
           title: "AI trích xuất trường",
@@ -347,7 +347,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     footer: {
       product: "Invoice Reader",
       rights: "Đã đăng ký bản quyền.",
-      tagline: "Hộp thư AI cho hóa đơn.",
+      tagline: "Hộp thư AI cho tài chính.",
       productLabel: "Sản phẩm",
       accountLabel: "Tài khoản",
       legalLabel: "Pháp lý",
