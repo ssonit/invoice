@@ -134,6 +134,12 @@ export const processInboundEmail = task({
       }
     }
 
+    // This "error" reply and onFailure's "error" reply (above) can't both
+    // fire for the same execution: reaching this line means run() completed,
+    // which ends the retry chain and makes onFailure unreachable for this
+    // attempt; onFailure only runs when every attempt throws, in which case
+    // this line was never reached on any attempt. If code is ever added
+    // after this point that could itself throw, re-check that invariant.
     const outcome: EmailReplyOutcome =
       saved.length > 0
         ? { type: "processed", invoices: saved }
