@@ -24,6 +24,10 @@ export type ProcessAttachmentPayload = {
 // moved here from process-inbound-email.ts for that reason.
 export const EXTRACTION_CONCURRENCY_LIMIT = 5;
 
+// No onFailure here: a single attachment's exhausted retries aren't
+// independently reported to anyone. process-inbound-email.ts's
+// batchTriggerAndWait aggregation is where the overall outcome and the
+// sender-facing reply are decided.
 export const processAttachment = task({
   id: "process-attachment",
   queue: { concurrencyLimit: EXTRACTION_CONCURRENCY_LIMIT },
