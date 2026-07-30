@@ -23,6 +23,9 @@ const envSchema = z
     // Non-prod dev-unlock for Team features — never set on Vercel Production.
     // See docs/billing-lemonsqueezy.md and src/lib/billing.ts for details.
     BILLING_DEV_UNLOCK: z.string().optional(),
+    // Starter-plan monthly invoice extraction cap (default 50 if unset).
+    // Set low for local testing (e.g. 3) to hit the wall quickly.
+    STARTER_MONTHLY_INVOICE_LIMIT: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     const provider = (env.EXTRACTION_PROVIDER || "anthropic").toLowerCase();

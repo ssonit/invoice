@@ -193,6 +193,27 @@ without touching `.env.local`.
 Lemon Squeezy **test mode** (already documented in their docs) still exercises checkout →
 webhook → `billing_subscriptions` row. Dev unlock does **not** replace this for payment QA.
 
+## Starter usage soft limit (2026-07-30)
+
+**Design:** `docs/superpowers/specs/2026-07-30-starter-usage-limit-design.md`
+**Plan:** `docs/superpowers/plans/2026-07-30-starter-usage-limit.md`
+
+Starter-plan users are capped at `STARTER_MONTHLY_INVOICE_LIMIT` (default 50) billable
+invoice extractions per UTC calendar month. Team users and `BILLING_DEV_UNLOCK` are
+unlimited. The cap is enforced at two points:
+
+1. **Upload API** (`POST /api/invoices/upload`): returns 429 with `{ error, used, limit, resetsAt }`.
+2. **Email extraction** (`processExtraction`): skips the LLM call, returns `{ saved: false }`.
+
+Dedupe hits (same `content_hash`) bypass the quota — only new `invoices` rows count.
+The Settings billing card shows a progress bar with soft-warn (amber at 80%) and
+blocked (red at 100%) states for Starter users. Team users see no quota UI.
+
+```env
+# .env.local — tiny cap for testing
+STARTER_MONTHLY_INVOICE_LIMIT=3
+```
+
 ## Manual verification still needed
 
 `npm run test` (all 19 suites / 172 tests, including the new `billing.test.ts` and
