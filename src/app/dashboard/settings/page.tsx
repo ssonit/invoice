@@ -6,6 +6,8 @@ import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
 import { BillingCard } from "./billing-card";
 import type { BillingSubscriptionRow } from "@/lib/billing";
+import { hasActiveTeamPlan } from "@/lib/billing";
+import { getMonthRangeUtc, getStarterMonthlyLimit } from "@/lib/billing/usage";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -40,6 +42,20 @@ export default async function SettingsPage({
 
   if (subscriptionError) {
     console.error("Failed to load billing subscription", user!.id, subscriptionError);
+  }
+
+  // Usage meter — only for Starter (Team has no cap).
+  let usage: { used: number; limit: number; resetsAt: string } | null = null;
+  const isTeam = hasActiveTeamPlan(subscription);
+  if (!isTeam && subscription) {
+    const { start, end } = getMonthRangeUtc();
+    const limit = getStarterMonthlyLimit();
+    const { count } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user!.id)
+      .gte("created_at", start.toISOString());
+    usage = { used: count ?? 0, limit, resetsAt: end.toISOString() };
   }
 
   return (
@@ -95,7 +111,7 @@ export default async function SettingsPage({
           </CardHeader>
           <CardContent>
             {subscription ? (
-              <BillingCard subscription={subscription} justCheckedOut={justCheckedOut} />
+              <BillingCard subscription={subscription} justCheckedOut={justCheckedOut} usage={usage} />
             ) : (
               <p className="text-[13px] text-muted-foreground">
                 Could not load your billing status. Please refresh the page.

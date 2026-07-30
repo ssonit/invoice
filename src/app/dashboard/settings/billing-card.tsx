@@ -16,9 +16,11 @@ import { formatInvoiceDate } from "@/lib/invoices";
 export function BillingCard({
   subscription,
   justCheckedOut,
+  usage,
 }: {
   subscription: BillingSubscriptionRow;
   justCheckedOut?: boolean;
+  usage?: { used: number; limit: number; resetsAt: string } | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
@@ -31,12 +33,12 @@ export function BillingCard({
       );
     }
   }, [justCheckedOut]);
-  // Whether to send the user to their existing subscription's Lemon Squeezy
-  // portal (to fix/manage it) vs. start a brand-new checkout. Deliberately
-  // NOT the same check as isTeam/hasActiveTeamPlan — a paused or unpaid
-  // subscriber has lost access (isTeam is false) but already has a real
-  // subscription and should be routed to fix it, not sold a duplicate.
+
   const hasExistingSubscription = subscription.status !== "none";
+
+  const usageRatio = usage ? usage.used / usage.limit : 0;
+  const showSoftWarn = usageRatio >= 0.8 && usageRatio < 1;
+  const showBlocked = usageRatio >= 1;
 
   function handleUpgrade() {
     startTransition(async () => {
@@ -73,6 +75,36 @@ export function BillingCard({
           </Badge>
         ) : null}
       </div>
+
+      {/* Usage meter — Starter only (Team has no cap) */}
+      {!isTeam && usage ? (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 flex-1 rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  showBlocked
+                    ? "bg-destructive"
+                    : showSoftWarn
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                }`}
+                style={{ width: `${Math.min(usageRatio * 100, 100)}%` }}
+              />
+            </div>
+            <span className="text-[12px] tabular-nums text-muted-foreground">
+              {usage.used}/{usage.limit}
+            </span>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            {showBlocked
+              ? `Monthly limit reached. Resets ${formatInvoiceDate(usage.resetsAt)}.`
+              : showSoftWarn
+                ? `Almost at your monthly limit. Resets ${formatInvoiceDate(usage.resetsAt)}.`
+                : `${usage.used} of ${usage.limit} invoices this month · resets ${formatInvoiceDate(usage.resetsAt)}`}
+          </p>
+        </div>
+      ) : null}
 
       {hasExistingSubscription ? (
         <a

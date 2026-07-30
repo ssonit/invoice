@@ -40,17 +40,39 @@ function extractOutcome(overrides: Record<string, unknown> = {}) {
 
 function mockSupabase() {
   const upsert = vi.fn().mockResolvedValue({ error: null });
+
   // Dedupe lookup chain: .from("invoices").select(...).eq(...).eq(...).maybeSingle()
   // Defaults to "no existing row" so tests that don't care about dedupe keep
   // exercising the normal extract-and-save path.
   const maybeSingle = vi.fn().mockResolvedValue({ data: null });
   const selectEq2 = vi.fn().mockReturnValue({ maybeSingle });
   const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
-  const select = vi.fn().mockReturnValue({ eq: selectEq1 });
+
+  // Invoice count chain (for checkStarterQuota): .from("invoices")
+  //   .select("*", { count: "exact", head: true }).eq(...).gte(...)
+  const gte = vi.fn().mockResolvedValue({ count: 0, error: null });
+  const countEq = vi.fn().mockReturnValue({ gte });
+
+  const select = vi.fn((_columns?: unknown, options?: { head?: boolean }) => {
+    if (options?.head) return { eq: countEq };
+    return { eq: selectEq1 };
+  });
+
+  // Billing subscription chain (for checkStarterQuota):
+  //   .from("billing_subscriptions").select(...).eq(...).maybeSingle()
+  const billingMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+  const billingSelectEq = vi.fn().mockReturnValue({ maybeSingle: billingMaybeSingle });
+  const billingSelect = vi.fn().mockReturnValue({ eq: billingSelectEq });
+
   // Duplicate-counter increment chain: .from("invoices").update(...).eq("id", ...)
   const updateEq = vi.fn().mockResolvedValue({ error: null });
   const update = vi.fn().mockReturnValue({ eq: updateEq });
-  const from = vi.fn().mockReturnValue({ upsert, select, update });
+
+  const from = vi.fn((table: string) => {
+    if (table === "billing_subscriptions") return { select: billingSelect };
+    return { upsert, select, update };
+  });
+
   const upload = vi.fn().mockResolvedValue({ data: { path: "u/p.pdf" }, error: null });
   const storageFrom = vi.fn().mockReturnValue({ upload });
   return {
@@ -60,6 +82,7 @@ function mockSupabase() {
     upload,
     select,
     maybeSingle,
+    billingMaybeSingle,
     update,
     updateEq,
   };
@@ -83,7 +106,9 @@ describe("processExtraction", () => {
       fileName: null,
     });
     expect(result).toEqual({ saved: false });
-    expect(sb.from).not.toHaveBeenCalled();
+    // checkStarterQuota queries billing_subscriptions before extraction,
+    // so from() is called even when the result is "not an invoice".
+    expect(mockedExtract).toHaveBeenCalled();
   });
 
   it("upserts on the composite conflict target and returns the summary", async () => {

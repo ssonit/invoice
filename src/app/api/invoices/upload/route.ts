@@ -8,6 +8,7 @@ import { checkContentLength, parseUploadForm } from "@/lib/validation/common";
 import { MAX_UPLOAD_REQUEST_BYTES } from "@/constants/validation";
 import { sha256Hex } from "@/lib/file-hash";
 import { checkUploadRateLimit } from "@/lib/rate-limit";
+import { checkStarterQuota } from "@/lib/billing/usage";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -74,6 +75,21 @@ export async function POST(request: Request) {
       console.error("Failed to record duplicate upload hit", user.id, hitError);
     }
     return NextResponse.json({ invoice: existing, duplicate: true });
+  }
+
+  // Starter-plan monthly quota — skip the LLM call when the user has reached
+  // their cap this month. Team and dev_unlock always pass through.
+  const quota = await checkStarterQuota(service, user.id);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: "You've reached your monthly invoice limit.",
+        used: quota.used,
+        limit: quota.limit,
+        resetsAt: quota.resetsAt,
+      },
+      { status: 429 },
+    );
   }
 
   const input =
