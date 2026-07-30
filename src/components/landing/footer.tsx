@@ -46,6 +46,15 @@ export function LandingFooter() {
               <button
                 type="button"
                 className="hover:text-[var(--landing-fg)]"
+                onClick={() => scrollToId("agents")}
+              >
+                {t.footer.links.agents}
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="hover:text-[var(--landing-fg)]"
                 onClick={() => scrollToId("pricing")}
               >
                 {t.footer.links.pricing}
@@ -86,14 +95,20 @@ export function LandingFooter() {
           </h2>
           <ul className="mt-4 space-y-3 text-sm text-[var(--landing-muted)]">
             <li>
-              <span className="cursor-default opacity-70">
+              <Link
+                href="/terms"
+                className="hover:text-[var(--landing-fg)]"
+              >
                 {t.footer.links.terms}
-              </span>
+              </Link>
             </li>
             <li>
-              <span className="cursor-default opacity-70">
+              <Link
+                href="/privacy"
+                className="hover:text-[var(--landing-fg)]"
+              >
                 {t.footer.links.privacy}
-              </span>
+              </Link>
             </li>
           </ul>
         </div>
