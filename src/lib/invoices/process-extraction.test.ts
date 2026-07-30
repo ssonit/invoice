@@ -25,9 +25,32 @@ function invoiceResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function extractOutcome(overrides: Record<string, unknown> = {}) {
+  return {
+    extraction: invoiceResult(overrides),
+    metrics: {
+      provider: "anthropic",
+      model: "test-model",
+      inputTokens: 10,
+      outputTokens: 5,
+      durationMs: 1,
+    },
+  };
+}
+
 function mockSupabase() {
   const upsert = vi.fn().mockResolvedValue({ error: null });
-  const from = vi.fn().mockReturnValue({ upsert });
+  // Dedupe lookup chain: .from("invoices").select(...).eq(...).eq(...).maybeSingle()
+  // Defaults to "no existing row" so tests that don't care about dedupe keep
+  // exercising the normal extract-and-save path.
+  const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+  const selectEq2 = vi.fn().mockReturnValue({ maybeSingle });
+  const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
+  const select = vi.fn().mockReturnValue({ eq: selectEq1 });
+  // Duplicate-counter increment chain: .from("invoices").update(...).eq("id", ...)
+  const updateEq = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn().mockReturnValue({ eq: updateEq });
+  const from = vi.fn().mockReturnValue({ upsert, select, update });
   const upload = vi.fn().mockResolvedValue({ data: { path: "u/p.pdf" }, error: null });
   const storageFrom = vi.fn().mockReturnValue({ upload });
   return {
@@ -35,6 +58,10 @@ function mockSupabase() {
     upsert,
     from,
     upload,
+    select,
+    maybeSingle,
+    update,
+    updateEq,
   };
 }
 
@@ -44,7 +71,7 @@ beforeEach(() => {
 
 describe("processExtraction", () => {
   it("returns saved:false and writes nothing when not an invoice", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult({ is_invoice: false }) as never);
+    mockedExtract.mockResolvedValue(extractOutcome({ is_invoice: false }) as never);
     const sb = mockSupabase();
     const result = await processExtraction({
       supabase: sb.client,
@@ -60,7 +87,7 @@ describe("processExtraction", () => {
   });
 
   it("upserts on the composite conflict target and returns the summary", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     const result = await processExtraction({
       supabase: sb.client,
@@ -89,7 +116,7 @@ describe("processExtraction", () => {
   });
 
   it("flags low-confidence invoices for review", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult({ confidence_score: 0.4 }) as never);
+    mockedExtract.mockResolvedValue(extractOutcome({ confidence_score: 0.4 }) as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -104,7 +131,7 @@ describe("processExtraction", () => {
   });
 
   it("stores the uploaded file path when a buffer is provided", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -120,7 +147,7 @@ describe("processExtraction", () => {
   });
 
   it("sanitizes a path-traversal filename before building the storage path", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -136,7 +163,7 @@ describe("processExtraction", () => {
   });
 
   it("leaves file_url null when there is no file buffer", async () => {
-    mockedExtract.mockResolvedValue(invoiceResult() as never);
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
     const sb = mockSupabase();
     await processExtraction({
       supabase: sb.client,
@@ -149,5 +176,131 @@ describe("processExtraction", () => {
     });
     expect(sb.upload).not.toHaveBeenCalled();
     expect(sb.upsert.mock.calls[0]![0]).toMatchObject({ file_url: null });
+  });
+
+  it("reuses the existing invoice and skips extraction on a content-hash hit", async () => {
+    const sb = mockSupabase();
+    sb.maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "inv-1",
+        vendor: "Acme SaaS",
+        amount: 19,
+        currency: "USD",
+        source_message_id: "msg-OLD",
+        source_ref: "att-OLD",
+        duplicate_hit_count: 2,
+      },
+    });
+    const result = await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-NEW",
+      sourceRef: "att-NEW",
+      input: { type: "pdf", data: Buffer.from("x") },
+      fileBuffer: Buffer.from("x"),
+      fileName: "bill.pdf",
+    });
+    expect(mockedExtract).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      saved: true,
+      invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
+    });
+  });
+
+  it("increments the duplicate counter when the hash hit is a genuinely new arrival", async () => {
+    const sb = mockSupabase();
+    sb.maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "inv-1",
+        vendor: "Acme SaaS",
+        amount: 19,
+        currency: "USD",
+        source_message_id: "msg-OLD",
+        source_ref: "att-OLD",
+        duplicate_hit_count: 2,
+      },
+    });
+    await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-NEW",
+      sourceRef: "att-NEW",
+      input: { type: "pdf", data: Buffer.from("x") },
+      fileBuffer: Buffer.from("x"),
+      fileName: "bill.pdf",
+    });
+    expect(sb.update).toHaveBeenCalledWith({ duplicate_hit_count: 3 });
+    expect(sb.updateEq).toHaveBeenCalledWith("id", "inv-1");
+  });
+
+  it("does not increment the duplicate counter when the hit is the task's own retry", async () => {
+    const sb = mockSupabase();
+    sb.maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "inv-1",
+        vendor: "Acme SaaS",
+        amount: 19,
+        currency: "USD",
+        source_message_id: "msg-1",
+        source_ref: "att-1",
+        duplicate_hit_count: 0,
+      },
+    });
+    const result = await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-1",
+      sourceRef: "att-1",
+      input: { type: "pdf", data: Buffer.from("x") },
+      fileBuffer: Buffer.from("x"),
+      fileName: "bill.pdf",
+    });
+    expect(mockedExtract).not.toHaveBeenCalled();
+    expect(sb.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      saved: true,
+      invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
+    });
+  });
+
+  it("throws when the upsert fails for a reason other than a duplicate-hash race", async () => {
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
+    const sb = mockSupabase();
+    sb.upsert.mockResolvedValue({
+      error: { code: "42P01", message: "relation does not exist" },
+    });
+    await expect(
+      processExtraction({
+        supabase: sb.client,
+        userId: "user-1",
+        messageId: "msg-1",
+        sourceRef: "att-1",
+        input: { type: "pdf", data: Buffer.from("x") },
+        fileBuffer: Buffer.from("x"),
+        fileName: "bill.pdf",
+      }),
+    ).rejects.toThrow("Could not save the extracted invoice");
+  });
+
+  it("recovers from a concurrent duplicate-hash race by returning the winning row", async () => {
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
+    const sb = mockSupabase();
+    sb.upsert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
+    sb.maybeSingle
+      .mockResolvedValueOnce({ data: null }) // pre-extraction dedupe lookup: no hit yet
+      .mockResolvedValueOnce({ data: { vendor: "Acme SaaS", amount: 19, currency: "USD" } });
+    const result = await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-1",
+      sourceRef: "att-1",
+      input: { type: "pdf", data: Buffer.from("x") },
+      fileBuffer: Buffer.from("x"),
+      fileName: "bill.pdf",
+    });
+    expect(result).toEqual({
+      saved: true,
+      invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
+    });
   });
 });

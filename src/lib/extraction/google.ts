@@ -3,7 +3,7 @@ import {
   EXTRACTION_PROMPT,
   InvoiceExtractionSchema,
   type ExtractionInput,
-  type InvoiceExtraction,
+  type ExtractionResult,
 } from "./schema";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
@@ -48,7 +48,7 @@ function getClient() {
 
 export async function extractWithGoogle(
   input: ExtractionInput,
-): Promise<InvoiceExtraction> {
+): Promise<ExtractionResult> {
   const parts: Part[] = [];
 
   if (input.type === "pdf") {
@@ -65,8 +65,10 @@ export async function extractWithGoogle(
 
   parts.push({ text: EXTRACTION_PROMPT });
 
+  const requestedModel = process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL;
+
   const response = await getClient().models.generateContent({
-    model: process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL,
+    model: requestedModel,
     contents: [{ role: "user", parts }],
     config: {
       responseMimeType: "application/json",
@@ -79,5 +81,15 @@ export async function extractWithGoogle(
     throw new Error("Google extraction returned no text");
   }
 
-  return InvoiceExtractionSchema.parse(JSON.parse(text));
+  return {
+    extraction: InvoiceExtractionSchema.parse(JSON.parse(text)),
+    usage: {
+      // modelVersion is the model that actually ran, which can differ from
+      // what was requested (e.g. an alias resolving to a pinned version) —
+      // recording it, not the request, keeps cost attribution accurate.
+      model: response.modelVersion ?? requestedModel,
+      inputTokens: response.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: response.usageMetadata?.candidatesTokenCount ?? null,
+    },
+  };
 }

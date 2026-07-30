@@ -66,6 +66,13 @@ export async function POST(request: Request) {
     .eq("content_hash", contentHash)
     .maybeSingle();
   if (existing) {
+    const { error: hitError } = await service
+      .from("invoices")
+      .update({ duplicate_hit_count: (existing.duplicate_hit_count ?? 0) + 1 })
+      .eq("id", existing.id);
+    if (hitError) {
+      console.error("Failed to record duplicate upload hit", user.id, hitError);
+    }
     return NextResponse.json({ invoice: existing, duplicate: true });
   }
 
@@ -74,7 +81,7 @@ export async function POST(request: Request) {
       ? ({ type: "pdf", data: buffer } as const)
       : ({ type: "image", data: buffer, mimeType } as const);
 
-  const extracted = await extractInvoice(input);
+  const { extraction: extracted, metrics } = await extractInvoice(input);
   if (!extracted.is_invoice) {
     return NextResponse.json(
       {
@@ -107,6 +114,11 @@ export async function POST(request: Request) {
         confidence_score: extracted.confidence_score,
         needs_review: extracted.confidence_score < 0.7,
         raw_extracted_json: extracted,
+        extraction_provider: metrics.provider,
+        extraction_model: metrics.model,
+        extraction_input_tokens: metrics.inputTokens,
+        extraction_output_tokens: metrics.outputTokens,
+        extraction_ms: metrics.durationMs,
         file_url: uploaded?.path ?? null,
         content_hash: contentHash,
       },
