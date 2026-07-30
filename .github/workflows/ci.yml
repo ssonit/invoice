@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Dummy values — satisfy instrumentation/parseEnvInput only.
+      # Never put real secrets here (this workflow runs on public forks too).
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+      AGENTMAIL_API_KEY: test-agentmail-key
+      AGENTMAIL_WEBHOOK_SECRET: test-agentmail-webhook-secret
+      EXTRACTION_PROVIDER: anthropic
+      ANTHROPIC_API_KEY: test-anthropic-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+      - run: npx tsc --noEmit
+      - run: npm run build
