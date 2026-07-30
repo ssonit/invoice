@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { detectSubscriptions, normalizeVendorKey, withConfirmationStatus } from "./subscriptions";
+import {
+  buildManualCandidates,
+  detectSubscriptions,
+  mergeSubscriptionCandidates,
+  normalizeVendorKey,
+  withConfirmationStatus,
+} from "./subscriptions";
 import type { InvoiceRow } from "./invoices";
+import type { ManualSubscriptionRow } from "./subscriptions";
 
 function makeInvoice(
   overrides: Partial<InvoiceRow> & { vendor: string; issue_date: string },
@@ -212,5 +219,140 @@ describe("withConfirmationStatus", () => {
     const [result] = withConfirmationStatus([candidate], confirmations, today);
     expect(result.status).toBe("cancelled");
     expect(result.needsConfirmation).toBe(false);
+  });
+});
+
+describe("buildManualCandidates", () => {
+  it("builds a candidate from a single invoice for a manually marked vendor", () => {
+    const invoices = [
+      makeInvoice({ vendor: "One Off SaaS", issue_date: "2026-07-01", amount: 49 }),
+    ];
+    const manualRows: ManualSubscriptionRow[] = [
+      { vendor_key: "one off saas", cycle: "monthly", status: "active" },
+    ];
+
+    const result = buildManualCandidates(invoices, manualRows);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      vendorKey: "one off saas",
+      cycle: "monthly",
+      lastIssueDate: "2026-07-01",
+      nextExpectedDate: "2026-07-31",
+      lastAmount: 49,
+    });
+  });
+
+  it("uses the latest invoice when multiple exist for a manual vendor", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Growing SaaS", issue_date: "2026-06-01", amount: 29 }),
+      makeInvoice({ vendor: "Growing SaaS", issue_date: "2026-07-15", amount: 99 }),
+    ];
+    const manualRows: ManualSubscriptionRow[] = [
+      { vendor_key: "growing saas", cycle: "monthly", status: "active" },
+    ];
+
+    const result = buildManualCandidates(invoices, manualRows);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].lastIssueDate).toBe("2026-07-15");
+    expect(result[0].lastAmount).toBe(99);
+    expect(result[0].nextExpectedDate).toBe("2026-08-14");
+  });
+
+  it("skips vendors with no invoices", () => {
+    const manualRows: ManualSubscriptionRow[] = [
+      { vendor_key: "ghost vendor", cycle: "monthly", status: "active" },
+    ];
+
+    expect(buildManualCandidates([], manualRows)).toEqual([]);
+  });
+
+  it("builds yearly candidates", () => {
+    const invoices = [
+      makeInvoice({ vendor: "Annual Thing", issue_date: "2026-01-10", amount: 120 }),
+    ];
+    const manualRows: ManualSubscriptionRow[] = [
+      { vendor_key: "annual thing", cycle: "yearly", status: "active" },
+    ];
+
+    const result = buildManualCandidates(invoices, manualRows);
+    expect(result[0].cycle).toBe("yearly");
+    expect(result[0].nextExpectedDate).toBe("2027-01-10");
+  });
+
+  it("builds multiple manual candidates independently", () => {
+    const invoices = [
+      makeInvoice({ vendor: "SaaS A", issue_date: "2026-07-01" }),
+      makeInvoice({ vendor: "SaaS B", issue_date: "2026-07-15" }),
+    ];
+    const manualRows: ManualSubscriptionRow[] = [
+      { vendor_key: "saas a", cycle: "monthly", status: "active" },
+      { vendor_key: "saas b", cycle: "yearly", status: "active" },
+    ];
+
+    expect(buildManualCandidates(invoices, manualRows)).toHaveLength(2);
+  });
+});
+
+describe("mergeSubscriptionCandidates", () => {
+  const detected = [
+    {
+      vendorKey: "auto-detected",
+      vendorLabel: "Auto Detected",
+      cycle: "monthly" as const,
+      invoiceCount: 3,
+      lastAmount: 29,
+      currency: "USD",
+      lastIssueDate: "2026-07-01",
+      nextExpectedDate: "2026-07-31",
+    },
+  ];
+
+  const manual = [
+    {
+      vendorKey: "manual-only",
+      vendorLabel: "Manual Only",
+      cycle: "yearly" as const,
+      invoiceCount: 1,
+      lastAmount: 99,
+      currency: "USD",
+      lastIssueDate: "2026-07-15",
+      nextExpectedDate: "2027-07-15",
+    },
+  ];
+
+  it("combines detected and manual candidates", () => {
+    const result = mergeSubscriptionCandidates(detected, manual);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.vendorKey).sort()).toEqual(["auto-detected", "manual-only"]);
+  });
+
+  it("manual overrides detected for the same vendorKey", () => {
+    const manualOverride = [
+      {
+        vendorKey: "auto-detected",
+        vendorLabel: "Auto Detected (Manual)",
+        cycle: "yearly" as const,
+        invoiceCount: 1,
+        lastAmount: 49,
+        currency: "EUR",
+        lastIssueDate: "2026-08-01",
+        nextExpectedDate: "2027-08-01",
+      },
+    ];
+
+    const result = mergeSubscriptionCandidates(detected, manualOverride);
+    expect(result).toHaveLength(1);
+    expect(result[0].cycle).toBe("yearly");
+    expect(result[0].lastAmount).toBe(49);
+  });
+
+  it("returns only manual when no detected exist", () => {
+    expect(mergeSubscriptionCandidates([], manual)).toHaveLength(1);
+  });
+
+  it("returns only detected when no manual exist", () => {
+    expect(mergeSubscriptionCandidates(detected, [])).toEqual(detected);
   });
 });

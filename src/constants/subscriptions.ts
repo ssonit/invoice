@@ -18,3 +18,11 @@ export const SUBSCRIPTION_CYCLE_LABELS: Record<SubscriptionCycleConstant, string
   [SUBSCRIPTION_CYCLE.MONTHLY]: "Monthly",
   [SUBSCRIPTION_CYCLE.YEARLY]: "Yearly",
 }
+
+export const SUBSCRIPTION_ORIGIN = {
+  REMINDER: "reminder",
+  MANUAL: "manual",
+} as const
+
+export type SubscriptionOrigin =
+  (typeof SUBSCRIPTION_ORIGIN)[keyof typeof SUBSCRIPTION_ORIGIN]

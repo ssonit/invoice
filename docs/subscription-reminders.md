@@ -43,6 +43,23 @@ in the same file. Confirmation state layers on top:
   cancellation (billing resumed) — in that case it re-enters `due`/`upcoming` evaluation.
 - Otherwise → `upcoming` (no reminder yet).
 
+## Manual mark
+
+Users can manually mark a vendor as a monthly or yearly subscription from the vendor
+detail Sheet when the auto-detector doesn't pick it up (e.g. only 1 invoice, or
+irregular gaps). The mark persists an `origin=manual` row in
+`subscription_confirmations` with the chosen `cycle`, and synthetic candidates are
+merged into the detection pipeline alongside auto-detected ones — manual overrides
+auto-detect for the same vendor.
+
+Eligibility: vendor must have at least one invoice with an `issue_date`. The latest
+invoice is used to derive `lastAmount`, `lastIssueDate`, and `nextExpectedDate`.
+The resulting candidate enters the same reminder window as auto-detected subscriptions.
+
+Implementation: `buildManualCandidates()` + `mergeSubscriptionCandidates()` in
+[`src/lib/subscriptions.ts`](../src/lib/subscriptions.ts), wired through the
+vendors page pipeline and the `markVendorAsSubscription` Server Action.
+
 ## Data model
 
 Only the user's yes/no answer is persisted, in `subscription_confirmations`
@@ -51,9 +68,11 @@ one row per `(user_id, vendor_key)`, upserted on every answer — no history log
 Detected subscriptions themselves are never persisted; they're recomputed on every
 page load from `invoices`, so there's no second table to keep in sync.
 
+Manual marks extend the same table with `origin` and `cycle` columns
+(migration `supabase/migrations/20260730210000_subscription_manual_mark.sql`).
+
 ## Out of scope (v1)
 
-- Manual "mark as subscription" override for vendors the auto-detector misses.
 - Outbound email reminders via AgentMail send (AgentMail is receive-only today).
 - Confirmation history/audit log (upsert-only, latest state wins).
 - Cost/savings estimate ("you could save $X/year by cancelling").

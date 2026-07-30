@@ -12,6 +12,7 @@ import {
 } from "@/constants/subscriptions"
 import { deleteVendor, getVendorInvoices } from "@/app/dashboard/vendors/actions"
 import { SubscriptionConfirmButtons } from "@/components/dashboard/vendors/subscription-confirm-buttons"
+import { MarkSubscriptionButton } from "@/components/dashboard/vendors/mark-subscription-button"
 import { VendorFormDialog } from "@/components/dashboard/vendors/vendor-form-dialog"
 import {
   AlertDialog,
@@ -248,6 +249,9 @@ export function VendorsList({
                     <Trash2 data-icon="inline-start" />
                     Delete
                   </Button>
+                  {!selected.subscription && selected.count > 0 ? (
+                    <MarkSubscriptionButton vendorKey={selected.key} />
+                  ) : null}
                 </div>
 
                 {selected.notes ? (
