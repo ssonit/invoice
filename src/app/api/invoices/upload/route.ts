@@ -66,6 +66,13 @@ export async function POST(request: Request) {
     .eq("content_hash", contentHash)
     .maybeSingle();
   if (existing) {
+    const { error: hitError } = await service
+      .from("invoices")
+      .update({ duplicate_hit_count: (existing.duplicate_hit_count ?? 0) + 1 })
+      .eq("id", existing.id);
+    if (hitError) {
+      console.error("Failed to record duplicate upload hit", user.id, hitError);
+    }
     return NextResponse.json({ invoice: existing, duplicate: true });
   }
 
