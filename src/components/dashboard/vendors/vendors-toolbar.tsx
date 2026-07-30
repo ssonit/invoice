@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { ArrowUpDown, Filter, Search, X } from "lucide-react"
 
 import {
-  VENDOR_DEFAULT_FILTER,
-  VENDOR_DEFAULT_SORT,
   VENDOR_FILTER_OPTIONS,
   VENDOR_SEARCH_DEBOUNCE_MS,
   VENDOR_SORT_OPTIONS,
@@ -23,19 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  buildVendorsHref,
   isDefaultVendorQuery,
   type VendorQuery,
 } from "@/lib/vendors/query"
 import { cn } from "@/lib/utils"
-
-function buildHref(pathname: string, next: VendorQuery): string {
-  const params = new URLSearchParams()
-  if (next.q) params.set("q", next.q)
-  if (next.filter !== VENDOR_DEFAULT_FILTER) params.set("filter", next.filter)
-  if (next.sort !== VENDOR_DEFAULT_SORT) params.set("sort", next.sort)
-  const qs = params.toString()
-  return qs ? `${pathname}?${qs}` : pathname
-}
 
 export function VendorsToolbar({
   query,
@@ -71,9 +61,12 @@ export function VendorsToolbar({
       q: patch.q !== undefined ? patch.q.trim() : current.q,
       filter: patch.filter ?? current.filter,
       sort: patch.sort ?? current.sort,
+      // Any search/filter/sort change resets to page 1; explicit page changes
+      // (from VendorsList's Previous/Next) pass page directly.
+      page: patch.page ?? 1,
     }
     startTransition(() => {
-      router.push(buildHref(pathname, next))
+      router.push(buildVendorsHref(pathname, next))
     })
   }
 

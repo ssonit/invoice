@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildVendorsHref,
   escapeIlike,
   isDefaultVendorQuery,
   parseVendorQuery,
@@ -14,7 +15,17 @@ describe("parseVendorQuery", () => {
       q: "",
       filter: VENDOR_FILTER.ALL,
       sort: VENDOR_SORT.TOTAL_DESC,
+      page: 1,
     });
+  });
+
+  it("parses a valid page number", () => {
+    expect(parseVendorQuery({ page: "3" }).page).toBe(3);
+  });
+
+  it("falls back to page 1 for an invalid page value", () => {
+    expect(parseVendorQuery({ page: "0" }).page).toBe(1);
+    expect(parseVendorQuery({ page: "abc" }).page).toBe(1);
   });
 
   it("trims and length-caps the search query", () => {
@@ -61,7 +72,12 @@ describe("escapeIlike", () => {
 describe("isDefaultVendorQuery", () => {
   it("is true for the default query shape", () => {
     expect(
-      isDefaultVendorQuery({ q: "", filter: VENDOR_FILTER.ALL, sort: VENDOR_SORT.TOTAL_DESC }),
+      isDefaultVendorQuery({
+        q: "",
+        filter: VENDOR_FILTER.ALL,
+        sort: VENDOR_SORT.TOTAL_DESC,
+        page: 1,
+      }),
     ).toBe(true);
   });
 
@@ -71,6 +87,7 @@ describe("isDefaultVendorQuery", () => {
         q: "acme",
         filter: VENDOR_FILTER.ALL,
         sort: VENDOR_SORT.TOTAL_DESC,
+        page: 1,
       }),
     ).toBe(false);
   });
@@ -81,8 +98,53 @@ describe("isDefaultVendorQuery", () => {
         q: "",
         filter: VENDOR_FILTER.CANCELLED,
         sort: VENDOR_SORT.TOTAL_DESC,
+        page: 1,
       }),
     ).toBe(false);
+  });
+
+  it("is false when page is not 1", () => {
+    expect(
+      isDefaultVendorQuery({
+        q: "",
+        filter: VENDOR_FILTER.ALL,
+        sort: VENDOR_SORT.TOTAL_DESC,
+        page: 2,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("buildVendorsHref", () => {
+  const defaultQuery = {
+    q: "",
+    filter: VENDOR_FILTER.ALL,
+    sort: VENDOR_SORT.TOTAL_DESC,
+    page: 1,
+  };
+
+  it("returns the bare pathname for the default query", () => {
+    expect(buildVendorsHref("/dashboard/vendors", defaultQuery)).toBe(
+      "/dashboard/vendors",
+    );
+  });
+
+  it("includes page only when it isn't 1", () => {
+    expect(buildVendorsHref("/dashboard/vendors", { ...defaultQuery, page: 2 })).toBe(
+      "/dashboard/vendors?page=2",
+    );
+  });
+
+  it("combines q, filter, sort, and page together", () => {
+    const href = buildVendorsHref("/dashboard/vendors", {
+      q: "acme",
+      filter: VENDOR_FILTER.CANCELLED,
+      sort: VENDOR_SORT.NAME_ASC,
+      page: 3,
+    });
+    expect(href).toBe(
+      "/dashboard/vendors?q=acme&filter=cancelled&sort=name_asc&page=3",
+    );
   });
 });
 

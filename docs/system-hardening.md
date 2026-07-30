@@ -36,10 +36,10 @@ email path already dedupes independently via `source_ref`/`source_message_id`.
 
 ## Invoices page: pagination + server-side filtering
 
-Scoped to `/dashboard/invoices` only — Overview, Vendors, and Inbox all need the complete
-invoice history to compute stats/trend/subscription-detection and are not paginated.
+Originally scoped to `/dashboard/invoices` — Overview still needs the complete invoice
+history for stats/trend and is not list-paginated the same way.
 `src/lib/pagination.ts` (offset/page-count math) and `src/lib/invoices/query.ts`
-(page/vendor/status URL-param parsing) are pure and unit-tested; the page itself builds a
+(page/vendor/status URL-param parsing) are pure and unit-tested; the invoices page itself builds a
 Supabase query with `.range()` + `.ilike()` + `.eq("needs_review", ...)` driven by those
 parsed params.
 
@@ -55,10 +55,15 @@ regression versus rewriting sort as a server-side query param too.
 server-side `.range()` + `.or(ilike...)` query in `page.tsx`, with `InboxView` switched
 from local `useState`/`useMemo` filtering to props-driven data + URL navigation (the
 `selectedId` detail-pane selection stays client-only — never reflected in the URL).
-Vendors was evaluated in the same pass and intentionally left out: it already has
-server-side search/sort, and pagination there would only trim HTML sent to the client —
-it can't reduce query cost, since the full invoice history must still be fetched
-regardless of vendor-list page size (subscription detection needs it).
+
+**Extended to `/dashboard/vendors` (2026-07-30):** URL-driven `?page=N` via
+`VendorQuery.page` / `buildVendorsHref` in `src/lib/vendors/query.ts`. Unlike
+Invoices/Inbox this does **not** add a second DB query — `page.tsx` already computes the
+full filtered+sorted vendor list every request (subscription detection needs the invoice
+history), so pagination is a server-side `Array.slice()` after that compute. The win is
+not shipping off-page vendors (and their nested invoice windows) in the RSC payload.
+`VendorsList` drops local page `useState`; sheet/edit/delete/lazy-invoice state stays
+client-only. Search/filter/sort resets `page` to 1.
 
 Inbox's status filter (`review`/`extracted`/`approved`, from `getInboxStatus()` in
 `src/lib/invoices.ts`) isn't a single DB column — it combines two columns, translated to

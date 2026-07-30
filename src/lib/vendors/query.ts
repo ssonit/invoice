@@ -11,6 +11,7 @@ import {
   type VendorFilter,
   type VendorSort,
 } from "@/constants/vendors"
+import { parsePageParam } from "@/lib/pagination"
 
 export type { VendorFilter, VendorSort }
 
@@ -21,6 +22,7 @@ export type VendorQuery = {
   q: string
   filter: VendorFilter
   sort: VendorSort
+  page: number
 }
 
 const FILTER_SET = new Set<string>(VENDOR_FILTERS)
@@ -30,6 +32,7 @@ export function parseVendorQuery(params: {
   q?: string
   filter?: string
   sort?: string
+  page?: string
 }): VendorQuery {
   const q = (params.q ?? "").trim().slice(0, VENDOR_SEARCH_MAX_LENGTH)
   const filter = FILTER_SET.has(params.filter ?? "")
@@ -38,7 +41,8 @@ export function parseVendorQuery(params: {
   const sort = SORT_SET.has(params.sort ?? "")
     ? (params.sort as VendorSort)
     : VENDOR_DEFAULT_SORT
-  return { q, filter, sort }
+  const page = parsePageParam(params.page)
+  return { q, filter, sort, page }
 }
 
 /** Escape LIKE wildcards so user input is matched literally. */
@@ -58,8 +62,20 @@ export function isDefaultVendorQuery(query: VendorQuery): boolean {
   return (
     query.q.length === 0 &&
     query.filter === VENDOR_DEFAULT_FILTER &&
-    query.sort === VENDOR_DEFAULT_SORT
+    query.sort === VENDOR_DEFAULT_SORT &&
+    query.page === 1
   )
+}
+
+/** Builds the URL for a given query state — shared by the toolbar and the pagination controls. */
+export function buildVendorsHref(pathname: string, next: VendorQuery): string {
+  const params = new URLSearchParams()
+  if (next.q) params.set("q", next.q)
+  if (next.filter !== VENDOR_DEFAULT_FILTER) params.set("filter", next.filter)
+  if (next.sort !== VENDOR_DEFAULT_SORT) params.set("sort", next.sort)
+  if (next.page !== 1) params.set("page", String(next.page))
+  const qs = params.toString()
+  return qs ? `${pathname}?${qs}` : pathname
 }
 
 export {

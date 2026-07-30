@@ -26,6 +26,7 @@ import {
 } from "@/lib/subscriptions"
 import {
   VENDOR_FILTER,
+  VENDOR_LIST_PAGE_SIZE,
   VENDOR_SORT,
   type VendorFilter,
   type VendorSort,
@@ -34,7 +35,9 @@ import {
   escapeIlike,
   isDefaultVendorQuery,
   parseVendorQuery,
+  type VendorQuery,
 } from "@/lib/vendors/query"
+import { pageCount, paginationRange } from "@/lib/pagination"
 import {
   SUBSCRIPTION_CYCLE_LABELS,
 } from "@/constants/subscriptions"
@@ -98,7 +101,7 @@ function sortVendors(vendors: VendorListItem[], sort: VendorSort): VendorListIte
 export default async function VendorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; sort?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; sort?: string; page?: string }>
 }) {
   const rawParams = await searchParams
   const query = parseVendorQuery(rawParams)
@@ -253,7 +256,15 @@ export default async function VendorsPage({
     query.sort,
   )
 
-  const hasQuery = !isDefaultVendorQuery(query)
+  const hasQuery = !isDefaultVendorQuery({ ...query, page: 1 })
+  const totalCount = vendors.length
+  const totalPages = pageCount(totalCount, VENDOR_LIST_PAGE_SIZE)
+  // An out-of-range ?page= (e.g. after a filter narrows the results) degrades
+  // to the last real page instead of rendering an empty list.
+  const safePage = Math.min(query.page, totalPages)
+  const pageQuery: VendorQuery = { ...query, page: safePage }
+  const { from, to } = paginationRange(safePage, VENDOR_LIST_PAGE_SIZE)
+  const pageVendors = vendors.slice(from, to + 1)
 
   return (
     <ContentShell
@@ -294,9 +305,9 @@ export default async function VendorsPage({
         ) : null}
 
         <section className="rounded-xl border border-border bg-card/40">
-          <VendorsToolbar query={query} resultCount={vendors.length} />
+          <VendorsToolbar query={query} resultCount={totalCount} />
 
-          {vendors.length === 0 ? (
+          {totalCount === 0 ? (
             <Empty className="border-0">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -312,8 +323,11 @@ export default async function VendorsPage({
             </Empty>
           ) : (
             <VendorsList
-              key={`${query.q}|${query.filter}|${query.sort}`}
-              vendors={vendors}
+              key={`${query.q}|${query.filter}|${query.sort}|${safePage}`}
+              vendors={pageVendors}
+              query={pageQuery}
+              totalCount={totalCount}
+              pageCount={totalPages}
             />
           )}
         </section>

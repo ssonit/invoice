@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Implemented 2026-07-30 (see also Cursor plan `vendors_url_pagination`).
+
+**Code drift note (vs original Task 4 wording):** `VendorsList` still keeps client
+`useState` for sheet selection, edit/delete dialogs, and lazy `getVendorInvoices` /
+`fullInvoices`. Only the **page** `useState` + client `pageItems` slice were removed —
+pagination is URL-driven and sliced in `page.tsx`. List items already carry a windowed
+(≤6) `invoices` array from the server.
+
 **Goal:** Move Vendors' existing pagination from local client `useState` (loses page on reload/back-forward, ships the full unpaginated dataset to the client every load) to URL-driven, matching the pattern already shipped for Invoices and Inbox.
 
 **Architecture:** `page.tsx` already computes the full filtered+sorted vendor array server-side every request (unavoidable — subscription detection needs the full invoice history). Pagination becomes a server-side `Array.slice()` of that already-computed array, with the page number read from and written to the URL — no additional query. `buildHref` (currently private to `vendors-toolbar.tsx`) is promoted to a shared, exported, unit-tested helper in `src/lib/vendors/query.ts` so `VendorsList`'s new pagination controls can reuse it instead of duplicating URL-building logic.

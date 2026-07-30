@@ -63,7 +63,7 @@ export const navGroups: NavGroup[] = [
         label: "Analytics",
         href: "/dashboard/analytics",
         icon: BarChart3,
-        status: "beta",
+        status: "live",
       },
       {
         label: "Exports",

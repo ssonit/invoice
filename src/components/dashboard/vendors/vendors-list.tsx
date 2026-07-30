@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+
+import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 
-import { VENDOR_LIST_PAGE_SIZE } from "@/constants/vendors"
 import {
   SUBSCRIPTION_CYCLE_LABELS,
   type SubscriptionCycleConstant,
@@ -36,6 +36,7 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 import { formatInvoiceDate, formatInvoiceMoney } from "@/lib/invoices"
 import type { SubscriptionStatus } from "@/lib/subscriptions"
+import { buildVendorsHref, type VendorQuery } from "@/lib/vendors/query"
 import { cn } from "@/lib/utils"
 
 export type VendorListInvoice = {
@@ -89,15 +90,25 @@ function statusLabel(status: SubscriptionStatus): string {
   }
 }
 
-export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
+export function VendorsList({
+  vendors,
+  query,
+  pageCount,
+}: {
+  vendors: VendorListItem[]
+  query: VendorQuery
+  totalCount: number
+  pageCount: number
+}) {
   const router = useRouter()
-  const [page, setPage] = useState(0)
+  const pathname = usePathname()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [fullInvoices, setFullInvoices] = useState<VendorListInvoice[] | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, startDelete] = useTransition()
   const [isLoadingInvoices, startLoadInvoices] = useTransition()
+  const [isNavigating, startNavigate] = useTransition()
 
   // Triggered directly from the row click (not an Effect) — this responds to
   // a discrete user action, not something to "synchronize" on every render.
@@ -110,12 +121,11 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
     })
   }
 
-  const pageCount = Math.max(1, Math.ceil(vendors.length / VENDOR_LIST_PAGE_SIZE))
-  const pageIndex = Math.min(page, pageCount - 1)
-  const pageItems = vendors.slice(
-    pageIndex * VENDOR_LIST_PAGE_SIZE,
-    pageIndex * VENDOR_LIST_PAGE_SIZE + VENDOR_LIST_PAGE_SIZE,
-  )
+  function goToPage(page: number) {
+    startNavigate(() => {
+      router.push(buildVendorsHref(pathname, { ...query, page }))
+    })
+  }
 
   const selected = selectedKey
     ? (vendors.find((v) => v.key === selectedKey) ?? null)
@@ -138,8 +148,8 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
 
   return (
     <>
-      <ul className="divide-y divide-border">
-        {pageItems.map((vendor) => {
+      <ul className={cn("divide-y divide-border", isNavigating && "opacity-70")}>
+        {vendors.map((vendor) => {
           const sub = vendor.subscription
           return (
             <li key={vendor.id}>
@@ -177,25 +187,25 @@ export function VendorsList({ vendors }: { vendors: VendorListItem[] }) {
 
       <div className="flex items-center justify-between border-t border-border px-4 py-3">
         <p className="text-[12px] text-muted-foreground">
-          Page {pageIndex + 1} of {pageCount}
+          Page {query.page} of {pageCount}
         </p>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={pageIndex <= 0}
+            onClick={() => goToPage(Math.max(1, query.page - 1))}
+            disabled={query.page <= 1}
           >
             Previous
           </Button>
           <span className="text-[12px] text-muted-foreground">
-            Page {pageIndex + 1} of {pageCount}
+            Page {query.page} of {pageCount}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-            disabled={pageIndex >= pageCount - 1}
+            onClick={() => goToPage(Math.min(pageCount, query.page + 1))}
+            disabled={query.page >= pageCount}
           >
             Next
           </Button>
