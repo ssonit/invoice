@@ -138,6 +138,61 @@ only visible by tracing the whole system together:
   `settings/page.tsx` now reads `searchParams.checkout`, and `BillingCard` shows a
   "processing" toast once when present.
 
+## Feature gating (2026-07-30)
+
+**Design:** `docs/superpowers/specs/2026-07-30-subscription-gating-design.md`
+**Plan:** `docs/superpowers/plans/2026-07-30-subscription-gating.md`
+
+### What's gated
+
+| Feature | Gate | Denied behavior |
+|---------|------|----------------|
+| `/dashboard/analytics` | `getTeamAccess()` (page server component) | Upgrade panel |
+| `/dashboard/exports` | `getTeamAccess()` (page server component) | Upgrade panel |
+| `GET /api/exports/invoices` | `getTeamAccess()` (API route) | 403 JSON |
+
+Everything else — Inbox, Invoices, Vendors, Automation, Overview, Settings — stays free.
+
+### How gating works
+
+`getTeamAccess()` (`src/lib/billing/access.ts`) checks in order:
+
+1. **Dev unlock** (`isBillingDevUnlockEnabled()`): if `BILLING_DEV_UNLOCK=true` AND
+   neither `VERCEL_ENV` nor `NODE_ENV` is `production`, returns `allowed, reason=dev_unlock`.
+2. **Database row**: loads `billing_subscriptions` for the current user, passes the row
+   through `hasActiveTeamPlan()`. If active Team → `allowed, reason=team`.
+3. **Default**: `denied`.
+
+### Dev unlock (`.env.local`)
+
+```env
+BILLING_DEV_UNLOCK=true
+```
+
+Defense in depth: the unlock is silently ignored when `VERCEL_ENV === "production"` OR
+`NODE_ENV === "production"`. These guards are in `isBillingDevUnlockEnabled()` itself, so a
+leaked env var can't accidentally unlock features for real users.
+
+### SQL grant (no env var needed)
+
+Run this in the Supabase SQL editor to grant your own user Team access directly:
+
+```sql
+update public.billing_subscriptions
+set plan = 'team',
+    status = 'active',
+    updated_at = now()
+where user_id = '<your-auth-user-uuid>';
+```
+
+This is the simplest path for staging/preview environments where you want Team access
+without touching `.env.local`.
+
+### Real test checkout
+
+Lemon Squeezy **test mode** (already documented in their docs) still exercises checkout →
+webhook → `billing_subscriptions` row. Dev unlock does **not** replace this for payment QA.
+
 ## Manual verification still needed
 
 `npm run test` (all 19 suites / 172 tests, including the new `billing.test.ts` and

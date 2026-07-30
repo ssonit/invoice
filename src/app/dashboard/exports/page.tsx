@@ -1,6 +1,7 @@
-import { Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getTeamAccess } from "@/lib/billing/access";
 import { ContentShell } from "@/components/dashboard/content-shell";
+import { TeamGate } from "@/components/dashboard/team-gate";
 import { normalizeInvoice } from "@/lib/invoices";
 import { effectiveInvoiceDate } from "@/lib/analytics/report";
 import {
@@ -15,6 +16,16 @@ export default async function ExportsPage({
 }: {
   searchParams: Promise<{ range?: string; status?: string }>;
 }) {
+  const access = await getTeamAccess();
+  if (!access.allowed) {
+    return (
+      <TeamGate
+        title="Exports"
+        description="Download invoices as CSV for spreadsheets or bookkeeping."
+      />
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

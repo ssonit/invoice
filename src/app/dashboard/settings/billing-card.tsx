@@ -3,7 +3,11 @@
 import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import { createCheckoutUrl } from "@/app/dashboard/actions";
-import { hasActiveTeamPlan, type BillingSubscriptionRow } from "@/lib/billing";
+import {
+  hasActiveTeamPlan,
+  isBillingDevUnlockEnabled,
+  type BillingSubscriptionRow,
+} from "@/lib/billing";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,6 +22,7 @@ export function BillingCard({
 }) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
+  const devUnlock = isBillingDevUnlockEnabled();
 
   useEffect(() => {
     if (justCheckedOut) {
@@ -61,6 +66,11 @@ export function BillingCard({
         ) : null}
         {subscription.status === "cancelled" && subscription.ends_at ? (
           <Badge variant="secondary">Ends {formatInvoiceDate(subscription.ends_at)}</Badge>
+        ) : null}
+        {devUnlock ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            Dev unlock on
+          </Badge>
         ) : null}
       </div>
 

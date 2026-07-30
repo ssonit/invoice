@@ -22,6 +22,28 @@ const ACCESS_GRANTING_STATUSES = new Set<BillingSubscriptionStatus>([
   "past_due",
 ]);
 
+/** Result returned by feature-gating checks. */
+export type TeamAccess =
+  | { allowed: true; reason: "team" | "dev_unlock" }
+  | { allowed: false; reason: "denied" };
+
+/**
+ * True when the dev-unlock env var is set AND the environment is non-prod.
+ *
+ * Defense in depth: unlock is ignored when VERCEL_ENV is "production" OR
+ * NODE_ENV is "production", so a leaked env var can't accidentally unlock
+ * features for real users.
+ */
+export function isBillingDevUnlockEnabled(): boolean {
+  if (
+    process.env.VERCEL_ENV === "production" ||
+    process.env.NODE_ENV === "production"
+  ) {
+    return false;
+  }
+  return process.env.BILLING_DEV_UNLOCK === "true";
+}
+
 /**
  * True if the user currently has Team-plan access. A cancelled subscription
  * still grants access until `ends_at` — the user already paid for that

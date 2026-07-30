@@ -20,6 +20,9 @@ const envSchema = z
     GEMINI_API_KEY: z.string().optional(),
     GOOGLE_API_KEY: z.string().optional(),
     DEEPSEEK_API_KEY: z.string().optional(),
+    // Non-prod dev-unlock for Team features — never set on Vercel Production.
+    // See docs/billing-lemonsqueezy.md and src/lib/billing.ts for details.
+    BILLING_DEV_UNLOCK: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     const provider = (env.EXTRACTION_PROVIDER || "anthropic").toLowerCase();

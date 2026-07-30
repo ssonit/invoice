@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getTeamAccess } from "@/lib/billing/access";
 import { parseExportQuery, rangeStartIso } from "@/lib/exports/query";
 import { invoicesToCsv } from "@/lib/exports/csv";
 import { normalizeInvoice } from "@/lib/invoices";
@@ -8,6 +9,14 @@ import { effectiveInvoiceDate } from "@/lib/analytics/report";
 const MAX_EXPORT_ROWS = 5_000;
 
 export async function GET(request: Request) {
+  const access = await getTeamAccess();
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: "Team plan required for CSV exports." },
+      { status: 403 },
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

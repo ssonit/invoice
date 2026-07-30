@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { hasActiveTeamPlan } from "./billing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { hasActiveTeamPlan, isBillingDevUnlockEnabled } from "./billing";
 
 describe("hasActiveTeamPlan", () => {
   it("returns false for no subscription row", () => {
@@ -37,4 +37,51 @@ describe("hasActiveTeamPlan", () => {
       expect(hasActiveTeamPlan({ status, ends_at: null })).toBe(false);
     },
   );
+});
+
+describe("isBillingDevUnlockEnabled", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns true when BILLING_DEV_UNLOCK=true in non-prod", () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "true");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isBillingDevUnlockEnabled()).toBe(true);
+  });
+
+  it("returns false when BILLING_DEV_UNLOCK is not set", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
+
+  it("returns false when BILLING_DEV_UNLOCK is not exactly 'true'", () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "1");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
+
+  it("returns false when VERCEL_ENV is production", () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "true");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
+
+  it("returns false when NODE_ENV is production", () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "true");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
+
+  it("returns false on production with both guards set", () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "true");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
 });
