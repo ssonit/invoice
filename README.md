@@ -106,16 +106,18 @@ appear in logs only — see
 
 ## Deploy
 
-Target is **Vercel** (not fully wired yet). Checklist from [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md):
+Target is **Vercel**. Full operator runbook: [`docs/deploy.md`](docs/deploy.md).
 
-1. Mirror `.env.local.example` into Vercel env (Preview + Production).
-2. Apply migrations to the target Supabase project (`npx supabase db push`).
-3. Deploy Trigger.dev tasks separately: `npx trigger.dev@latest deploy`.
-4. In the Supabase dashboard, set Auth → URL Configuration's Site URL and Redirect URLs to
-   the production domain (`supabase/config.toml`'s `127.0.0.1` values are local-only).
-5. Create the Lemon Squeezy webhook (Settings → Webhooks) pointing at
-   `https://<domain>/api/webhooks/lemonsqueezy`, subscribed to `subscription_*` events.
-6. Confirm `npm run lint`, `npm run test`, `npx tsc --noEmit`, and `npm run build` are clean.
+Quick checklist:
+1. Mirror [`.env.local.example`](.env.local.example) into Vercel env (Preview + Production).
+2. Apply migrations: `npx supabase db push`.
+3. Deploy background tasks: `npx trigger.dev@latest deploy`.
+4. Set Supabase Auth Site URL + Redirect URLs to the production domain.
+5. Create the Lemon Squeezy webhook at `https://<domain>/api/webhooks/lemonsqueezy`.
+6. Run the post-deploy smoke checklist in [`docs/deploy.md`](docs/deploy.md).
+
+CI gates every PR with `lint → test → tsc --noEmit → build` — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Docs
 

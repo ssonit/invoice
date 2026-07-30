@@ -44,21 +44,34 @@ Run the `security-review` skill before merging any change that touches:
 - Financial/payment data, once that exists.
 - Anything processing external or untrusted input directly (webhooks, file uploads).
 
-## Deploy (target: Vercel — not yet configured, this is the intended process)
+## CI
+
+Every PR and push to `main` is gated by [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+
+```
+npm ci → lint → test → tsc --noEmit → build (dummy env)
+```
+
+The workflow uses **dummy environment variables** so `next build` passes without real
+secrets — `src/instrumentation.ts` calls `parseEnvInput` at startup, which would otherwise
+fail the build. Real services (Supabase, AgentMail, LLM providers) are never contacted from
+CI. See the workflow file's `env:` block for the current dummy-variable table.
+
+## Deploy (target: Vercel)
+
+The full operator runbook is in [`docs/deploy.md`](deploy.md). Quick summary:
 
 - **Environment variables:** mirror `.env.local.example` into the Vercel project's
   environment variable settings, per environment (Preview / Production). Never commit
   `.env.local`.
 - **Supabase:** apply pending migrations against the target Supabase project as part of
-  the deploy (`npx supabase db push`, or wire into CI once one exists) — the app must
-  never run against a schema older than its own code expects.
+  the deploy (`npx supabase db push`) — the app must never run against a schema older
+  than its own code expects.
 - **Trigger.dev:** deployed separately from the Next.js app — `npx trigger.dev@latest
   deploy` pushes `src/trigger/*` tasks to the Trigger.dev cloud project. A Vercel deploy
   alone does not update background tasks.
-- **Pre-deploy checklist:** `npm run build` clean, `npm run test` green, `npx tsc --noEmit`
-  clean, all migrations applied to the target Supabase project, `security-review` passed
-  for any sensitive change since the last deploy.
-- No CI/CD pipeline exists yet (no GitHub Actions, no Vercel project). This checklist is
-  manual for now. Automating it (a GitHub Actions workflow running build/test/typecheck on
-  every PR, Vercel's own git-integration for previews) is a natural follow-up once there's
-  a real Vercel project and remote to deploy to — not built speculatively ahead of need.
+- **Pre-deploy checklist:** CI green on the PR, `npm run build` clean (with real env),
+  all migrations applied to the target Supabase project, `security-review` passed for
+  any sensitive change since the last deploy.
+- **Post-deploy smoke:** signup/login, dashboard, upload/forward one invoice, Settings
+  billing card — full checklist in [`docs/deploy.md`](deploy.md).
