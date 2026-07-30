@@ -55,6 +55,7 @@ export function LandingNav() {
 
   const navLinks = [
     { id: "how", label: t.nav.how },
+    { id: "agents", label: t.nav.agents },
     { id: "features", label: t.nav.features },
     { id: "pricing", label: t.nav.pricing },
   ] as const

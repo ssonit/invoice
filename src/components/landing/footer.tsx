@@ -55,6 +55,15 @@ export function LandingFooter() {
               <button
                 type="button"
                 className="hover:text-[var(--landing-fg)]"
+                onClick={() => scrollToId("agents")}
+              >
+                {t.footer.links.agents}
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="hover:text-[var(--landing-fg)]"
                 onClick={() => scrollToId("pricing")}
               >
                 {t.footer.links.pricing}

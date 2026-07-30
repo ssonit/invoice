@@ -7,6 +7,7 @@ export type LandingDictionary = {
     how: string
     features: string
     pricing: string
+    agents: string
     langEn: string
     langVi: string
   }
@@ -33,6 +34,12 @@ export type LandingDictionary = {
   features: {
     title: string
     items: { title: string; body: string }[]
+  }
+  agents: {
+    eyebrow: string
+    title: string
+    body: string
+    cta: string
   }
   pricing: {
     eyebrow: string
@@ -70,6 +77,7 @@ export type LandingDictionary = {
       signup: string
       dashboard: string
       how: string
+      agents: string
       pricing: string
       terms: string
       privacy: string
@@ -86,6 +94,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       how: "How it works",
       features: "Features",
       pricing: "Pricing",
+      agents: "Agents",
       langEn: "EN",
       langVi: "VI",
     },
@@ -157,6 +166,12 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         },
       ],
     },
+    agents: {
+      eyebrow: "AI Agents",
+      title: "Works with your AI agent",
+      body: "One prompt. Any agent. Your invoices, forwarded.",
+      cta: "Set up in the app",
+    },
     pricing: {
       eyebrow: "Pricing",
       title: "Simple pricing for finance teams.",
@@ -214,6 +229,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         signup: "Sign up",
         dashboard: "Dashboard",
         how: "How it works",
+        agents: "Agents",
         pricing: "Pricing",
         terms: "Terms",
         privacy: "Privacy",
@@ -228,6 +244,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       how: "Cách hoạt động",
       features: "Tính năng",
       pricing: "Bảng giá",
+      agents: "AI agents",
       langEn: "EN",
       langVi: "VI",
     },
@@ -299,6 +316,12 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         },
       ],
     },
+    agents: {
+      eyebrow: "AI Agents",
+      title: "Hoạt động với AI agent của bạn",
+      body: "Một prompt. Mọi agent. Hóa đơn của bạn, tự động chuyển tiếp.",
+      cta: "Thiết lập trong app",
+    },
     pricing: {
       eyebrow: "Bảng giá",
       title: "Giá đơn giản cho team finance.",
@@ -356,6 +379,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         signup: "Đăng ký",
         dashboard: "Dashboard",
         how: "Cách hoạt động",
+        agents: "AI agents",
         pricing: "Bảng giá",
         terms: "Điều khoản",
         privacy: "Riêng tư",

@@ -1,6 +1,7 @@
 "use client"
 
 import { LandingFeaturesPan } from "@/components/landing/features-pan"
+import { LandingAgents } from "@/components/landing/agents"
 import { LandingFinalCta } from "@/components/landing/final-cta"
 import { LandingFooter } from "@/components/landing/footer"
 import { LandingHero } from "@/components/landing/hero"
@@ -28,6 +29,9 @@ export function LandingPage() {
             <LandingTrustMarquee />
             <div id="how" className="scroll-mt-24">
               <LandingHowItWorks />
+            </div>
+            <div id="agents" className="scroll-mt-24">
+              <LandingAgents />
             </div>
             <LandingFeaturesPan />
             <LandingPricing />
