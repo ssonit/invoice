@@ -1,5 +1,4 @@
 import { task, tasks } from "@trigger.dev/sdk";
-import { agentmail } from "@/lib/agentmail";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   shouldExtractAttachment,
@@ -9,8 +8,10 @@ import {
   processExtraction,
   type SavedInvoiceSummary,
 } from "@/lib/invoices/process-extraction";
+import { aggregateAttachmentResults } from "@/lib/invoices/aggregate-attachment-results";
 import type { EmailReplyOutcome } from "@/lib/email-reply-templates";
 import type { sendInboundEmailReply } from "./send-inbound-email-reply";
+import type { processAttachment, ProcessAttachmentPayload } from "./process-attachment";
 
 export type ProcessInboundEmailPayload = {
   inboxId: string;
@@ -25,10 +26,6 @@ export type ProcessInboundEmailPayload = {
     size: number | null;
   }[];
 };
-
-// Cap simultaneous extractions (LLM calls + Supabase writes) regardless of how
-// many webhook events arrive at once. Excess runs queue, nothing is dropped.
-export const EXTRACTION_CONCURRENCY_LIMIT = 5;
 
 // SavedInvoiceSummary is structurally identical to the reply builder's
 // ReplyInvoiceSummary, so a saved-invoices array satisfies EmailReplyOutcome.
@@ -47,7 +44,6 @@ function triggerReply(
 
 export const processInboundEmail = task({
   id: "process-inbound-email",
-  queue: { concurrencyLimit: EXTRACTION_CONCURRENCY_LIMIT },
   retry: { maxAttempts: 3 },
   onFailure: async ({ payload }: { payload: ProcessInboundEmailPayload }) => {
     // Fires once, only after all retry attempts are exhausted.
@@ -79,6 +75,7 @@ export const processInboundEmail = task({
       html: payload.html,
     };
     const saved: SavedInvoiceSummary[] = [];
+    let anyAttachmentFailed = false;
 
     if (payload.attachments.length === 0) {
       if (shouldExtractEmailBody(emailContext)) {
@@ -95,59 +92,64 @@ export const processInboundEmail = task({
         if (result.saved) saved.push(result.invoice);
       }
     } else {
-      for (const attachment of payload.attachments) {
+      const attachmentsToProcess = payload.attachments.filter((attachment) => {
         const mimeType = attachment.contentType ?? "application/octet-stream";
-        if (
-          !shouldExtractAttachment(
-            {
-              filename: attachment.filename,
-              mimeType,
-              sizeBytes: attachment.size,
-            },
-            emailContext,
-          )
-        ) {
-          continue;
-        }
-
-        const { downloadUrl } = await agentmail.inboxes.messages.getAttachment(
-          payload.inboxId,
-          payload.messageId,
-          attachment.attachmentId,
+        return shouldExtractAttachment(
+          { filename: attachment.filename, mimeType, sizeBytes: attachment.size },
+          emailContext,
         );
-        const fileRes = await fetch(downloadUrl);
-        const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
+      });
 
-        const input =
-          mimeType === "application/pdf"
-            ? ({ type: "pdf", data: fileBuffer } as const)
-            : mimeType.startsWith("image/")
-              ? ({ type: "image", data: fileBuffer, mimeType } as const)
-              : null;
-        if (!input) continue;
+      if (attachmentsToProcess.length > 0) {
+        const batch = await tasks.batchTriggerAndWait<typeof processAttachment>(
+          "process-attachment",
+          attachmentsToProcess.map((attachment) => ({
+            payload: {
+              inboxId: payload.inboxId,
+              messageId: payload.messageId,
+              userId: inbox.user_id,
+              attachment,
+            } satisfies ProcessAttachmentPayload,
+          })),
+        );
 
-        const result = await processExtraction({
-          supabase,
-          userId: inbox.user_id,
-          messageId: payload.messageId,
-          sourceRef: attachment.attachmentId,
-          input,
-          fileBuffer,
-          fileName: attachment.filename ?? attachment.attachmentId,
+        // batch.runs is positional: Trigger.dev returns results in the same
+        // order as the items array passed to batchTriggerAndWait, so zipping
+        // by index recovers which attachment a given run belongs to (a
+        // TaskRunResult carries the run's own id, not the original payload).
+        batch.runs.forEach((run, index) => {
+          if (!run.ok) {
+            console.error(
+              "Attachment processing failed after retries",
+              payload.inboxId,
+              payload.messageId,
+              attachmentsToProcess[index]!.attachmentId,
+              run.error,
+            );
+            anyAttachmentFailed = true;
+          }
         });
-        if (result.saved) saved.push(result.invoice);
+
+        saved.push(...aggregateAttachmentResults(batch.runs));
       }
     }
 
-    await triggerReply(
-      payload.inboxId,
-      payload.messageId,
-      saved.length > 0 ? { type: "processed", invoices: saved } : { type: "skipped" },
-      `reply:${payload.messageId}`,
-    );
+    const outcome: EmailReplyOutcome =
+      saved.length > 0
+        ? { type: "processed", invoices: saved }
+        : anyAttachmentFailed
+          ? { type: "error" }
+          : { type: "skipped" };
+
+    await triggerReply(payload.inboxId, payload.messageId, outcome, `reply:${payload.messageId}`);
 
     return {
-      status: saved.length > 0 ? ("processed" as const) : ("skipped_non_invoice" as const),
+      status:
+        saved.length > 0
+          ? ("processed" as const)
+          : anyAttachmentFailed
+            ? ("attachments_failed" as const)
+            : ("skipped_non_invoice" as const),
       extracted: saved.length,
     };
   },
