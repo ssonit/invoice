@@ -73,6 +73,37 @@ fast with a clear error instead of an obscure runtime failure. Never commit `.en
 | `npm run test` | Vitest (pure `src/lib/` logic) |
 | `npx tsc --noEmit` | Typecheck |
 
+## Extraction cost
+
+Every invoice records what it cost to extract:
+
+| Column | Meaning |
+| --- | --- |
+| `extraction_provider` | `anthropic`, `google`, or `deepseek` |
+| `extraction_model` | The model that actually ran |
+| `extraction_input_tokens` / `extraction_output_tokens` | Token counts, `null` when the provider didn't report them |
+| `extraction_ms` | End-to-end latency of the provider call |
+| `duplicate_hit_count` | How many times the identical file arrived again and reused this row instead of paying for a new extraction |
+
+Spend and dedupe savings for a month:
+
+```sql
+select
+  extraction_provider,
+  count(*)                          as extractions,
+  sum(extraction_input_tokens)      as input_tokens,
+  sum(extraction_output_tokens)     as output_tokens,
+  sum(duplicate_hit_count)          as calls_avoided,
+  round(avg(extraction_ms))         as avg_ms
+from invoices
+where created_at >= date_trunc('month', now())
+group by extraction_provider;
+```
+
+Documents the model rejects (`is_invoice = false`) cost a call but produce no row, so they
+appear in logs only — see
+[`docs/superpowers/specs/2026-07-29-extraction-cost-visibility-design.md`](docs/superpowers/specs/2026-07-29-extraction-cost-visibility-design.md).
+
 ## Deploy
 
 Target is **Vercel** (not fully wired yet). Checklist from [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md):
