@@ -7,7 +7,6 @@ import { effectiveInvoiceDate } from "@/lib/analytics/report";
 import {
   parseExportQuery,
   rangeStartIso,
-  type ExportQuery,
 } from "@/lib/exports/query";
 import { ExportsPanel } from "@/components/dashboard/exports/exports-panel";
 
