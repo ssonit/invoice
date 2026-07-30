@@ -69,7 +69,7 @@ export const navGroups: NavGroup[] = [
         label: "Exports",
         href: "/dashboard/exports",
         icon: Download,
-        status: "soon",
+        status: "live",
       },
     ],
   },
