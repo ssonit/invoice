@@ -3,7 +3,7 @@ import Link from "next/link"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { SubmitButton } from "@/components/ui/submit-button"
 import { login } from "./actions"
 
 export default async function LoginPage({
@@ -69,13 +69,13 @@ export default async function LoginPage({
               {error}
             </div>
           ) : null}
-          <Button
+          <SubmitButton
             type="submit"
             size="lg"
             className="mt-1 h-11 w-full rounded-full bg-[#E8FF47] text-[#0a0a0a] hover:bg-[#E8FF47]/90"
           >
             Sign in
-          </Button>
+          </SubmitButton>
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link

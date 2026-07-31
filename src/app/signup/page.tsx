@@ -4,7 +4,7 @@ import { MailCheck } from "lucide-react"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { SubmitButton } from "@/components/ui/submit-button"
 import { PASSWORD_MIN_LENGTH } from "@/constants/validation"
 import { signup } from "./actions"
 
@@ -55,6 +55,18 @@ export default async function SignupPage({
           <form action={signup}>
             <FieldGroup>
               <Field>
+                <FieldLabel htmlFor="name">Full name</FieldLabel>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  placeholder="Alex Johnson"
+                  className="h-10"
+                />
+              </Field>
+              <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
                   id="email"
@@ -82,6 +94,18 @@ export default async function SignupPage({
                   Use at least {PASSWORD_MIN_LENGTH} characters.
                 </p>
               </Field>
+              <Field>
+                <FieldLabel htmlFor="confirmPassword">Confirm password</FieldLabel>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  placeholder="Re-enter your password"
+                  className="h-10"
+                />
+              </Field>
               {error ? (
                 <div
                   role="alert"
@@ -90,13 +114,13 @@ export default async function SignupPage({
                   {error}
                 </div>
               ) : null}
-              <Button
+              <SubmitButton
                 type="submit"
                 size="lg"
                 className="mt-1 h-11 w-full rounded-full bg-[#E8FF47] text-[#0a0a0a] hover:bg-[#E8FF47]/90"
               >
                 Create account
-              </Button>
+              </SubmitButton>
               <p className="text-center text-xs text-muted-foreground">
                 By creating an account you agree to the{" "}
                 <Link

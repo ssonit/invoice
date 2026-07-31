@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/constants/validation";
+import { NAME_MAX_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/constants/validation";
 import { emailSchema } from "@/lib/validation/common";
 
 // Server-side validation for the login/signup Server Actions. Browser
@@ -16,13 +16,24 @@ export const loginSchema = z.object({
   password: passwordSchema,
 });
 
-export const signupSchema = z.object({
-  email: emailSchema,
-  password: z
-    .string()
-    .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
-    .max(PASSWORD_MAX_LENGTH, "Password is too long"),
-});
+export const signupSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Name is required")
+      .max(NAME_MAX_LENGTH, "Name is too long"),
+    email: emailSchema,
+    password: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
+      .max(PASSWORD_MAX_LENGTH, "Password is too long"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
@@ -48,8 +59,10 @@ export function parseLoginForm(formData: FormData): FormValidationResult<LoginIn
 
 export function parseSignupForm(formData: FormData): FormValidationResult<SignupInput> {
   const result = signupSchema.safeParse({
+    name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
   });
   if (!result.success) {
     return { success: false, error: firstIssueMessage(result.error) };

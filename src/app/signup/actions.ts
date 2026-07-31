@@ -19,7 +19,13 @@ export async function signup(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp(parsed.data);
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: {
+      data: { display_name: parsed.data.name },
+    },
+  });
 
   if (error) {
     // Never surface Supabase auth messages (e.g. "User already registered") —

@@ -10,6 +10,9 @@ export const PASSWORD_MAX_LENGTH = 128;
 /** Matches vendor name / subscription vendorKey limits. */
 export const VENDOR_KEY_MAX_LENGTH = 200;
 
+/** Practical display-name limit (prevents UI breakage). */
+export const NAME_MAX_LENGTH = 128;
+
 /** Storage path segment — basename only, no directories. */
 export const UPLOAD_FILENAME_MAX_LENGTH = 255;
 

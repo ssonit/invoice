@@ -5,7 +5,7 @@ import {
   parseResetPasswordForm,
   parseSignupForm,
 } from "./auth";
-import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/constants/validation";
+import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/constants/validation";
 
 function formData(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -55,27 +55,86 @@ describe("parseLoginForm", () => {
   });
 });
 
+function validSignupFields(overrides?: Record<string, string>): Record<string, string> {
+  return {
+    name: "Alex",
+    email: "a@example.com",
+    password: "a".repeat(PASSWORD_MIN_LENGTH),
+    confirmPassword: "a".repeat(PASSWORD_MIN_LENGTH),
+    ...overrides,
+  };
+}
+
 describe("parseSignupForm", () => {
-  it(`accepts a valid email and a ${PASSWORD_MIN_LENGTH}+ character password`, () => {
-    const password = "a".repeat(PASSWORD_MIN_LENGTH);
-    const result = parseSignupForm(formData({ email: "a@example.com", password }));
-    expect(result).toEqual({ success: true, data: { email: "a@example.com", password } });
+  it("accepts valid name, email, and matching passwords", () => {
+    const fields = validSignupFields();
+    const result = parseSignupForm(formData(fields));
+    expect(result).toEqual({ success: true, data: fields });
+  });
+
+  it("trims the name", () => {
+    const result = parseSignupForm(formData(validSignupFields({ name: "  Alex  " })));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.name).toBe("Alex");
+  });
+
+  it("rejects an empty name", () => {
+    const result = parseSignupForm(formData(validSignupFields({ name: "" })));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a missing name field", () => {
+    const { name: _, ...rest } = validSignupFields();
+    const result = parseSignupForm(formData(rest));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an overly long name", () => {
+    const result = parseSignupForm(
+      formData(validSignupFields({ name: "a".repeat(NAME_MAX_LENGTH + 1) })),
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects when passwords do not match", () => {
+    const result = parseSignupForm(
+      formData(
+        validSignupFields({
+          password: "abcdefgh",
+          confirmPassword: "different",
+        }),
+      ),
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty confirm password", () => {
+    const result = parseSignupForm(formData(validSignupFields({ confirmPassword: "" })));
+    expect(result.success).toBe(false);
   });
 
   it(`rejects a password shorter than ${PASSWORD_MIN_LENGTH} characters`, () => {
     const password = "a".repeat(PASSWORD_MIN_LENGTH - 1);
-    const result = parseSignupForm(formData({ email: "a@example.com", password }));
+    const result = parseSignupForm(
+      formData(validSignupFields({ password, confirmPassword: password })),
+    );
     expect(result.success).toBe(false);
   });
 
   it("rejects an invalid email", () => {
-    const result = parseSignupForm(formData({ email: "not-an-email", password: "abcdef" }));
+    const result = parseSignupForm(formData(validSignupFields({ email: "not-an-email" })));
     expect(result.success).toBe(false);
   });
 
   it("rejects an overly long password", () => {
+    const password = "a".repeat(PASSWORD_MAX_LENGTH + 1);
     const result = parseSignupForm(
-      formData({ email: "a@example.com", password: "a".repeat(PASSWORD_MAX_LENGTH + 1) }),
+      formData(
+        validSignupFields({
+          password,
+          confirmPassword: password,
+        }),
+      ),
     );
     expect(result.success).toBe(false);
   });
