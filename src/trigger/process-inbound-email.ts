@@ -65,7 +65,14 @@ export const processInboundEmail = task({
 
     if (!inbox) {
       // Internal mapping problem, not the sender's fault — log and stop, no reply.
-      console.error("Inbound-email task for unknown inbox", payload.inboxId);
+      // Most likely an orphaned AgentMail inbox: created upstream but the matching
+      // `inboxes` row never got inserted (e.g. createInbox's DB write failed after
+      // the AgentMail-side create succeeded). Logging inboxId + messageId + subject
+      // here is what makes that case findable — this is a silent drop otherwise.
+      console.error(
+        "Inbound-email task for unknown inbox",
+        { inboxId: payload.inboxId, messageId: payload.messageId, subject: payload.subject },
+      );
       return { status: "unknown_inbox" as const };
     }
 

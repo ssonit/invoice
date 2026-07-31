@@ -11,12 +11,25 @@ function inboxUsername(userId: string) {
 
 async function findExistingInboxForUser(userId: string) {
   const username = inboxUsername(userId);
-  const { inboxes } = await agentmail.inboxes.list({ limit: 100 });
-  return (
-    inboxes.find((inbox) => inbox.metadata?.user_id === userId) ??
-    inboxes.find((inbox) => inbox.email.startsWith(`${username}@`)) ??
-    null
-  );
+  let pageToken: string | undefined;
+
+  do {
+    const { inboxes, nextPageToken } = await agentmail.inboxes.list({
+      limit: 100,
+      ...(pageToken ? { pageToken } : {}),
+    });
+
+    const found =
+      inboxes.find((inbox) => inbox.metadata?.user_id === userId) ??
+      inboxes.find((inbox) => inbox.email.startsWith(`${username}@`)) ??
+      null;
+
+    if (found) return found;
+
+    pageToken = nextPageToken ?? undefined;
+  } while (pageToken);
+
+  return null;
 }
 
 /** Creates an AgentMail inbox, or returns the existing one if username is taken. */
