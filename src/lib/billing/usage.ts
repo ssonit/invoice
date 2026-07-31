@@ -2,7 +2,7 @@ import type { createServiceClient } from "@/lib/supabase/service";
 import { hasActiveTeamPlan, isBillingDevUnlockEnabled } from "../billing";
 import { STARTER_MONTHLY_INVOICE_LIMIT_DEFAULT } from "@/constants/billing";
 
-type ServiceClient = ReturnType<typeof createServiceClient>;
+export type ServiceClient = ReturnType<typeof createServiceClient>;
 
 export type QuotaCheckResult =
   | { allowed: true }

@@ -6,6 +6,7 @@ import {
   getStarterMonthlyLimit,
 } from "./usage";
 import type { BillingSubscriptionRow } from "../billing";
+import type { ServiceClient } from "./usage";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,9 +49,9 @@ function mockSupabaseClient(opts: {
       };
     }
     return {};
-  }) as any;
+  }) as unknown as ServiceClient["from"];
 
-  return { from } as any;
+  return { from } as unknown as ServiceClient;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,16 +167,15 @@ describe("countBillableInvoicesThisMonth", () => {
 
   it("returns 0 when count is null", async () => {
     // head: true query with no matching rows can return count: null
-    const supabase = mockSupabaseClient({ invoiceCount: 0 });
-    // Override to return null count
-    const from = vi.fn((_table: string) => ({
+    const from = vi.fn(() => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           gte: vi.fn().mockResolvedValue({ count: null, error: null }),
         }),
       }),
-    })) as any;
-    const count = await countBillableInvoicesThisMonth({ from } as any, "user-1");
+    })) as unknown as ServiceClient["from"];
+    const supabase = { from } as unknown as ServiceClient;
+    const count = await countBillableInvoicesThisMonth(supabase, "user-1");
     expect(count).toBe(0);
   });
 

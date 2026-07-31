@@ -84,7 +84,8 @@ describe("parseSignupForm", () => {
   });
 
   it("rejects a missing name field", () => {
-    const { name: _, ...rest } = validSignupFields();
+    const { name, ...rest } = validSignupFields();
+    void name;
     const result = parseSignupForm(formData(rest));
     expect(result.success).toBe(false);
   });
