@@ -51,8 +51,8 @@ All required variables are listed in [`.env.local.example`](.env.local.example):
 
 | Variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser + server Supabase client |
-| `SUPABASE_SERVICE_ROLE_KEY` | Privileged server paths (bypass RLS carefully) |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser + server Supabase client |
+| `SUPABASE_SECRET_KEY` | Privileged server paths (bypass RLS carefully) |
 | `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification |
 | `TRIGGER_SECRET_KEY` / `TRIGGER_PROJECT_REF` | Trigger.dev task queue |
 | `EXTRACTION_PROVIDER` + provider API keys | Invoice OCR / extraction |

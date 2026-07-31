@@ -22,8 +22,8 @@ Phase 1 delivers a **CI gate on every PR** plus a **documented manual deploy pro
 | Variable | Required? | CI dummy |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | always | `https://example.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | always | `test-anon-key` |
-| `SUPABASE_SERVICE_ROLE_KEY` | always | `test-service-role-key` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | always | `test-anon-key` |
+| `SUPABASE_SECRET_KEY` | always | `test-service-role-key` |
 | `AGENTMAIL_API_KEY` | always | `test-agentmail-key` |
 | `AGENTMAIL_WEBHOOK_SECRET` | always | `test-agentmail-webhook-secret` |
 | `EXTRACTION_PROVIDER` | optional (defaults `anthropic`) | `anthropic` |

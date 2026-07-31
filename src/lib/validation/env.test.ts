@@ -3,8 +3,8 @@ import { parseEnvInput } from "./env";
 
 const validBase = {
   NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
-  SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "anon-key",
+  SUPABASE_SECRET_KEY: "service-role-key",
   AGENTMAIL_API_KEY: "agentmail-key",
   AGENTMAIL_WEBHOOK_SECRET: "webhook-secret",
 };
@@ -30,13 +30,13 @@ describe("parseEnvInput", () => {
     if (!result.success) expect(result.error).toMatch(/NEXT_PUBLIC_SUPABASE_URL/);
   });
 
-  it("rejects a missing SUPABASE_SERVICE_ROLE_KEY", () => {
+  it("rejects a missing SUPABASE_SECRET_KEY", () => {
     const result = parseEnvInput({
-      ...withoutKey("SUPABASE_SERVICE_ROLE_KEY"),
+      ...withoutKey("SUPABASE_SECRET_KEY"),
       ANTHROPIC_API_KEY: "sk-ant-x",
     });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toMatch(/SUPABASE_SERVICE_ROLE_KEY/);
+    if (!result.success) expect(result.error).toMatch(/SUPABASE_SECRET_KEY/);
   });
 
   it("rejects a missing AGENTMAIL_WEBHOOK_SECRET", () => {

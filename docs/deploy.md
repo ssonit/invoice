@@ -17,8 +17,8 @@ Copy every key from [`.env.local.example`](.env.local.example) into the Vercel p
 
 Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `AGENTMAIL_API_KEY`
 - `AGENTMAIL_WEBHOOK_SECRET`
 - `TRIGGER_SECRET_KEY`
