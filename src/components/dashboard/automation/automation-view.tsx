@@ -1,5 +1,6 @@
 import { ContentShell } from "@/components/dashboard/content-shell";
 import { ConnectionPanel } from "./connection-panel";
+import { PromptBlock } from "./prompt-block";
 import { SetupSteps } from "./setup-steps";
 import { AgentGrid } from "./agent-grid";
 import type { AutomationAgent } from "@/lib/automation/agents";
@@ -23,8 +24,9 @@ export function AutomationView({
 
         {forwardAddress ? (
           <>
+            <PromptBlock forwardAddress={forwardAddress} />
             <SetupSteps />
-            <AgentGrid agents={agents} forwardAddress={forwardAddress} />
+            <AgentGrid agents={agents} />
           </>
         ) : (
           <p className="text-[13px] text-muted-foreground">
