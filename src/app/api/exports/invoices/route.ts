@@ -62,6 +62,7 @@ export async function GET(request: Request) {
   }
 
   const allRows = (data ?? []).map(normalizeInvoice);
+  const truncated = allRows.length >= MAX_EXPORT_ROWS;
 
   // Post-filter by effective date when range is set (same as Analytics)
   let rows = allRows;
@@ -70,13 +71,14 @@ export async function GET(request: Request) {
     rows = allRows.filter((row) => effectiveInvoiceDate(row) >= startDate);
   }
 
-  const csv = invoicesToCsv(rows);
+  const csv = invoicesToCsv(rows, { truncated });
 
   const dateStr = new Date().toISOString().slice(0, 10);
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="invoices-${dateStr}.csv"`,
+      ...(truncated ? { "X-Export-Truncated": "true" } : {}),
     },
   });
 }

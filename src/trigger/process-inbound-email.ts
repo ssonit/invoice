@@ -83,6 +83,7 @@ export const processInboundEmail = task({
     };
     const saved: SavedInvoiceSummary[] = [];
     let anyAttachmentFailed = false;
+    let quotaExceeded: { used: number; limit: number; resetsAt: string } | null = null;
 
     if (payload.attachments.length === 0) {
       if (shouldExtractEmailBody(emailContext)) {
@@ -96,7 +97,11 @@ export const processInboundEmail = task({
           fileBuffer: null,
           fileName: null,
         });
-        if (result.saved) saved.push(result.invoice);
+        if (result.saved) {
+          saved.push(result.invoice);
+        } else if (result.quota) {
+          quotaExceeded = result.quota;
+        }
       }
     } else {
       const attachmentsToProcess = payload.attachments.filter((attachment) => {
@@ -134,6 +139,8 @@ export const processInboundEmail = task({
               run.error,
             );
             anyAttachmentFailed = true;
+          } else if (!run.output.saved && run.output.quota) {
+            quotaExceeded = run.output.quota;
           }
         });
 
@@ -152,7 +159,9 @@ export const processInboundEmail = task({
         ? { type: "processed", invoices: saved }
         : anyAttachmentFailed
           ? { type: "error" }
-          : { type: "skipped" };
+          : quotaExceeded
+            ? { type: "quota_exceeded", ...quotaExceeded }
+            : { type: "skipped" };
 
     await triggerReply(payload.inboxId, payload.messageId, outcome, `reply:${payload.messageId}`);
 

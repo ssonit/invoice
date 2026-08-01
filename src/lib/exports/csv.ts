@@ -16,23 +16,40 @@ export const CSV_COLUMNS = [
 
 const BOM = "﻿";
 
-/** RFC 4180 — wrap in double quotes and double any internal quotes when the
- *  value contains a comma, double quote, or newline. */
+/** Characters that trigger formula interpretation in Excel / Google Sheets /
+ *  LibreOffice Calc when they appear at the start of a cell. */
+const FORMULA_TRIGGER_RE = /^[=+\-@\t\r]/;
+
+/** RFC 4180 + OWASP formula-injection mitigation.
+ *
+ *  - If the value starts with `=`, `+`, `-`, `@`, tab, or CR, prefix with a
+ *    single quote so spreadsheet apps treat it as literal text, not a formula.
+ *  - If the value contains a comma, double quote, or newline, wrap in double
+ *    quotes and double any internal quotes (RFC 4180). */
 export function escapeCsvCell(value: unknown): string {
   if (value == null) return "";
   const s = String(value);
+
+  // Guard against formula injection (OWASP).  The single-quote prefix is
+  // recognised by Excel / Sheets / Calc as "treat the rest as text".  We
+  // apply it *before* quoting so the prefix is inside the quoted field.
+  const safe = FORMULA_TRIGGER_RE.test(s) ? `'${s}` : s;
+
   if (
-    s.includes(",") ||
-    s.includes('"') ||
-    s.includes("\n") ||
-    s.includes("\r")
+    safe.includes(",") ||
+    safe.includes('"') ||
+    safe.includes("\n") ||
+    safe.includes("\r")
   ) {
-    return `"${s.replace(/"/g, '""')}"`;
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return s;
+  return safe;
 }
 
-export function invoicesToCsv(rows: InvoiceRow[]): string {
+export function invoicesToCsv(
+  rows: InvoiceRow[],
+  opts?: { truncated?: boolean },
+): string {
   const header = CSV_COLUMNS.map((c) => escapeCsvCell(c.label)).join(",");
   const dataLines = rows.map((row) =>
     CSV_COLUMNS.map((col) => {
@@ -40,5 +57,14 @@ export function invoicesToCsv(rows: InvoiceRow[]): string {
       return escapeCsvCell(value);
     }).join(","),
   );
-  return BOM + [header, ...dataLines].join("\n") + "\n";
+
+  const parts = [header];
+  if (opts?.truncated) {
+    const warning =
+      "⚠️ Export limited to 5,000 most recent invoices. Older invoices may be missing.";
+    parts.push(escapeCsvCell(warning));
+  }
+  parts.push(...dataLines);
+
+  return BOM + parts.join("\n") + "\n";
 }

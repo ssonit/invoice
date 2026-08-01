@@ -19,12 +19,15 @@ export async function POST(request: NextRequest) {
 
   const headers = Object.fromEntries(request.headers);
 
+  const webhookSecret = process.env.AGENTMAIL_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("Failed to verify AgentMail webhook: AGENTMAIL_WEBHOOK_SECRET is not set");
+    return NextResponse.json({ status: "error" }, { status: 500 });
+  }
+
   let event: { event_type: string; message: AgentMail.Message };
   try {
-    event = new Webhook(process.env.AGENTMAIL_WEBHOOK_SECRET!).verify(
-      payload,
-      headers,
-    ) as typeof event;
+    event = new Webhook(webhookSecret).verify(payload, headers) as typeof event;
   } catch {
     return NextResponse.json({ error: "invalid signature" }, { status: 400 });
   }

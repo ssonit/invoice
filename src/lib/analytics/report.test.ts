@@ -232,4 +232,23 @@ describe("buildAnalyticsReport", () => {
     const other = report.topVendors.find((v) => v.label === "Other");
     expect(other).toBeUndefined();
   });
+
+  it("picks dominant currency when all sums are negative (credit notes)", () => {
+    const rows = [
+      makeRow({ id: "1", currency: "USD", amount: -100 }),
+      makeRow({ id: "2", currency: "EUR", amount: -50 }),
+    ];
+    const report = buildAnalyticsReport(rows, 6, NOW);
+    // EUR (-50) > USD (-100) → EUR is dominant, not null
+    expect(report.currency).toBe("EUR");
+    expect(report.totalSpend).toBe(-50);
+
+    // Single-currency all-negative
+    const usdOnly = [
+      makeRow({ id: "3", currency: "USD", amount: -200 }),
+    ];
+    const r2 = buildAnalyticsReport(usdOnly, 6, NOW);
+    expect(r2.currency).toBe("USD");
+    expect(r2.totalSpend).toBe(-200);
+  });
 });

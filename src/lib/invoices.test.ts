@@ -56,20 +56,28 @@ describe("formatInvoiceMoney", () => {
     expect(formatInvoiceMoney(1234.5, "USD")).toBe("$1,234.50");
   });
 
-  it("formats non-USD with 0 decimals and a currency suffix", () => {
+  it("formats zero-decimal currencies (VND, JPY, KRW) as whole numbers", () => {
     expect(formatInvoiceMoney(1234567, "VND")).toBe("1,234,567 VND");
+    expect(formatInvoiceMoney(5000, "JPY")).toBe("5,000 JPY");
+    expect(formatInvoiceMoney(12345, "KRW")).toBe("12,345 KRW");
+  });
+
+  it("formats two-decimal non-USD currencies (EUR, GBP) with 2 decimals", () => {
+    expect(formatInvoiceMoney(1234.56, "EUR")).toBe("1,234.56 EUR");
+    expect(formatInvoiceMoney(99.9, "GBP")).toBe("99.90 GBP");
+    expect(formatInvoiceMoney(1500, "SGD")).toBe("1,500.00 SGD");
   });
 
   it("returns an em dash for a null amount", () => {
     expect(formatInvoiceMoney(null, "USD")).toBe("—");
   });
 
-  it("handles a null currency gracefully", () => {
-    expect(formatInvoiceMoney(50, null)).toBe("50");
+  it("handles a null currency with 2 decimals (most-currency default)", () => {
+    expect(formatInvoiceMoney(50, null)).toBe("50.00");
   });
 
   it("formats negative amounts with a leading minus sign", () => {
-    expect(formatInvoiceMoney(-42, "USD")).toBe("$-42.00");
+    expect(formatInvoiceMoney(-42, "USD")).toBe("-$42.00");
   });
 });
 
@@ -177,6 +185,20 @@ describe("computeStats", () => {
     expect(stats.currency).toBeNull();
     expect(stats.multiCurrency).toBe(false);
     expect(stats.totalValue).toBe(0);
+  });
+
+  it("picks dominant currency when all sums are negative (credit notes)", () => {
+    const now = new Date();
+    const created = now.toISOString();
+    const stats = computeStats([
+      row({ amount: -100, currency: "USD", created_at: created }),
+      row({ amount: -50, currency: "USD", created_at: created }),
+      row({ amount: -80, currency: "VND", created_at: created }),
+    ]);
+    // VND (-80) > USD (-150) → VND is dominant, not null
+    expect(stats.currency).toBe("VND");
+    expect(stats.totalValue).toBe(-80);
+    expect(stats.multiCurrency).toBe(true);
   });
 });
 

@@ -43,6 +43,11 @@ export const processAttachment = task({
       attachment.attachmentId,
     );
     const fileRes = await fetch(downloadUrl);
+    if (!fileRes.ok) {
+      throw new Error(
+        `Failed to download attachment ${attachment.attachmentId}: AgentMail returned ${fileRes.status} ${fileRes.statusText}`,
+      );
+    }
     const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
 
     const input =

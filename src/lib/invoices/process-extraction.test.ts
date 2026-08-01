@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/extraction", () => ({ extractInvoice: vi.fn() }));
 vi.mock("@/lib/vendors", () => ({ ensureVendorRecord: vi.fn() }));
+vi.mock("@/lib/billing/usage", () => ({ checkStarterQuota: vi.fn() }));
 
 import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
+import { checkStarterQuota } from "@/lib/billing/usage";
 import { processExtraction } from "./process-extraction";
 
 const mockedExtract = vi.mocked(extractInvoice);
+const mockedCheckQuota = vi.mocked(checkStarterQuota);
 
 function invoiceResult(overrides: Record<string, unknown> = {}) {
   return {
@@ -90,6 +93,7 @@ function mockSupabase() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockedCheckQuota.mockResolvedValue({ allowed: true });
 });
 
 describe("processExtraction", () => {
@@ -327,5 +331,31 @@ describe("processExtraction", () => {
       saved: true,
       invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
     });
+  });
+
+  it("returns saved:false with quota details when the Starter limit is reached", async () => {
+    const resetDate = new Date("2026-08-31T23:59:59.999Z").toISOString();
+    mockedCheckQuota.mockResolvedValue({
+      allowed: false,
+      used: 50,
+      limit: 50,
+      resetsAt: resetDate,
+    });
+    const sb = mockSupabase();
+    const result = await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-1",
+      sourceRef: "body",
+      input: { type: "html", html: "<p>hi</p>" },
+      fileBuffer: null,
+      fileName: null,
+    });
+    expect(result).toEqual({
+      saved: false,
+      quota: { used: 50, limit: 50, resetsAt: resetDate },
+    });
+    // Must not call extraction when quota is exceeded — saves LLM cost.
+    expect(mockedExtract).not.toHaveBeenCalled();
   });
 });

@@ -118,6 +118,7 @@ export default async function VendorsPage({
     .from("vendors")
     .select("id, name, name_key, notes, created_at")
     .eq("user_id", user!.id)
+    .is("deleted_at", null)
 
   if (query.q) {
     const pattern = `%${escapeIlike(query.q).replace(/"/g, "")}%`
@@ -148,7 +149,8 @@ export default async function VendorsPage({
     supabase
       .from("subscription_confirmations")
       .select("vendor_key, status, confirmed_at, origin, cycle")
-      .eq("user_id", user!.id),
+      .eq("user_id", user!.id)
+      .is("deleted_at", null),
   ])
 
   const stats = statsRows ?? []
@@ -180,6 +182,7 @@ export default async function VendorsPage({
         .from("vendors")
         .select("id, name, name_key, notes, created_at")
         .eq("user_id", user!.id)
+        .is("deleted_at", null)
         .order("name", { ascending: true })
       vendorRows = refreshed.data
     }

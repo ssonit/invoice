@@ -46,6 +46,20 @@ describe("buildReplyText", () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
+  it("tells the sender they've hit their monthly limit and mentions upgrade", () => {
+    const text = buildReplyText({
+      type: "quota_exceeded",
+      used: 50,
+      limit: 50,
+      resetsAt: "2026-09-01T00:00:00.000Z",
+    });
+    expect(text).toContain("50");
+    expect(text).toContain("Starter");
+    expect(text).toContain("Team");
+    expect(text).toContain("upgrade");
+    expect(text).toContain("September");
+  });
+
   it("apologizes on error", () => {
     const text = buildReplyText({ type: "error" });
     expect(text.length).toBeGreaterThan(0);

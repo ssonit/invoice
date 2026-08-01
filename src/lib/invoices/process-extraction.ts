@@ -15,7 +15,7 @@ export type SavedInvoiceSummary = {
 
 export type ProcessExtractionResult =
   | { saved: true; invoice: SavedInvoiceSummary }
-  | { saved: false };
+  | { saved: false; quota?: { used: number; limit: number; resetsAt: string } };
 
 /**
  * Run the multi-provider extractor on one input and, if it's an invoice,
@@ -87,7 +87,7 @@ export async function processExtraction(params: {
       userId,
       { used: quota.used, limit: quota.limit },
     );
-    return { saved: false };
+    return { saved: false, quota: { used: quota.used, limit: quota.limit, resetsAt: quota.resetsAt } };
   }
 
   const { extraction: extracted, metrics } = await extractInvoice(input);
@@ -101,9 +101,12 @@ export async function processExtraction(params: {
   let fileUrl: string | null = null;
   if (fileBuffer && fileName) {
     const path = `${userId}/${messageId}-${sanitizeFilename(fileName)}`;
-    const { data: uploaded } = await supabase.storage
+    const { data: uploaded, error: uploadError } = await supabase.storage
       .from("invoice-files")
       .upload(path, fileBuffer, { upsert: true });
+    if (uploadError) {
+      console.error("Failed to upload email attachment to storage", userId, uploadError);
+    }
     if (uploaded) fileUrl = uploaded.path;
   }
 

@@ -2,6 +2,8 @@
 // `amount` is coerced to a number in normalizeInvoice() because Postgres
 // numeric columns can arrive as strings from PostgREST.
 
+import { ZERO_DECIMAL_CURRENCIES } from "@/constants/currencies";
+
 export type InvoiceLineItem = {
   description: string;
   quantity: number | null;
@@ -42,9 +44,9 @@ export function formatInvoiceMoney(
   currency: string | null,
 ): string {
   if (amount == null) return "—";
-  const digits = currency === "USD" ? 2 : 0;
+  const digits = currency != null && ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2;
   const formatted = formatFixedNumber(amount, digits);
-  if (currency === "USD") return `$${formatted}`;
+  if (currency === "USD") return formatted.startsWith("-") ? `-$${formatted.slice(1)}` : `$${formatted}`;
   return `${formatted} ${currency ?? ""}`.trim();
 }
 
@@ -199,13 +201,14 @@ export function computeStats(rows: InvoiceRow[]): InvoiceStats {
 
   // Report the total for the currency with the largest summed value.
   let currency: string | null = null;
-  let totalValue = 0;
+  let totalValue = -Infinity;
   for (const [cur, sum] of byCurrency) {
     if (sum > totalValue) {
       totalValue = sum;
       currency = cur === "—" ? null : cur;
     }
   }
+  if (totalValue === -Infinity) totalValue = 0;
 
   return {
     total: rows.length,

@@ -58,13 +58,14 @@ export function buildAnalyticsReport(
 
   // Determine dominant currency
   let currency: string | null = null;
-  let maxSum = 0;
+  let maxSum = -Infinity;
   for (const [cur, sum] of byCurrency) {
     if (sum > maxSum) {
       maxSum = sum;
       currency = cur === "—" ? null : cur;
     }
   }
+  if (maxSum === -Infinity) maxSum = 0;
 
   const dominantKey = currency ?? "—";
 
@@ -125,7 +126,7 @@ export function buildAnalyticsReport(
   for (let i = 0; i < Math.min(sorted.length, TOP_VENDOR_LIMIT); i++) {
     const v = sorted[i];
     topVendors.push({
-      key: v.label.toLowerCase(),
+      key: `vendor-${i}`,
       label: v.label,
       amount: v.amount,
       count: v.count,

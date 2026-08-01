@@ -142,6 +142,7 @@ export async function updateVendor(input: {
     .select("id, name_key")
     .eq("id", parsed.data.id)
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (loadError || !existing) {
@@ -173,17 +174,31 @@ export async function updateVendor(input: {
     // vendor_key is a generated column — updating `vendor` recomputes it
     // automatically, so this single bulk update replaces the old
     // fetch-all-then-filter-then-update-one-by-one pattern.
-    await service
+    const { error: invoicesError } = await service
       .from("invoices")
       .update({ vendor: parsed.data.name })
       .eq("user_id", user.id)
       .eq("vendor_key", oldKey);
 
-    await service
+    if (invoicesError) {
+      console.error("Failed to cascade vendor rename to invoices", user.id, invoicesError);
+      return { ok: false, error: "Could not update vendor. Please try again." };
+    }
+
+    const { error: confirmationsError } = await service
       .from("subscription_confirmations")
       .update({ vendor_key: newKey })
       .eq("user_id", user.id)
       .eq("vendor_key", oldKey);
+
+    if (confirmationsError) {
+      console.error(
+        "Failed to cascade vendor rename to subscription_confirmations",
+        user.id,
+        confirmationsError,
+      );
+      return { ok: false, error: "Could not update vendor. Please try again." };
+    }
   }
 
   revalidatePath("/dashboard/vendors");
@@ -203,6 +218,7 @@ export async function deleteVendor(input: { id: string }): Promise<VendorMutatio
     .select("id, name_key")
     .eq("id", parsed.data.id)
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (loadError || !existing) {
@@ -210,22 +226,22 @@ export async function deleteVendor(input: { id: string }): Promise<VendorMutatio
   }
 
   const nameKey = existing.name_key as string;
+  const now = new Date().toISOString();
 
-  await service
-    .from("invoices")
-    .update({ vendor: null })
-    .eq("user_id", user.id)
-    .eq("vendor_key", nameKey);
+  // Soft-delete: invoices retain their vendor data — historical extraction
+  // results are preserved and the vendor still appears in analytics/breakdowns.
+  // Only the user's curated vendor list and subscription confirmations are
+  // marked deleted; the vendor row itself is never physically removed.
 
   await service
     .from("subscription_confirmations")
-    .delete()
+    .update({ deleted_at: now })
     .eq("user_id", user.id)
     .eq("vendor_key", nameKey);
 
   const { error } = await service
     .from("vendors")
-    .delete()
+    .update({ deleted_at: now, updated_at: now })
     .eq("id", parsed.data.id)
     .eq("user_id", user.id);
 
