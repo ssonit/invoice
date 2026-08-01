@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyPolarWebhook, WebhookVerificationError } from "@/lib/polar-webhook";
+import { SDKValidationError } from "@polar-sh/sdk/models/errors/sdkvalidationerror";
 import { checkContentLength } from "@/lib/validation/common";
 import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
 import { getBillingMode } from "@/lib/billing";
@@ -56,6 +57,10 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof WebhookVerificationError) {
       return NextResponse.json({ error: "invalid signature" }, { status: 400 });
+    }
+    if (err instanceof SDKValidationError) {
+      // Unknown or unhandled event type — acknowledge to stop Polar retries.
+      return NextResponse.json({ status: "ignored" });
     }
     console.error("Failed to verify Polar webhook", err);
     return NextResponse.json({ status: "error" }, { status: 500 });
