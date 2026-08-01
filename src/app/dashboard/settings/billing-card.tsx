@@ -73,13 +73,8 @@ export function BillingCard({
   }
 
   function handleManage() {
-    const customerId = subscription.polar_customer_id;
-    if (!customerId) {
-      toast.error("No billing profile found. Please try upgrading first.");
-      return;
-    }
     startTransition(async () => {
-      const result = await openCustomerPortal(customerId);
+      const result = await openCustomerPortal();
       if (!result.ok) {
         toast.error(result.error);
         return;
