@@ -6,7 +6,7 @@ import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
 import { BillingCard } from "./billing-card";
 import type { BillingSubscriptionRow } from "@/lib/billing";
-import { getBillingMode, hasActiveTeamPlan } from "@/lib/billing";
+import { getBillingMode, hasActiveTeamPlan, isBillingDevUnlockEnabled } from "@/lib/billing";
 import { getMonthRangeUtc, getStarterMonthlyLimit } from "@/lib/billing/usage";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,7 +35,7 @@ export default async function SettingsPage({
     supabase.from("inboxes").select("email_address").eq("user_id", user!.id).maybeSingle(),
     supabase
       .from("billing_subscriptions")
-      .select("plan, status, polar_customer_id, customer_portal_url, renews_at, ends_at")
+      .select("plan, status, polar_customer_id, renews_at, ends_at")
       .eq("user_id", user!.id)
       .single<BillingSubscriptionRow>(),
   ]);
@@ -116,6 +116,7 @@ export default async function SettingsPage({
                 justCheckedOut={justCheckedOut}
                 usage={usage}
                 billingMode={getBillingMode()}
+                devUnlock={isBillingDevUnlockEnabled()}
               />
             ) : (
               <p className="text-[13px] text-muted-foreground">

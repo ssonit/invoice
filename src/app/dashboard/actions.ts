@@ -177,14 +177,30 @@ export type OpenCustomerPortalResult =
   | { ok: false; error: string };
 
 // Opens the Polar customer portal where the user can manage their subscription.
-export async function openCustomerPortal(
-  customerId: string,
-): Promise<OpenCustomerPortalResult> {
+// The current user's polar_customer_id is resolved server-side — the client
+// never passes it, avoiding an IDOR where one user could access another's portal.
+export async function openCustomerPortal(): Promise<OpenCustomerPortalResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: row } = await supabase
+    .from("billing_subscriptions")
+    .select("polar_customer_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!row?.polar_customer_id) {
+    return { ok: false, error: "No billing profile found." };
+  }
+
   try {
-    const url = await createPolarCustomerPortal(customerId);
+    const url = await createPolarCustomerPortal(row.polar_customer_id);
     return { ok: true, url };
   } catch (err) {
-    console.error("Failed to open customer portal", customerId, err);
+    console.error("Failed to open customer portal", user.id, err);
     return { ok: false, error: "Could not open the billing portal. Please try again." };
   }
 }

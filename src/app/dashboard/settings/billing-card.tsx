@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { createCheckoutUrl, openCustomerPortal } from "@/app/dashboard/actions";
 import {
   hasActiveTeamPlan,
-  isBillingDevUnlockEnabled,
   type BillingSubscriptionRow,
 } from "@/lib/billing";
 import { type BillingMode } from "@/constants/billing";
@@ -19,15 +18,16 @@ export function BillingCard({
   justCheckedOut,
   usage,
   billingMode,
+  devUnlock,
 }: {
   subscription: BillingSubscriptionRow;
   justCheckedOut?: boolean;
   usage?: { used: number; limit: number; resetsAt: string } | null;
   billingMode: BillingMode;
+  devUnlock: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
-  const devUnlock = isBillingDevUnlockEnabled();
   const billingDisabled = billingMode === "none";
   const isTestMode = billingMode === "test";
 
@@ -57,7 +57,7 @@ export function BillingCard({
 
   const hasExistingSubscription = subscription.status !== "none";
 
-  const usageRatio = usage ? usage.used / usage.limit : 0;
+  const usageRatio = usage ? (usage.limit === 0 ? 1 : usage.used / usage.limit) : 0;
   const showSoftWarn = usageRatio >= 0.8 && usageRatio < 1;
   const showBlocked = usageRatio >= 1;
 
@@ -73,13 +73,8 @@ export function BillingCard({
   }
 
   function handleManage() {
-    const customerId = subscription.polar_customer_id;
-    if (!customerId) {
-      toast.error("No billing profile found. Please try upgrading first.");
-      return;
-    }
     startTransition(async () => {
-      const result = await openCustomerPortal(customerId);
+      const result = await openCustomerPortal();
       if (!result.ok) {
         toast.error(result.error);
         return;
