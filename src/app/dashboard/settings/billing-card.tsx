@@ -2,7 +2,7 @@
 
 import { useEffect, useTransition } from "react";
 import { toast } from "sonner";
-import { createCheckoutUrl } from "@/app/dashboard/actions";
+import { createCheckoutUrl, openCustomerPortal } from "@/app/dashboard/actions";
 import {
   hasActiveTeamPlan,
   isBillingDevUnlockEnabled,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/billing";
 import { type BillingMode } from "@/constants/billing";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { formatInvoiceDate } from "@/lib/invoices";
 
@@ -69,6 +69,22 @@ export function BillingCard({
         return;
       }
       window.location.href = result.url;
+    });
+  }
+
+  function handleManage() {
+    const customerId = subscription.polar_customer_id;
+    if (!customerId) {
+      toast.error("No billing profile found. Please try upgrading first.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await openCustomerPortal(customerId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      window.open(result.url, "_blank");
     });
   }
 
@@ -136,14 +152,16 @@ export function BillingCard({
       ) : null}
 
       {hasExistingSubscription ? (
-        <a
-          href={subscription.customer_portal_url ?? "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonVariants({ variant: "outline", size: "sm", className: "w-fit" })}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          disabled={isPending}
+          onClick={handleManage}
         >
-          Manage subscription
-        </a>
+          {isPending ? <Spinner data-icon="inline-start" /> : null}
+          {isPending ? "Opening..." : "Manage subscription"}
+        </Button>
       ) : (
         <Button size="sm" className="w-fit" disabled={isPending} onClick={handleUpgrade}>
           {isPending ? <Spinner data-icon="inline-start" /> : null}

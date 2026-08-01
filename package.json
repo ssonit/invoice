@@ -16,6 +16,7 @@
     "@base-ui/react": "^1.6.0",
     "@google/genai": "^2.12.0",
     "@gsap/react": "^2.1.2",
+    "@polar-sh/sdk": "^0.49.0",
     "@supabase/server": "^1.4.1",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",

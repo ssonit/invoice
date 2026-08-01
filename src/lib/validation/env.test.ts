@@ -7,6 +7,7 @@ const validBase = {
   SUPABASE_SECRET_KEY: "service-role-key",
   AGENTMAIL_API_KEY: "agentmail-key",
   AGENTMAIL_WEBHOOK_SECRET: "webhook-secret",
+  BILLING_MODE: "none",
 };
 
 function withoutKey<K extends keyof typeof validBase>(key: K) {
@@ -91,5 +92,82 @@ describe("parseEnvInput", () => {
     const result = parseEnvInput({ ...validBase, EXTRACTION_PROVIDER: "openai" });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/Unknown EXTRACTION_PROVIDER/);
+  });
+});
+
+describe("parseEnvInput — Polar billing validation", () => {
+  const validWithExtraction = { ...validBase, ANTHROPIC_API_KEY: "sk-ant-x" };
+
+  it("accepts BILLING_MODE=none without any Polar vars", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "none",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects BILLING_MODE=test without POLAR_ACCESS_TOKEN", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "test",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/POLAR_ACCESS_TOKEN/);
+  });
+
+  it("rejects BILLING_MODE=live without POLAR_TEAM_PRODUCT_ID", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "live",
+      POLAR_ACCESS_TOKEN: "polar-token",
+      // Missing POLAR_TEAM_PRODUCT_ID
+      POLAR_WEBHOOK_SECRET: "whsec_test",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/POLAR_TEAM_PRODUCT_ID/);
+  });
+
+  it("rejects BILLING_MODE=test without POLAR_WEBHOOK_SECRET", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "test",
+      POLAR_ACCESS_TOKEN: "polar-token",
+      POLAR_TEAM_PRODUCT_ID: "prod_abc",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/POLAR_WEBHOOK_SECRET/);
+  });
+
+  it("defaults BILLING_MODE to live and requires Polar vars", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: undefined, // override the validBase default → falls back to "live"
+      POLAR_ACCESS_TOKEN: "polar-token",
+      POLAR_TEAM_PRODUCT_ID: "prod_abc",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/POLAR_WEBHOOK_SECRET/);
+  });
+
+  it("accepts BILLING_MODE=test with all Polar vars present", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "test",
+      POLAR_ACCESS_TOKEN: "polar-token",
+      POLAR_TEAM_PRODUCT_ID: "prod_abc",
+      POLAR_WEBHOOK_SECRET: "whsec_test",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts BILLING_MODE=live with all Polar vars present", () => {
+    const result = parseEnvInput({
+      ...validWithExtraction,
+      BILLING_MODE: "live",
+      POLAR_ACCESS_TOKEN: "polar-token",
+      POLAR_TEAM_PRODUCT_ID: "prod_abc",
+      POLAR_WEBHOOK_SECRET: "whsec_test",
+    });
+    expect(result.success).toBe(true);
   });
 });

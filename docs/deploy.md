@@ -25,10 +25,10 @@ Required variables:
 - `TRIGGER_PROJECT_REF`
 - `EXTRACTION_PROVIDER` (e.g. `anthropic`)
 - `ANTHROPIC_API_KEY` (or `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` per provider)
-- `LEMONSQUEEZY_API_KEY`
-- `LEMONSQUEEZY_STORE_ID`
-- `LEMONSQUEEZY_TEAM_VARIANT_ID`
-- `LEMONSQUEEZY_WEBHOOK_SECRET`
+- `POLAR_ACCESS_TOKEN`
+- `POLAR_ORGANIZATION_ID`
+- `POLAR_TEAM_PRODUCT_ID`
+- `POLAR_WEBHOOK_SECRET`
 
 Optional (skip if not using):
 - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (upload rate limiting)
@@ -61,13 +61,13 @@ npx trigger.dev@latest deploy
 
 Requires `TRIGGER_SECRET_KEY` and `TRIGGER_PROJECT_REF` set to production values in your local `.env.local`.
 
-### 6. Lemon Squeezy — webhook
+### 6. Polar — webhook
 
-In the Lemon Squeezy dashboard → **Settings** → **Webhooks**:
+In the Polar dashboard → **Settings** → **Webhooks**:
 
-- **URL:** `https://<prod-domain>/api/webhooks/lemonsqueezy`
+- **URL:** `https://<prod-domain>/api/webhooks/polar`
 - **Events:** `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`, `subscription_payment_failed`
-- Copy the signing secret into `LEMONSQUEEZY_WEBHOOK_SECRET` on Vercel.
+- Copy the signing secret into `POLAR_WEBHOOK_SECRET` on Vercel.
 
 ## Every deploy — pre-flight
 
@@ -89,7 +89,7 @@ After Vercel deploys (Preview or Production):
 - [ ] **Dashboard:** Dashboard loads without errors.
 - [ ] **Upload invoice:** Upload a PDF or image → extraction completes → invoice appears in the list.
 - [ ] **Forward invoice:** Send an email to your AgentMail inbox → invoice appears (verify Trigger.dev is processing).
-- [ ] **Settings:** Settings page loads, billing card shows (Lemon Squeezy integration working).
+- [ ] **Settings:** Settings page loads, billing card shows (Polar integration working).
 - [ ] **Analytics/Exports:** If on a Team plan, Analytics and Exports pages work.
 - [ ] **Logout/Login:** Session persistence works across browser restart.
 

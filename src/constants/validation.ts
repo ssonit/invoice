@@ -19,7 +19,7 @@ export const UPLOAD_FILENAME_MAX_LENGTH = 255;
 /** File bytes plus multipart framing overhead. */
 export const MAX_UPLOAD_REQUEST_BYTES = 16 * 1024 * 1024;
 
-/** Webhook JSON bodies (Lemon Squeezy, AgentMail). */
+/** Webhook JSON bodies (Polar, AgentMail). */
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
 
 /** Reject multipart forms with unexpected extra fields. */

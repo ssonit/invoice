@@ -35,7 +35,7 @@ export default async function SettingsPage({
     supabase.from("inboxes").select("email_address").eq("user_id", user!.id).maybeSingle(),
     supabase
       .from("billing_subscriptions")
-      .select("plan, status, customer_portal_url, renews_at, ends_at")
+      .select("plan, status, polar_customer_id, customer_portal_url, renews_at, ends_at")
       .eq("user_id", user!.id)
       .single<BillingSubscriptionRow>(),
   ]);

@@ -8,7 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
-import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy";
+import { createPolarCheckout, createPolarCustomerPortal } from "@/lib/polar";
 import { getBillingMode } from "@/lib/billing";
 
 export async function logout() {
@@ -144,8 +144,8 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
 
 export type CreateCheckoutUrlResult = { ok: true; url: string } | { ok: false; error: string };
 
-// Starts a Lemon Squeezy hosted checkout for the Team plan. Card data never
-// touches this server — the user completes payment on Lemon Squeezy's page.
+// Starts a Polar hosted checkout for the Team plan. Card data never touches
+// this server — the user completes payment on Polar's page.
 export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
   if (getBillingMode() === "none") {
     return { ok: false, error: "Billing is not enabled on this instance." };
@@ -160,7 +160,7 @@ export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
   const origin = (await headers()).get("origin");
 
   try {
-    const url = await createLemonSqueezyCheckout({
+    const url = await createPolarCheckout({
       userId: user.id,
       email: user.email!,
       redirectUrl: `${origin}/dashboard/settings?checkout=success`,
@@ -169,5 +169,22 @@ export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
   } catch (err) {
     console.error("Failed to create checkout", user.id, err);
     return { ok: false, error: "Could not start checkout. Please try again." };
+  }
+}
+
+export type OpenCustomerPortalResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+// Opens the Polar customer portal where the user can manage their subscription.
+export async function openCustomerPortal(
+  customerId: string,
+): Promise<OpenCustomerPortalResult> {
+  try {
+    const url = await createPolarCustomerPortal(customerId);
+    return { ok: true, url };
+  } catch (err) {
+    console.error("Failed to open customer portal", customerId, err);
+    return { ok: false, error: "Could not open the billing portal. Please try again." };
   }
 }

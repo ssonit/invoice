@@ -8,6 +8,8 @@ const PROVIDER_KEY_VARS = {
   deepseek: "DEEPSEEK_API_KEY",
 } as const;
 
+const BILLING_ENABLED_MODES = new Set(["test", "live"]);
+
 const envSchema = z
   .object({
     NEXT_PUBLIC_SUPABASE_URL: z.string().min(1, "NEXT_PUBLIC_SUPABASE_URL is required"),
@@ -21,11 +23,17 @@ const envSchema = z
     GOOGLE_API_KEY: z.string().optional(),
     DEEPSEEK_API_KEY: z.string().optional(),
     // Non-prod dev-unlock for Team features — never set on Vercel Production.
-    // See docs/billing-lemonsqueezy.md and src/lib/billing.ts for details.
+    // See docs/billing-polar.md and src/lib/billing.ts for details.
     BILLING_DEV_UNLOCK: z.string().optional(),
-    // Billing mode: "none" (disabled), "test" (Lemon Squeezy test mode), or
-    // "live" (production). Defaults to "live" when unset or unrecognized.
+    // Billing mode: "none" (disabled), "test" (Polar sandbox), or
+    // "live" (Polar production). Defaults to "live" when unset or unrecognized.
     BILLING_MODE: z.string().optional(),
+    // Polar (billing — Merchant of Record).
+    // Required when BILLING_MODE is "test" or "live"; ignored when "none".
+    POLAR_ACCESS_TOKEN: z.string().optional(),
+    POLAR_ORGANIZATION_ID: z.string().optional(),
+    POLAR_TEAM_PRODUCT_ID: z.string().optional(),
+    POLAR_WEBHOOK_SECRET: z.string().optional(),
     // Starter-plan monthly invoice extraction cap (default 50 if unset).
     // Set low for local testing (e.g. 3) to hit the wall quickly.
     STARTER_MONTHLY_INVOICE_LIMIT: z.string().optional(),
@@ -50,6 +58,29 @@ const envSchema = z
       ctx.addIssue({
         code: "custom",
         message: `EXTRACTION_PROVIDER is "${provider}" but ${requiredVar} is not set.`,
+      });
+    }
+  })
+  .superRefine((env, ctx) => {
+    const billingMode = (env.BILLING_MODE || "live").toLowerCase();
+    if (!BILLING_ENABLED_MODES.has(billingMode)) return;
+
+    if (!env.POLAR_ACCESS_TOKEN) {
+      ctx.addIssue({
+        code: "custom",
+        message: "POLAR_ACCESS_TOKEN is required when BILLING_MODE is test or live.",
+      });
+    }
+    if (!env.POLAR_TEAM_PRODUCT_ID) {
+      ctx.addIssue({
+        code: "custom",
+        message: "POLAR_TEAM_PRODUCT_ID is required when BILLING_MODE is test or live.",
+      });
+    }
+    if (!env.POLAR_WEBHOOK_SECRET) {
+      ctx.addIssue({
+        code: "custom",
+        message: "POLAR_WEBHOOK_SECRET is required when BILLING_MODE is test or live.",
       });
     }
   });

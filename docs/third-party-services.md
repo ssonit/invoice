@@ -29,22 +29,22 @@ worth knowing before scaling up. Add to this file as new services are integrated
 not the vendors' own pricing pages — re-check `trigger.dev/pricing` and `agentmail.to/pricing`
 directly before committing to a paid tier.
 
-## Lemon Squeezy (billing)
+## Polar (billing)
 
 - Merchant of Record — Lemon Squeezy is the seller of record and handles global
   VAT/sales-tax compliance. Fee: ~5% + 50¢ per transaction.
 - One paid variant (Team, $29/mo). Store/variant IDs and API key come from the
-  Lemon Squeezy dashboard; set in `.env.local` (`LEMONSQUEEZY_API_KEY`,
-  `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_TEAM_VARIANT_ID`,
-  `LEMONSQUEEZY_WEBHOOK_SECRET`).
+  Lemon Squeezy dashboard; set in `.env.local` (`POLAR_ACCESS_TOKEN`,
+  `POLAR_ORGANIZATION_ID`, `POLAR_TEAM_PRODUCT_ID`,
+  `POLAR_WEBHOOK_SECRET`).
 - **Test mode**: Lemon Squeezy stores support a test mode that runs the full
   checkout/webhook flow without a real charge — use it for local dev and the
   manual verification below instead of a real card.
-- Webhook endpoint: configure `https://<your-domain>/api/webhooks/lemonsqueezy`
+- Webhook endpoint: configure `https://<your-domain>/api/webhooks/polar`
   in the store's Settings → Webhooks, subscribed to `subscription_*` events.
   For local dev, use a tunnel (e.g. `ngrok http 3000`) and point the webhook
   at the tunnel URL.
-- Architecture details: [`docs/billing-lemonsqueezy.md`](billing-lemonsqueezy.md).
+- Architecture details: [`docs/billing-polar.md`](billing-polar.md).
 
 ## Upstash Redis (upload rate limiting)
 

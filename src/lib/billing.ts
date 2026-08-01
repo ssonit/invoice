@@ -11,6 +11,7 @@ export type BillingSubscriptionStatus =
 export type BillingSubscriptionRow = {
   plan: "starter" | "team";
   status: BillingSubscriptionStatus;
+  polar_customer_id: string | null;
   customer_portal_url: string | null;
   renews_at: string | null;
   ends_at: string | null;
