@@ -7,8 +7,11 @@ import { getBillingMode } from "@/lib/billing";
 import type { BillingSubscriptionStatus } from "@/lib/billing";
 
 // Polar uses the Standard Webhooks spec — every subscription-* event
-// carries the full current Subscription object. We upsert it keyed on
-// user_id from metadata, making the handler naturally idempotent.
+// carries the full current Subscription object including modifiedAt.
+// We upsert keyed on user_id from metadata, but guard against out-of-order
+// delivery by comparing the event's modifiedAt with the stored updated_at.
+// Without this guard, a retried subscription.updated (active) arriving after
+// subscription.revoked would flip the status back to active.
 
 function mapPolarStatus(polarStatus: string): BillingSubscriptionStatus {
   const mapping: Record<string, BillingSubscriptionStatus> = {
@@ -72,6 +75,8 @@ export async function POST(request: NextRequest) {
     customerId: string;
     currentPeriodEnd: Date;
     endsAt: Date | null;
+    modifiedAt: Date | null;
+    createdAt: Date;
     metadata: Record<string, unknown>;
   };
 
@@ -81,7 +86,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "ignored" });
   }
 
+  // Polar sets modifiedAt on every write; createdAt is the immutable fallback.
+  const eventModifiedAt = sub.modifiedAt ?? sub.createdAt;
+
   const service = createServiceClient();
+
+  // Guard against out-of-order delivery: if a stale event (e.g. a retried
+  // subscription.updated) arrives after a newer event (e.g. subscription.revoked),
+  // skip it so it doesn't flip the status back.
+  const { data: existing } = await service
+    .from("billing_subscriptions")
+    .select("updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing && new Date(eventModifiedAt) <= new Date(existing.updated_at)) {
+    return NextResponse.json({ status: "ignored", reason: "stale_event" });
+  }
+
   const { error } = await service.from("billing_subscriptions").upsert(
     {
       user_id: userId,
@@ -91,7 +113,7 @@ export async function POST(request: NextRequest) {
       polar_subscription_id: sub.id,
       renews_at: sub.currentPeriodEnd,
       ends_at: sub.endsAt,
-      updated_at: new Date().toISOString(),
+      updated_at: eventModifiedAt,
     },
     { onConflict: "user_id" },
   );
