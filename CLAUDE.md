@@ -9,6 +9,45 @@
 - Plan → code → test → security review → deploy workflow:
   [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
+### Multi-terminal worktree workflow
+
+When working across multiple terminals in parallel, isolate each task in a git worktree
+so branches never collide:
+
+```
+# Terminal 1 — start a new task
+git worktree add -b feature/xyz .claude/worktrees/xyz
+cd .claude/worktrees/xyz
+
+# ... code the feature ...
+
+# Before merging: quality gate (all 3 must pass)
+npm run test && npm run lint && npx tsc --noEmit
+
+# Merge back
+git checkout main
+git merge feature/xyz
+git branch -d feature/xyz
+git worktree remove .claude/worktrees/xyz
+
+# Keep the graph in sync with the merged result
+graphify update .
+```
+
+| Step | Command | What it catches |
+|------|---------|-----------------|
+| 1. Test | `npm run test` | Unit test regressions (Vitest, 358 tests) |
+| 2. Lint | `npm run lint` | React/TS code quality, unused vars, hook rules |
+| 3. Type-check | `npx tsc --noEmit` | Type errors across the whole project |
+| 4. Graphify | `graphify update .` | Refresh knowledge graph after merge |
+
+**Rules of thumb:**
+- Never skip the quality gate — a failing step = don't merge yet.
+- Run `graphify update .` on the merged branch (main), not inside the worktree.
+- Each worktree is disposable — if a task goes sideways, just delete the worktree and
+  branch, main stays untouched.
+- See `.claude/rules/testing.md` for test conventions.
+
 ## Knowledge graphs — priority order
 
 **Graphify is the default.** Use it before Grep/Glob/Read and before code-review-graph MCP for ordinary codebase exploration.

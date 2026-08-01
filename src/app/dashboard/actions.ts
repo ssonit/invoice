@@ -9,6 +9,7 @@ import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
 import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy";
+import { getBillingMode } from "@/lib/billing";
 
 export async function logout() {
   const supabase = await createClient();
@@ -146,6 +147,10 @@ export type CreateCheckoutUrlResult = { ok: true; url: string } | { ok: false; e
 // Starts a Lemon Squeezy hosted checkout for the Team plan. Card data never
 // touches this server — the user completes payment on Lemon Squeezy's page.
 export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
+  if (getBillingMode() === "none") {
+    return { ok: false, error: "Billing is not enabled on this instance." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

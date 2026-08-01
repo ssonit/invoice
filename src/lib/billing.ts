@@ -16,6 +16,18 @@ export type BillingSubscriptionRow = {
   ends_at: string | null;
 };
 
+import { type BillingMode, BILLING_MODE } from "@/constants/billing";
+
+/**
+ * Returns the current billing mode from BILLING_MODE env var.
+ * Defaults to "live" when unset or unrecognized — fail-safe for production.
+ */
+export function getBillingMode(): BillingMode {
+  const mode = process.env.BILLING_MODE;
+  if (mode === BILLING_MODE.NONE || mode === BILLING_MODE.TEST) return mode;
+  return BILLING_MODE.LIVE;
+}
+
 const ACCESS_GRANTING_STATUSES = new Set<BillingSubscriptionStatus>([
   "active",
   "on_trial",
@@ -24,7 +36,7 @@ const ACCESS_GRANTING_STATUSES = new Set<BillingSubscriptionStatus>([
 
 /** Result returned by feature-gating checks. */
 export type TeamAccess =
-  | { allowed: true; reason: "team" | "dev_unlock" }
+  | { allowed: true; reason: "team" | "dev_unlock" | "billing_disabled" }
   | { allowed: false; reason: "denied" };
 
 /**

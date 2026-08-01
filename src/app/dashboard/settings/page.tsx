@@ -6,7 +6,7 @@ import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
 import { BillingCard } from "./billing-card";
 import type { BillingSubscriptionRow } from "@/lib/billing";
-import { hasActiveTeamPlan } from "@/lib/billing";
+import { getBillingMode, hasActiveTeamPlan } from "@/lib/billing";
 import { getMonthRangeUtc, getStarterMonthlyLimit } from "@/lib/billing/usage";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -111,7 +111,12 @@ export default async function SettingsPage({
           </CardHeader>
           <CardContent>
             {subscription ? (
-              <BillingCard subscription={subscription} justCheckedOut={justCheckedOut} usage={usage} />
+              <BillingCard
+                subscription={subscription}
+                justCheckedOut={justCheckedOut}
+                usage={usage}
+                billingMode={getBillingMode()}
+              />
             ) : (
               <p className="text-[13px] text-muted-foreground">
                 Could not load your billing status. Please refresh the page.

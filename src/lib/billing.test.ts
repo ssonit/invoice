@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { hasActiveTeamPlan, isBillingDevUnlockEnabled } from "./billing";
+import { getBillingMode, hasActiveTeamPlan, isBillingDevUnlockEnabled } from "./billing";
 
 describe("hasActiveTeamPlan", () => {
   it("returns false for no subscription row", () => {
@@ -83,5 +83,39 @@ describe("isBillingDevUnlockEnabled", () => {
     vi.stubEnv("VERCEL_ENV", "production");
     vi.stubEnv("NODE_ENV", "production");
     expect(isBillingDevUnlockEnabled()).toBe(false);
+  });
+});
+
+describe("getBillingMode", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns 'live' when BILLING_MODE is not set", () => {
+    expect(getBillingMode()).toBe("live");
+  });
+
+  it("returns 'none' when BILLING_MODE=none", () => {
+    vi.stubEnv("BILLING_MODE", "none");
+    expect(getBillingMode()).toBe("none");
+  });
+
+  it("returns 'test' when BILLING_MODE=test", () => {
+    vi.stubEnv("BILLING_MODE", "test");
+    expect(getBillingMode()).toBe("test");
+  });
+
+  it("returns 'live' when BILLING_MODE=live", () => {
+    vi.stubEnv("BILLING_MODE", "live");
+    expect(getBillingMode()).toBe("live");
+  });
+
+  it("returns 'live' when BILLING_MODE is an unrecognized value", () => {
+    vi.stubEnv("BILLING_MODE", "garbage");
+    expect(getBillingMode()).toBe("live");
   });
 });

@@ -7,8 +7,14 @@ import {
   parseLemonSqueezyWebhook,
   parseWebhookJson,
 } from "@/lib/validation/webhooks";
+import { getBillingMode } from "@/lib/billing";
 
 export async function POST(request: NextRequest) {
+  // Billing is disabled — ack so the sender doesn't retry forever.
+  if (getBillingMode() === "none") {
+    return NextResponse.json({ status: "ignored", reason: "billing_disabled" });
+  }
+
   const contentLength = checkContentLength(request, MAX_WEBHOOK_BODY_BYTES);
   if (!contentLength.success) {
     return NextResponse.json({ error: contentLength.error }, { status: 413 });

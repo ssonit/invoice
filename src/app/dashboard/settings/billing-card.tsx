@@ -8,6 +8,7 @@ import {
   isBillingDevUnlockEnabled,
   type BillingSubscriptionRow,
 } from "@/lib/billing";
+import { type BillingMode } from "@/constants/billing";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,14 +18,18 @@ export function BillingCard({
   subscription,
   justCheckedOut,
   usage,
+  billingMode,
 }: {
   subscription: BillingSubscriptionRow;
   justCheckedOut?: boolean;
   usage?: { used: number; limit: number; resetsAt: string } | null;
+  billingMode: BillingMode;
 }) {
   const [isPending, startTransition] = useTransition();
   const isTeam = hasActiveTeamPlan(subscription);
   const devUnlock = isBillingDevUnlockEnabled();
+  const billingDisabled = billingMode === "none";
+  const isTestMode = billingMode === "test";
 
   useEffect(() => {
     if (justCheckedOut) {
@@ -33,6 +38,22 @@ export function BillingCard({
       );
     }
   }, [justCheckedOut]);
+
+  // When billing is disabled, show a minimal card — no upgrade, no usage meter.
+  if (billingDisabled) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13px] text-muted-foreground">Billing is disabled.</p>
+          {devUnlock ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              Dev unlock on
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   const hasExistingSubscription = subscription.status !== "none";
 
@@ -68,6 +89,14 @@ export function BillingCard({
         ) : null}
         {subscription.status === "cancelled" && subscription.ends_at ? (
           <Badge variant="secondary">Ends {formatInvoiceDate(subscription.ends_at)}</Badge>
+        ) : null}
+        {isTestMode ? (
+          <Badge
+            variant="outline"
+            className="border-amber-500/30 bg-amber-500/10 text-amber-600"
+          >
+            Test mode
+          </Badge>
         ) : null}
         {devUnlock ? (
           <Badge variant="outline" className="text-muted-foreground">

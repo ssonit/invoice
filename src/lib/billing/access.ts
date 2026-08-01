@@ -1,17 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
-import { hasActiveTeamPlan, isBillingDevUnlockEnabled, type TeamAccess } from "../billing";
+import { getBillingMode, hasActiveTeamPlan, isBillingDevUnlockEnabled, type TeamAccess } from "../billing";
 
 /**
  * Checks whether the current user can access Team-gated features.
  *
  * Order:
- *   1. Non-prod dev unlock (BILLING_DEV_UNLOCK) — full access, no DB hit.
- *   2. Load billing_subscriptions row, check via hasActiveTeamPlan().
- *   3. Otherwise denied.
+ *   1. Billing disabled (BILLING_MODE=none) — full access, no DB hit.
+ *   2. Non-prod dev unlock (BILLING_DEV_UNLOCK) — full access, no DB hit.
+ *   3. Load billing_subscriptions row, check via hasActiveTeamPlan().
+ *   4. Otherwise denied.
  *
  * Called from gated pages and the exports API route.
  */
 export async function getTeamAccess(): Promise<TeamAccess> {
+  if (getBillingMode() === "none") {
+    return { allowed: true, reason: "billing_disabled" };
+  }
+
   if (isBillingDevUnlockEnabled()) {
     return { allowed: true, reason: "dev_unlock" };
   }

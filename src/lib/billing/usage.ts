@@ -1,5 +1,5 @@
 import type { createServiceClient } from "@/lib/supabase/service";
-import { hasActiveTeamPlan, isBillingDevUnlockEnabled } from "../billing";
+import { getBillingMode, hasActiveTeamPlan, isBillingDevUnlockEnabled } from "../billing";
 import { STARTER_MONTHLY_INVOICE_LIMIT_DEFAULT } from "@/constants/billing";
 
 export type ServiceClient = ReturnType<typeof createServiceClient>;
@@ -61,10 +61,11 @@ export async function countBillableInvoicesThisMonth(
  * Check whether a user can extract another invoice under the Starter quota.
  *
  * Order of precedence:
- * 1. BILLING_DEV_UNLOCK → allowed (dev convenience).
- * 2. Active Team plan       → allowed (no cap).
- * 3. Starter under limit    → allowed.
- * 4. Starter at/over limit  → denied with usage details.
+ * 1. Billing disabled (BILLING_MODE=none) → allowed (no billing at all).
+ * 2. BILLING_DEV_UNLOCK → allowed (dev convenience).
+ * 3. Active Team plan       → allowed (no cap).
+ * 4. Starter under limit    → allowed.
+ * 5. Starter at/over limit  → denied with usage details.
  *
  * Called from the upload API route and the email extraction path. In the
  * upload route the caller already has a ServiceClient; in the trigger-task
@@ -76,10 +77,13 @@ export async function checkStarterQuota(
   supabase: ServiceClient,
   userId: string,
 ): Promise<QuotaCheckResult> {
-  // 1. Dev unlock → unlimited.
+  // 1. Billing disabled → unlimited.
+  if (getBillingMode() === "none") return { allowed: true };
+
+  // 2. Dev unlock → unlimited.
   if (isBillingDevUnlockEnabled()) return { allowed: true };
 
-  // 2. Active Team plan → unlimited.
+  // 3. Active Team plan → unlimited.
   const { data: billingRow } = await supabase
     .from("billing_subscriptions")
     .select("plan, status, ends_at")
@@ -88,13 +92,13 @@ export async function checkStarterQuota(
 
   if (hasActiveTeamPlan(billingRow)) return { allowed: true };
 
-  // 3. Starter — count invoices created this UTC month.
+  // 4. Starter — count invoices created this UTC month.
   const used = await countBillableInvoicesThisMonth(supabase, userId);
   const limit = getStarterMonthlyLimit();
 
   if (used < limit) return { allowed: true };
 
-  // 4. Over limit.
+  // 5. Over limit.
   const { end } = getMonthRangeUtc();
   return { allowed: false, used, limit, resetsAt: end.toISOString() };
 }

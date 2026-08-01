@@ -27,6 +27,42 @@ either that directory or this file silently drift out of date.
 - Small, focused commits — one logical step per commit (matches the plan's task
   granularity), descriptive messages.
 
+### Multi-terminal worktree workflow
+
+When working across multiple terminals in parallel, isolate each task in a git worktree:
+
+```
+worktree (branch mới) → code → quality gate → merge vào main → graphify update .
+```
+
+**Starting a new task:**
+```sh
+git worktree add -b feature/xyz .claude/worktrees/xyz
+cd .claude/worktrees/xyz
+```
+
+**Quality gate** — all 3 must pass before merging back:
+
+| Step | Command | What it catches |
+|------|---------|-----------------|
+| Test | `npm run test` | Unit test regressions (Vitest, ~358 tests) |
+| Lint | `npm run lint` | React/TS code quality, unused vars, hook rules |
+| Type-check | `npx tsc --noEmit` | Type errors across the whole project |
+
+**Merge + sync:**
+```sh
+git checkout main
+git merge feature/xyz
+git branch -d feature/xyz
+git worktree remove .claude/worktrees/xyz
+graphify update .
+```
+
+Rules of thumb:
+- Each worktree is disposable — if a task goes sideways, delete the worktree + branch.
+- Run `graphify update .` on the merged branch (main), not inside the worktree.
+- Never skip the quality gate — a failing step = don't merge yet.
+
 ## Test
 
 - Unit test (Vitest) all pure `src/lib/` logic — see `.claude/rules/testing.md` for what
