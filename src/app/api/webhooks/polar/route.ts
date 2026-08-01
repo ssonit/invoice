@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
   const sub = event.data as {
     id: string;
     status: string;
+    productId: string;
     customerId: string;
     currentPeriodEnd: Date;
     endsAt: Date | null;
@@ -93,6 +94,21 @@ export async function POST(request: NextRequest) {
 
   // Polar sets modifiedAt on every write; createdAt is the immutable fallback.
   const eventModifiedAt = sub.modifiedAt ?? sub.createdAt;
+
+  // Resolve plan from the subscription's productId. Hard-coding "team" would
+  // grant team access for any product — verifying the product ID prevents a
+  // future cheaper plan from accidentally unlocking team features.
+  const teamProductId = process.env.POLAR_TEAM_PRODUCT_ID;
+  const plan: "starter" | "team" =
+    teamProductId && sub.productId === teamProductId ? "team" : "starter";
+
+  if (plan === "starter") {
+    console.warn(
+      "Polar webhook received subscription with unknown productId",
+      sub.id,
+      sub.productId,
+    );
+  }
 
   const service = createServiceClient();
 
@@ -112,7 +128,7 @@ export async function POST(request: NextRequest) {
   const { error } = await service.from("billing_subscriptions").upsert(
     {
       user_id: userId,
-      plan: "team",
+      plan,
       status: mapPolarStatus(sub.status),
       polar_customer_id: sub.customerId,
       polar_subscription_id: sub.id,
