@@ -11,10 +11,15 @@ import { verifyPolarWebhook, WebhookVerificationError } from "./polar-webhook";
 // without the actual webhook secret.
 
 describe("verifyPolarWebhook", () => {
+  // A fake webhook secret for testing error paths — never a real secret.
+  // The whsec_ prefix matches Stripe's format; to avoid GitHub secret-scanning
+  // false positives, a self-documenting placeholder is used instead.
+  const TEST_SECRET = "fake_test_webhook_secret_placeholder";
+
   it("throws WebhookVerificationError for an unsigned payload", () => {
     const body = JSON.stringify({ type: "subscription.active", data: {} });
     expect(() =>
-      verifyPolarWebhook(body, {}, "whsec_testsecret12345678901234567890"),
+      verifyPolarWebhook(body, {}, TEST_SECRET),
     ).toThrow(WebhookVerificationError);
   });
 
@@ -24,7 +29,7 @@ describe("verifyPolarWebhook", () => {
       verifyPolarWebhook(
         body,
         { "webhook-timestamp": String(Math.floor(Date.now() / 1000)) },
-        "whsec_testsecret12345678901234567890",
+        TEST_SECRET,
       ),
     ).toThrow(WebhookVerificationError);
   });
@@ -39,7 +44,7 @@ describe("verifyPolarWebhook", () => {
           "webhook-timestamp": String(Math.floor(Date.now() / 1000)),
           "webhook-signature": "v1,invalid",
         },
-        "whsec_testsecret12345678901234567890",
+        TEST_SECRET,
       ),
     ).toThrow(WebhookVerificationError);
   });
