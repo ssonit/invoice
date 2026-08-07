@@ -4,12 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseSignupForm } from "@/lib/validation/auth";
 import { checkSignupRateLimit } from "@/lib/rate-limit";
-
-export type SignupFormState = {
-  error: string | null;
-};
-
-export const initialSignupState: SignupFormState = { error: null };
+import type { SignupFormState } from "./signup-form-state";
 
 export async function signup(
   _prev: SignupFormState,

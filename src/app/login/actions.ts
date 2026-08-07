@@ -4,12 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseLoginForm } from "@/lib/validation/auth";
 import { checkLoginRateLimit } from "@/lib/rate-limit";
-
-export type LoginFormState = {
-  error: string | null;
-};
-
-export const initialLoginState: LoginFormState = { error: null };
+import type { LoginFormState } from "./login-form-state";
 
 export async function login(
   _prev: LoginFormState,

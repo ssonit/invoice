@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { PASSWORD_MIN_LENGTH } from "@/constants/validation";
-import { initialSignupState, signup } from "./actions";
+import { signup } from "./actions";
+import { initialSignupState } from "./signup-form-state";
 
 export function SignupForm() {
   const [state, formAction] = useActionState(signup, initialSignupState);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   return (
     <form action={formAction}>
@@ -25,6 +30,8 @@ export function SignupForm() {
             autoComplete="name"
             placeholder="Alex Johnson"
             className="h-10"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
         </Field>
         <Field>
@@ -37,6 +44,8 @@ export function SignupForm() {
             autoComplete="email"
             placeholder="you@company.com"
             className="h-10"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </Field>
         <Field>
@@ -50,6 +59,8 @@ export function SignupForm() {
             autoComplete="new-password"
             placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
             className="h-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
             Use at least {PASSWORD_MIN_LENGTH} characters.
@@ -65,6 +76,8 @@ export function SignupForm() {
             autoComplete="new-password"
             placeholder="Re-enter your password"
             className="h-10"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
           />
         </Field>
         {state.error ? (

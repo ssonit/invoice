@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { initialLoginState, login } from "./actions";
+import { login } from "./actions";
+import { initialLoginState } from "./login-form-state";
 
 export function LoginForm() {
   const [state, formAction] = useActionState(login, initialLoginState);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <form action={formAction}>
@@ -24,6 +27,8 @@ export function LoginForm() {
             autoComplete="email"
             placeholder="you@company.com"
             className="h-10"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </Field>
         <Field>
@@ -44,6 +49,8 @@ export function LoginForm() {
             autoComplete="current-password"
             placeholder="••••••••"
             className="h-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
         {state.error ? (
