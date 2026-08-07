@@ -5,17 +5,26 @@ import { createClient } from "@/lib/supabase/server";
 import { parseLoginForm } from "@/lib/validation/auth";
 import { checkLoginRateLimit } from "@/lib/rate-limit";
 
-export async function login(formData: FormData) {
+export type LoginFormState = {
+  error: string | null;
+};
+
+export const initialLoginState: LoginFormState = { error: null };
+
+export async function login(
+  _prev: LoginFormState,
+  formData: FormData,
+): Promise<LoginFormState> {
   const parsed = parseLoginForm(formData);
   if (!parsed.success) {
-    redirect(`/login?error=${encodeURIComponent(parsed.error)}`);
+    return { error: parsed.error };
   }
 
   const rateLimitResult = await checkLoginRateLimit(parsed.data.email);
   if (rateLimitResult.limited) {
-    redirect(
-      `/login?error=${encodeURIComponent("Too many attempts — please wait a few minutes and try again.")}`,
-    );
+    return {
+      error: "Too many attempts — please wait a few minutes and try again.",
+    };
   }
 
   const supabase = await createClient();
@@ -23,9 +32,7 @@ export async function login(formData: FormData) {
 
   if (error) {
     console.error("Login failed", parsed.data.email, error);
-    redirect(
-      `/login?error=${encodeURIComponent("Invalid email or password.")}`,
-    );
+    return { error: "Invalid email or password." };
   }
 
   const {
@@ -40,7 +47,7 @@ export async function login(formData: FormData) {
 
   if (profile?.deleted_at) {
     await supabase.auth.signOut();
-    redirect(`/login?error=${encodeURIComponent("This account has been deleted.")}`);
+    return { error: "This account has been deleted." };
   }
 
   redirect("/dashboard");

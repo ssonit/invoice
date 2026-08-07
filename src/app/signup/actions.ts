@@ -5,17 +5,26 @@ import { createClient } from "@/lib/supabase/server";
 import { parseSignupForm } from "@/lib/validation/auth";
 import { checkSignupRateLimit } from "@/lib/rate-limit";
 
-export async function signup(formData: FormData) {
+export type SignupFormState = {
+  error: string | null;
+};
+
+export const initialSignupState: SignupFormState = { error: null };
+
+export async function signup(
+  _prev: SignupFormState,
+  formData: FormData,
+): Promise<SignupFormState> {
   const parsed = parseSignupForm(formData);
   if (!parsed.success) {
-    redirect(`/signup?error=${encodeURIComponent(parsed.error)}`);
+    return { error: parsed.error };
   }
 
   const rateLimitResult = await checkSignupRateLimit(parsed.data.email);
   if (rateLimitResult.limited) {
-    redirect(
-      `/signup?error=${encodeURIComponent("Too many attempts — please wait a while and try again.")}`,
-    );
+    return {
+      error: "Too many attempts — please wait a while and try again.",
+    };
   }
 
   const supabase = await createClient();
@@ -32,16 +41,12 @@ export async function signup(formData: FormData) {
     // that would enable account enumeration. forgot-password already uses the
     // same generic pattern.
     console.error("Signup failed", parsed.data.email, error);
-    redirect(
-      `/signup?error=${encodeURIComponent("Could not create your account. Please try again.")}`,
-    );
+    return { error: "Could not create your account. Please try again." };
   }
 
   if (!data.user) {
     console.error("Signup returned no user", parsed.data.email);
-    redirect(
-      `/signup?error=${encodeURIComponent("Could not create your account. Please try again.")}`,
-    );
+    return { error: "Could not create your account. Please try again." };
   }
 
   // The AgentMail forwarding inbox is provisioned on demand from the
