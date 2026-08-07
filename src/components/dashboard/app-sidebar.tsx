@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FileText } from "lucide-react"
 
-import { CreditsUsage } from "./credits-usage"
 import {
   isNavItemActive,
   navGroups,
@@ -15,7 +14,6 @@ import { cn } from "@/lib/utils"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -112,9 +110,6 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-white/5">
-        <CreditsUsage />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
