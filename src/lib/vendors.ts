@@ -9,7 +9,15 @@ type Upsertable = {
   };
 };
 
-/** Ensure a vendor row exists for the given display name. No-op if blank. */
+/** Ensure a vendor row exists for the given display name. No-op if blank.
+ *
+ *  Deliberately does NOT revive a vendor the user soft-deleted: `ignoreDuplicates`
+ *  makes this ON CONFLICT DO NOTHING, so a new invoice from a deleted vendor
+ *  keeps its `vendor` string (and still counts in analytics) without putting the
+ *  vendor back in the user's curated list. Deletion is an explicit user action;
+ *  only an equally explicit one — re-creating the vendor by name, see
+ *  createVendor() — brings it back. Don't "fix" this into an upsert that clears
+ *  `deleted_at`. */
 export async function ensureVendorRecord(
   client: Upsertable,
   userId: string,

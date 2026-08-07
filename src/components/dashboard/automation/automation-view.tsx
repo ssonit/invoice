@@ -9,10 +9,12 @@ export function AutomationView({
   forwardAddress,
   receivedCount,
   agents,
+  canProvision,
 }: {
   forwardAddress: string | null;
   receivedCount: number;
   agents: readonly AutomationAgent[];
+  canProvision: boolean;
 }) {
   return (
     <ContentShell
@@ -20,7 +22,11 @@ export function AutomationView({
       description="Let your AI agent forward invoices for you. No mailbox access required."
     >
       <div className="flex flex-col gap-5">
-        <ConnectionPanel forwardAddress={forwardAddress} receivedCount={receivedCount} />
+        <ConnectionPanel
+          forwardAddress={forwardAddress}
+          receivedCount={receivedCount}
+          canProvision={canProvision}
+        />
 
         {forwardAddress ? (
           <>
@@ -30,7 +36,9 @@ export function AutomationView({
           </>
         ) : (
           <p className="text-[13px] text-muted-foreground">
-            Create your forwarding address above to get the agent setup prompts.
+            {canProvision
+              ? "Create your forwarding address above to get the agent setup prompts."
+              : "Upgrade to Team above to create a forwarding address and unlock agent setup prompts."}
           </p>
         )}
       </div>

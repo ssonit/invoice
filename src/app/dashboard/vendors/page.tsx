@@ -114,11 +114,13 @@ export default async function VendorsPage({
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Soft-deleted vendors are fetched too, then dropped from the displayed list
+  // below. Their name_keys still have to be visible to the orphan heal — see
+  // the comment there for what happens when they aren't.
   let vendorsQuery = supabase
     .from("vendors")
-    .select("id, name, name_key, notes, created_at")
+    .select("id, name, name_key, notes, created_at, deleted_at")
     .eq("user_id", user!.id)
-    .is("deleted_at", null)
 
   if (query.q) {
     const pattern = `%${escapeIlike(query.q).replace(/"/g, "")}%`
@@ -161,9 +163,17 @@ export default async function VendorsPage({
   // When searching, skip orphan heal (orphans wouldn't match the filtered query anyway
   // until upserted). Still heal when browsing the full list. Sourced from the small
   // aggregate view (one row per distinct vendor) instead of the full invoice history.
-  let vendorRows = vendorRowsInitial
+  const allVendorRows = vendorRowsInitial ?? []
+  let vendorRows = allVendorRows.filter((row) => row.deleted_at === null)
   if (!query.q) {
-    const existingKeys = new Set((vendorRowsInitial ?? []).map((row) => row.name_key))
+    // Keyed on every vendor row, soft-deleted included. vendor_invoice_stats is
+    // built from `invoices`, which keeps its vendor string after a soft delete —
+    // so a deleted vendor still shows up there. Counting only live rows here
+    // would flag it as an orphan on every single page load, and the upsert
+    // below can never clear that: ignoreDuplicates makes it a no-op against the
+    // soft-deleted row, so it re-orphans forever, one wasted write plus a full
+    // re-query per render.
+    const existingKeys = new Set(allVendorRows.map((row) => row.name_key))
     const now = new Date().toISOString()
     const orphanUpserts = stats
       .filter((row) => !existingKeys.has(row.vendor_key))
@@ -180,11 +190,11 @@ export default async function VendorsPage({
       })
       const refreshed = await supabase
         .from("vendors")
-        .select("id, name, name_key, notes, created_at")
+        .select("id, name, name_key, notes, created_at, deleted_at")
         .eq("user_id", user!.id)
         .is("deleted_at", null)
         .order("name", { ascending: true })
-      vendorRows = refreshed.data
+      vendorRows = refreshed.data ?? vendorRows
     }
   }
 
@@ -232,7 +242,7 @@ export default async function VendorsPage({
 
   const vendorMap = new Map<string, VendorListItem>()
 
-  for (const row of vendorRows ?? []) {
+  for (const row of vendorRows) {
     const stat = statsByKey.get(row.name_key)
     vendorMap.set(row.name_key, {
       id: row.id,

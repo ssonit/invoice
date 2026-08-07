@@ -176,7 +176,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       eyebrow: "Pricing",
       title: "Simple pricing for finance teams.",
       subtitle:
-        "Start free with your inbox. Upgrade when the team needs shared review and exports.",
+        "Start free with upload and analytics. Upgrade for email forwarding, unlimited volume, and exports.",
       plans: [
         {
           name: "Starter",
@@ -185,10 +185,11 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           period: "/ month",
           cta: "Log in",
           features: [
-            "AgentMail inbox",
+            "Manual upload",
             "AI field extraction",
-            "Dashboard review",
-            "Basic filters",
+            "Dashboard + filters",
+            "Analytics",
+            "50 invoices / month",
           ],
         },
         {
@@ -200,7 +201,8 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           featured: true,
           features: [
             "Everything in Starter",
-            "Trend charts",
+            "Forwarding inbox",
+            "Unlimited invoices",
             "Export-ready rows",
           ],
         },
@@ -326,7 +328,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       eyebrow: "Bảng giá",
       title: "Giá đơn giản cho team finance.",
       subtitle:
-        "Bắt đầu miễn phí với hộp thư. Nâng cấp khi cần review chung và export.",
+        "Bắt đầu miễn phí với tải lên và analytics. Nâng cấp để chuyển tiếp email, không giới hạn số lượng, và export.",
       plans: [
         {
           name: "Starter",
@@ -335,10 +337,11 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           period: "/ tháng",
           cta: "Đăng nhập",
           features: [
-            "Hộp thư AgentMail",
+            "Tải lên thủ công",
             "AI trích xuất trường",
-            "Xem trên dashboard",
-            "Bộ lọc cơ bản",
+            "Dashboard + bộ lọc",
+            "Analytics",
+            "50 hóa đơn / tháng",
           ],
         },
         {
@@ -350,7 +353,8 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
           featured: true,
           features: [
             "Mọi thứ trong Starter",
-            "Biểu đồ xu hướng",
+            "Hộp thư chuyển tiếp",
+            "Không giới hạn hóa đơn",
             "Xuất dữ liệu sẵn sàng",
           ],
         },

@@ -90,7 +90,8 @@ After Vercel deploys (Preview or Production):
 - [ ] **Upload invoice:** Upload a PDF or image → extraction completes → invoice appears in the list.
 - [ ] **Forward invoice:** Send an email to your AgentMail inbox → invoice appears (verify Trigger.dev is processing).
 - [ ] **Settings:** Settings page loads, billing card shows (Polar integration working).
-- [ ] **Analytics/Exports:** If on a Team plan, Analytics and Exports pages work.
+- [ ] **Analytics:** Available on Starter (and Team).
+- [ ] **Exports / inbox:** Team plan unlocks CSV exports and new forwarding-inbox create.
 - [ ] **Logout/Login:** Session persistence works across browser restart.
 
 ## CI (GitHub Actions)

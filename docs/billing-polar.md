@@ -37,13 +37,26 @@ Every subscription webhook event carries the **full current** subscription state
 `data` (a `Subscription` object). The route handler upserts `billing_subscriptions`
 keyed on `user_id` from `metadata.userId` — naturally idempotent.
 
-### 4. Feature gating
+### 4. Plan matrix
 
-`getTeamAccess()` (`src/lib/billing/access.ts`) checks in order:
+| | **Starter** `$0` | **Team** `$29/mo` |
+|--|--|--|
+| Manual upload + AI extract | Yes (soft limit **50**/mo) | Unlimited |
+| Dashboard, filters, vendors | Yes | Yes |
+| Analytics | Yes | Yes |
+| AgentMail forwarding inbox | No (new provision) | Yes |
+| CSV exports | No | Yes |
 
-1. **Dev unlock** (`isBillingDevUnlockEnabled()`): if `BILLING_DEV_UNLOCK=true`.
-2. **Database row**: loads `billing_subscriptions`, passes through `hasActiveTeamPlan()`.
-3. **Default**: denied.
+`getTeamAccess()` (`src/lib/billing/access.ts`) gates **Exports** (page + API). Order:
+
+1. **Billing disabled** (`BILLING_MODE=none`) — full access.
+2. **Dev unlock** (`isBillingDevUnlockEnabled()`): if `BILLING_DEV_UNLOCK=true` (non-prod).
+3. **Database row**: loads `billing_subscriptions`, passes through `hasActiveTeamPlan()`.
+4. **Default**: denied.
+
+Inbox provisioning uses `canProvisionInbox()` (same bypasses + Team). Existing
+Starter inboxes are **grandfathered** — they keep working; only **new** creates
+require Team.
 
 ### 5. Starter usage soft limit
 
@@ -58,7 +71,8 @@ Starter-plan users capped at `STARTER_MONTHLY_INVOICE_LIMIT` (default 50) per mo
 | `src/app/api/webhooks/polar/route.ts` | Webhook route — verify signature, upsert current state |
 | `src/app/dashboard/actions.ts` | `createCheckoutUrl()`, `openCustomerPortal()` Server Actions |
 | `src/app/dashboard/settings/billing-card.tsx` | Settings UI — Upgrade to Team / Manage subscription |
-| `src/lib/billing.ts` | `hasActiveTeamPlan()`, `getBillingMode()`, `isBillingDevUnlockEnabled()` |
+| `src/lib/billing.ts` | `hasActiveTeamPlan()`, `canProvisionInbox()`, `getBillingMode()`, `isBillingDevUnlockEnabled()` |
+| `src/components/dashboard/inbox-provision-panel.tsx` | Create inbox or Upgrade CTA |
 
 ## Setup
 

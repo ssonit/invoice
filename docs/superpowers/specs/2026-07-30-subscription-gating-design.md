@@ -5,10 +5,10 @@
 
 ## Problem
 
-The billing integration (Lemon Squeezy checkout + webhook) shipped 2026-07-25, but
-nothing actually gates features by plan. The landing page sells Team as the analytics +
-exports tier, and both features now exist as real pages — so Starter users can use
-features they haven't paid for.
+The billing integration (originally Lemon Squeezy, now Polar) shipped with checkout +
+webhook, but early gating treated Team as Analytics + Exports. **Current matrix
+(2026-08):** Analytics is on Starter; Team sells forwarding inbox + unlimited quota +
+exports (AgentMail cost wedge). See [billing-polar.md](../../../billing-polar.md).
 
 ## Decisions
 
@@ -50,17 +50,17 @@ upgrading.
 For the API route (`GET /api/exports/invoices`), a 403 JSON response is the right UX
 because the consumer is a CSV download button, not a human navigating to a page.
 
-### 4. No credits, no multi-inbox, no seats
+### 4. Entitlements (updated)
 
-Out of scope for this pass:
-- Usage meters / invoice quotas
-- Multi-inbox as a Team perk
-- Shared workspace / seats
-- Admin UI to grant Team (SQL is enough)
-- Changing Lemon Squeezy pricing
+**Starter:** upload + AI extract (monthly soft limit), dashboard, vendors, **Analytics**.  
+**Team:** everything in Starter + **forwarding inbox** + unlimited invoices + **Exports**.
 
-Team = full access to Analytics + Exports. Starter = everything else. Simple, binary,
-easy to explain on the landing page.
+Out of scope:
+- Multi-inbox / seats
+- Credits wallet
+- Revoking grandfathered Starter inboxes already provisioned
+
+New inbox creates require Team via `canProvisionInbox()` / `createInbox()`.
 
 ## Alternatives considered
 
@@ -76,12 +76,14 @@ easy to explain on the landing page.
 
 | File | Role |
 |------|------|
-| `src/lib/billing.ts` | Pure helpers: `hasActiveTeamPlan()`, `isBillingDevUnlockEnabled()`, `TeamAccess` type |
-| `src/lib/billing/access.ts` | `getTeamAccess()` — I/O orchestration: dev unlock → DB row → hasActiveTeamPlan |
+| `src/lib/billing.ts` | Pure helpers: `hasActiveTeamPlan()`, `canProvisionInbox()`, `isBillingDevUnlockEnabled()`, `TeamAccess` type |
+| `src/lib/billing/access.ts` | `getTeamAccess()` — I/O orchestration: billing disabled → unlock → DB → hasActiveTeamPlan |
 | `src/lib/validation/env.ts` | Optional `BILLING_DEV_UNLOCK` in env schema |
-| `src/components/dashboard/team-gate.tsx` | Client component — upgrade CTA panel for gated pages |
-| `src/app/dashboard/analytics/page.tsx` | Gated: calls `getTeamAccess()`, renders TeamGate if denied |
-| `src/app/dashboard/exports/page.tsx` | Gated: same pattern |
+| `src/components/dashboard/team-gate.tsx` | Client component — upgrade CTA panel for gated pages (Exports) |
+| `src/components/dashboard/inbox-provision-panel.tsx` | Create inbox or Upgrade CTA |
+| `src/app/dashboard/analytics/page.tsx` | Available on Starter (not Team-gated) |
+| `src/app/dashboard/exports/page.tsx` | Gated: calls `getTeamAccess()`, renders TeamGate if denied |
 | `src/app/api/exports/invoices/route.ts` | Gated: 403 JSON if denied |
+| `src/app/dashboard/actions.ts` | `createInbox()` gated via `canProvisionInbox()` |
 | `src/app/dashboard/settings/billing-card.tsx` | Dev unlock badge when applicable |
 | `.env.local.example` | Documented `BILLING_DEV_UNLOCK` entry |

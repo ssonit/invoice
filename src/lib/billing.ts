@@ -59,16 +59,30 @@ export function isBillingDevUnlockEnabled(): boolean {
 /**
  * True if the user currently has Team-plan access. A cancelled subscription
  * still grants access until `ends_at` — the user already paid for that
- * period. Not called from any gated route yet (see design spec's "no feature
- * gating in this pass"); used today only by the Settings billing card.
+ * period.
  */
 export function hasActiveTeamPlan(
-  row: Pick<BillingSubscriptionRow, "status" | "ends_at"> | null,
+  row: Pick<BillingSubscriptionRow, "plan" | "status" | "ends_at"> | null,
 ): boolean {
   if (!row) return false;
+  if (row.plan !== "team") return false;
   if (ACCESS_GRANTING_STATUSES.has(row.status)) return true;
   if (row.status === "cancelled" && row.ends_at) {
     return new Date(row.ends_at) > new Date();
   }
   return false;
+}
+
+/**
+ * Whether the user may provision a new AgentMail forwarding inbox.
+ * Billing disabled / non-prod unlock bypass; otherwise requires Team.
+ * Existing inboxes are grandfathered separately (createInbox short-circuits
+ * before calling this).
+ */
+export function canProvisionInbox(
+  row: Pick<BillingSubscriptionRow, "plan" | "status" | "ends_at"> | null,
+): boolean {
+  if (getBillingMode() === BILLING_MODE.NONE) return true;
+  if (isBillingDevUnlockEnabled()) return true;
+  return hasActiveTeamPlan(row);
 }

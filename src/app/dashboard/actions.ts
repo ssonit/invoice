@@ -9,7 +9,7 @@ import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
 import { createPolarCheckout, createPolarCustomerPortal } from "@/lib/polar";
-import { getBillingMode } from "@/lib/billing";
+import { canProvisionInbox, getBillingMode } from "@/lib/billing";
 
 export async function logout() {
   const supabase = await createClient();
@@ -24,7 +24,9 @@ export type CreateInboxResult =
 // Provisions the AgentMail forwarding inbox on demand. Called from the
 // dashboard when the user chooses to set up email forwarding, rather than
 // automatically at signup. Exactly one inbox per user (enforced by a DB
-// unique constraint as well as the check below).
+// unique constraint as well as the check below). New provisioning requires
+// Team (or billing disabled / non-prod unlock); existing inboxes are
+// grandfathered and returned without a plan check.
 export async function createInbox(): Promise<CreateInboxResult> {
   const supabase = await createClient();
   const {
@@ -44,6 +46,19 @@ export async function createInbox(): Promise<CreateInboxResult> {
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/automation");
     return { ok: true, email: existing.email_address, alreadyExisted: true };
+  }
+
+  const { data: billingRow } = await service
+    .from("billing_subscriptions")
+    .select("plan, status, ends_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!canProvisionInbox(billingRow)) {
+    return {
+      ok: false,
+      error: "Forwarding inbox requires the Team plan. Upgrade in Settings to create one.",
+    };
   }
 
   try {

@@ -360,11 +360,11 @@ export function VendorsList({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete {selected.label}?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This removes the vendor
+                      This removes the vendor from your list
                       {selected.count > 0
-                        ? ` and clears the vendor name on ${selected.count} linked invoice(s)`
+                        ? `. Its ${selected.count} linked invoice(s) are untouched and keep the vendor name`
                         : ""}
-                      . Invoice amounts are kept.
+                      . You can add the vendor again later to restore it.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

@@ -33,7 +33,11 @@ export function escapeCsvCell(value: unknown): string {
   // Guard against formula injection (OWASP).  The single-quote prefix is
   // recognised by Excel / Sheets / Calc as "treat the rest as text".  We
   // apply it *before* quoting so the prefix is inside the quoted field.
-  const safe = FORMULA_TRIGGER_RE.test(s) ? `'${s}` : s;
+  // Skip the formula-injection prefix when the value parses as a finite
+  // number (e.g. "-42" or "+42.5") — those are safe and keeping them
+  // numeric lets Excel sum the column correctly (OWASP recommendation).
+  const safe =
+    FORMULA_TRIGGER_RE.test(s) && !Number.isFinite(Number(s)) ? `'${s}` : s;
 
   if (
     safe.includes(",") ||
@@ -58,13 +62,12 @@ export function invoicesToCsv(
     }).join(","),
   );
 
-  const parts = [header];
+  const parts = [header, ...dataLines];
   if (opts?.truncated) {
     const warning =
       "⚠️ Export limited to 5,000 most recent invoices. Older invoices may be missing.";
     parts.push(escapeCsvCell(warning));
   }
-  parts.push(...dataLines);
 
   return BOM + parts.join("\n") + "\n";
 }

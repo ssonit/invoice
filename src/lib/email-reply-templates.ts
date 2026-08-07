@@ -36,6 +36,7 @@ export function buildReplyText(outcome: EmailReplyOutcome): string {
       const resetDate = new Date(outcome.resetsAt).toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
+        timeZone: "UTC",
       });
       return (
         `You've reached your Starter plan limit of ${outcome.limit} invoices this month ` +

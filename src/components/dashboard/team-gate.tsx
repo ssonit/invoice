@@ -43,8 +43,9 @@ export function TeamGate({ title, description }: TeamGateProps) {
             Upgrade to Team
           </h2>
           <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            Analytics and exports are available on the Team plan. Upgrade to
-            unlock advanced reporting and CSV downloads for your workspace.
+            CSV exports are available on the Team plan, along with a forwarding
+            inbox and unlimited invoice extraction. Upgrade to unlock downloads
+            for your workspace.
           </p>
         </div>
         <Button

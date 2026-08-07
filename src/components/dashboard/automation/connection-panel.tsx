@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CopyButton } from "@/components/dashboard/copy-button";
-import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
+import { InboxProvisionPanel } from "@/components/dashboard/inbox-provision-panel";
 import { AUTOMATION_STATUS } from "@/constants/automation";
 
 // The address is a workspace-level resource, so it is presented once, here,
@@ -16,9 +16,11 @@ import { AUTOMATION_STATUS } from "@/constants/automation";
 export function ConnectionPanel({
   forwardAddress,
   receivedCount,
+  canProvision,
 }: {
   forwardAddress: string | null;
   receivedCount: number;
+  canProvision: boolean;
 }) {
   const isConnected = receivedCount > 0;
 
@@ -51,7 +53,8 @@ export function ConnectionPanel({
         </div>
         <CardDescription className="text-[13px]">
           Give this address to your AI agent. It decides which emails are invoices and
-          forwards only those. Nothing else in your mailbox is touched.
+          forwards only those. Nothing else in your mailbox is touched. Available on
+          the Team plan.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -67,7 +70,7 @@ export function ConnectionPanel({
             />
           </div>
         ) : (
-          <CreateInboxButton />
+          <InboxProvisionPanel canProvision={canProvision} />
         )}
       </CardContent>
     </Card>

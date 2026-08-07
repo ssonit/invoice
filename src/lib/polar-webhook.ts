@@ -6,8 +6,10 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
  * and returns a typed event payload.
  *
  * Returns the verified event on success.
- * Throws {@link WebhookVerificationError} on a bad signature or malformed
- * payload — callers must catch it and respond 400.
+ *
+ * Throws {@link WebhookVerificationError} on a bad signature (callers should
+ * respond 400). Throws {@link SDKValidationError} on a malformed payload or
+ * unhandled event type (callers should acknowledge to stop Polar retries).
  */
 export function verifyPolarWebhook(
   rawBody: string,

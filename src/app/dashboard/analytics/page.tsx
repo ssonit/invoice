@@ -1,8 +1,6 @@
 import { BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getTeamAccess } from "@/lib/billing/access";
 import { ContentShell } from "@/components/dashboard/content-shell";
-import { TeamGate } from "@/components/dashboard/team-gate";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { normalizeInvoice } from "@/lib/invoices";
 import { parseAnalyticsQuery, rangeStartIso } from "@/lib/analytics/query";
@@ -17,16 +15,6 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const access = await getTeamAccess();
-  if (!access.allowed) {
-    return (
-      <TeamGate
-        title="Analytics"
-        description="Spend trends, vendor breakdowns, and invoice stats for your workspace."
-      />
-    );
-  }
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -72,7 +60,7 @@ export default async function AnalyticsPage({
               </EmptyMedia>
               <EmptyTitle>No invoices in this period</EmptyTitle>
               <EmptyDescription>
-                Try a longer range or forward your first invoice to get started.
+                Try a longer range or upload your first invoice to get started.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

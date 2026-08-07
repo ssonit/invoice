@@ -49,6 +49,10 @@ export async function confirmSubscription(
       vendor_key: parsed.data.vendorKey,
       status: parsed.data.status,
       confirmed_at: new Date().toISOString(),
+      // Answering again revives a row that deleteVendor() soft-deleted —
+      // otherwise the upsert writes an answer the vendors page filters out,
+      // and the same question keeps coming back.
+      deleted_at: null,
     },
     { onConflict: "user_id,vendor_key" },
   );
@@ -82,6 +86,9 @@ export async function markVendorAsSubscription(
       origin: "manual",
       cycle: parsed.data.cycle,
       confirmed_at: new Date().toISOString(),
+      // Same reason as confirmSubscription: revive a soft-deleted row rather
+      // than writing into one the page will never show.
+      deleted_at: null,
     },
     { onConflict: "user_id,vendor_key" },
   );
@@ -114,9 +121,47 @@ export async function createVendor(input: {
   });
 
   if (error) {
+    // 23505 = the unique (user_id, name_key) constraint, which counts
+    // soft-deleted rows too — without this branch a name the user once
+    // deleted could never be created again, and the error would name a
+    // vendor they cannot even see. Reviving is also why the constraint
+    // stays non-partial: `vendors` is upserted elsewhere on
+    // (user_id, name_key), and supabase-js emits ON CONFLICT without a
+    // WHERE clause (see .claude/rules/supabase-conventions.md).
     if (error.code === "23505") {
-      return { ok: false, error: "A vendor with this name already exists." };
+      const now = new Date().toISOString();
+      const { data: revived, error: reviveError } = await service
+        .from("vendors")
+        .update({
+          name: parsed.data.name,
+          notes: parsed.data.notes,
+          deleted_at: null,
+          // Reset created_at too: the user cannot see the tombstone, so from
+          // their side this is a brand-new vendor and it should sort like one
+          // under "recently created".
+          created_at: now,
+          updated_at: now,
+        })
+        .eq("user_id", user.id)
+        .eq("name_key", nameKey)
+        .not("deleted_at", "is", null)
+        .select("id")
+        .maybeSingle();
+
+      if (reviveError) {
+        console.error("Failed to revive soft-deleted vendor", user.id, reviveError);
+        return { ok: false, error: "Could not create vendor. Please try again." };
+      }
+
+      // Nothing revived → the conflicting row is live, a genuine duplicate.
+      if (!revived) {
+        return { ok: false, error: "A vendor with this name already exists." };
+      }
+
+      revalidatePath("/dashboard/vendors");
+      return { ok: true };
     }
+
     console.error("Failed to create vendor", user.id, error);
     return { ok: false, error: "Could not create vendor. Please try again." };
   }
@@ -164,6 +209,27 @@ export async function updateVendor(input: {
 
   if (error) {
     if (error.code === "23505") {
+      // The unique (user_id, name_key) constraint counts soft-deleted rows, so
+      // the conflict may be a tombstone the user cannot see. Saying "already
+      // exists" about an invisible vendor is a dead end — name the real
+      // situation and the way out instead. Unlike createVendor() we cannot just
+      // revive the tombstone here: that would leave two live rows for one name.
+      const { data: tombstone } = await service
+        .from("vendors")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("name_key", newKey)
+        .not("deleted_at", "is", null)
+        .maybeSingle();
+
+      if (tombstone) {
+        return {
+          ok: false,
+          error:
+            "A vendor with this name was deleted earlier. Add it again from the vendor list to restore it, or pick a different name.",
+        };
+      }
+
       return { ok: false, error: "A vendor with this name already exists." };
     }
     console.error("Failed to update vendor", user.id, error);
@@ -233,11 +299,20 @@ export async function deleteVendor(input: { id: string }): Promise<VendorMutatio
   // Only the user's curated vendor list and subscription confirmations are
   // marked deleted; the vendor row itself is never physically removed.
 
-  await service
+  const { error: confirmationsError } = await service
     .from("subscription_confirmations")
     .update({ deleted_at: now })
     .eq("user_id", user.id)
     .eq("vendor_key", nameKey);
+
+  if (confirmationsError) {
+    console.error(
+      "Failed to cascade vendor delete to subscription_confirmations",
+      user.id,
+      confirmationsError,
+    );
+    return { ok: false, error: "Could not delete vendor. Please try again." };
+  }
 
   const { error } = await service
     .from("vendors")

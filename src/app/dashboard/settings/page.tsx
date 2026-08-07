@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
 import { CopyButton } from "@/components/dashboard/copy-button";
-import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
+import { InboxProvisionPanel } from "@/components/dashboard/inbox-provision-panel";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
 import { BillingCard } from "./billing-card";
 import type { BillingSubscriptionRow } from "@/lib/billing";
-import { getBillingMode, hasActiveTeamPlan, isBillingDevUnlockEnabled } from "@/lib/billing";
+import {
+  canProvisionInbox,
+  getBillingMode,
+  hasActiveTeamPlan,
+  isBillingDevUnlockEnabled,
+} from "@/lib/billing";
 import { getMonthRangeUtc, getStarterMonthlyLimit } from "@/lib/billing/usage";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,6 +52,7 @@ export default async function SettingsPage({
   // Usage meter — only for Starter (Team has no cap).
   let usage: { used: number; limit: number; resetsAt: string } | null = null;
   const isTeam = hasActiveTeamPlan(subscription);
+  const mayProvisionInbox = canProvisionInbox(subscription);
   if (!isTeam && subscription) {
     const { start, end } = getMonthRangeUtc();
     const limit = getStarterMonthlyLimit();
@@ -61,7 +67,7 @@ export default async function SettingsPage({
   return (
     <ContentShell
       title="Settings"
-      description="Set up email forwarding so invoices land in your dashboard automatically."
+      description="Manage forwarding, billing, and account security."
     >
       <div className="flex flex-col gap-4">
         <Card className="rounded-[14px] shadow-none">
@@ -81,6 +87,7 @@ export default async function SettingsPage({
             <CardDescription className="text-[13px]">
               Forward invoice emails to this address, or set up an auto-forward rule in
               Gmail/Outlook. Anything that arrives is parsed and added to your invoices.
+              Available on the Team plan.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -97,7 +104,7 @@ export default async function SettingsPage({
                 </p>
               </div>
             ) : (
-              <CreateInboxButton />
+              <InboxProvisionPanel canProvision={mayProvisionInbox} />
             )}
           </CardContent>
         </Card>

