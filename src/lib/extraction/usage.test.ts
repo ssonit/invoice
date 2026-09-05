@@ -13,7 +13,23 @@ describe("buildExtractionMetrics", () => {
       inputTokens: 1200,
       outputTokens: 300,
       durationMs: 812,
+      method: null,
     });
+  });
+
+  it("defaults method to null when not provided", () => {
+    const metrics = buildExtractionMetrics({ provider: "anthropic", usage, durationMs: 1 });
+    expect(metrics.method).toBeNull();
+  });
+
+  it("passes through an explicit method", () => {
+    const metrics = buildExtractionMetrics({
+      provider: "anthropic",
+      usage,
+      durationMs: 1,
+      method: "local_text",
+    });
+    expect(metrics.method).toBe("local_text");
   });
 
   it("keeps a zero token count rather than nulling it", () => {
