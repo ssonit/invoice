@@ -9,6 +9,7 @@ import {
   type SavedInvoiceSummary,
 } from "@/lib/invoices/process-extraction";
 import { aggregateAttachmentResults } from "@/lib/invoices/aggregate-attachment-results";
+import { buildFailureOutcome } from "@/lib/invoices/build-failure-outcome";
 import type { EmailReplyOutcome } from "@/lib/email-reply-templates";
 import type { sendInboundEmailReply } from "./send-inbound-email-reply";
 import type { processAttachment, ProcessAttachmentPayload } from "./process-attachment";
@@ -46,11 +47,19 @@ export const processInboundEmail = task({
   id: "process-inbound-email",
   retry: { maxAttempts: 3 },
   onFailure: async ({ payload }: { payload: ProcessInboundEmailPayload }) => {
-    // Fires once, only after all retry attempts are exhausted.
+    // Fires once, only after all retry attempts are exhausted. An earlier
+    // attempt may have already upserted some attachments before a later
+    // retry kept failing — check what actually landed instead of always
+    // reporting "error" to the sender.
+    const supabase = createServiceClient();
+    const { data: rows } = await supabase
+      .from("invoices")
+      .select("vendor, amount, currency")
+      .eq("source_message_id", payload.messageId);
     await triggerReply(
       payload.inboxId,
       payload.messageId,
-      { type: "error" },
+      buildFailureOutcome(rows ?? []),
       `reply:error:${payload.messageId}`,
     );
   },
@@ -122,6 +131,12 @@ export const processInboundEmail = task({
               userId: inbox.user_id,
               attachment,
             } satisfies ProcessAttachmentPayload,
+            // A retry of process-inbound-email re-runs this whole function
+            // from scratch, which would otherwise spawn a brand-new child
+            // run per attachment on every retry. Keying by
+            // messageId+attachmentId makes the retry reuse the same child
+            // run instead of duplicating the download + extraction work.
+            options: { idempotencyKey: `${payload.messageId}:${attachment.attachmentId}` },
           })),
         );
 

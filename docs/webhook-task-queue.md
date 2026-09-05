@@ -27,7 +27,7 @@ to Trigger.dev and returns `200 { "status": "queued" }` immediately.
 | --- | --- |
 | `processed` | At least one invoice was saved |
 | `skipped` | Email handled but nothing looked like an invoice |
-| `error` | Only from the task `onFailure` hook after all retries are exhausted |
+| `error` | From the task `onFailure` hook after all retries are exhausted, when nothing was saved for this message |
 
 Reply text lives in `src/lib/email-reply-templates.ts`.
 
@@ -35,9 +35,18 @@ Reply text lives in `src/lib/email-reply-templates.ts`.
 
 Extraction stays multi-provider via `extractInvoice()` / `EXTRACTION_PROVIDER` (Anthropic, Google, DeepSeek). The queue does not hard-code Claude.
 
-## Known edge case (accepted for v1)
+## Partial-failure retries
 
-If attachment A saves and attachment B then throws, the whole run retries. After retries are exhausted the sender gets an `error` reply even though A was upserted (and is visible in the dashboard). Upsert still prevents A from being duplicated across retries.
+Each `batchTriggerAndWait` item carries `idempotencyKey: "<messageId>:<attachmentId>"`,
+so if `process-inbound-email` itself retries (a failure unrelated to any single
+attachment — attachment failures alone don't throw, they're reported via
+`batch.runs[i].ok`), the retry reuses the same child runs instead of spawning
+duplicates.
+
+If `process-inbound-email` still exhausts all its own retries, `onFailure` queries
+`invoices` by `source_message_id` before replying: any attachment that did save is
+reported as `processed` with its invoices, instead of a blanket `error` reply that would
+understate what actually landed.
 
 ## Local smoke test
 
