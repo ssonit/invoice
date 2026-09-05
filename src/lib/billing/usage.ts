@@ -8,6 +8,10 @@ export type QuotaCheckResult =
   | { allowed: true }
   | { allowed: false; used: number; limit: number; resetsAt: string };
 
+export type QuotaStatus =
+  | { unlimited: true }
+  | { unlimited: false; used: number; limit: number };
+
 /**
  * Start and end of the current UTC calendar month.
  * Pure date math — no I/O.
@@ -58,30 +62,22 @@ export async function countBillableInvoicesThisMonth(
 }
 
 /**
- * Check whether a user can extract another invoice under the Starter quota.
- *
- * Order of precedence:
- * 1. Billing disabled (BILLING_MODE=none) → allowed (no billing at all).
- * 2. BILLING_DEV_UNLOCK → allowed (dev convenience).
- * 3. Active Team plan       → allowed (no cap).
- * 4. Starter under limit    → allowed.
- * 5. Starter at/over limit  → denied with usage details.
- *
- * Called from the upload API route and the email extraction path. In the
- * upload route the caller already has a ServiceClient; in the trigger-task
- * path processExtraction receives one. This function is self-contained —
- * it inspects billing_subscriptions internally rather than requiring a
- * separate getTeamAccess call first.
+ * Current Starter-quota usage snapshot for a user, without deciding
+ * allow/deny. Shared by checkStarterQuota (the extraction gate) and the
+ * /api/invoices/quota route, which lets the upload UI cap a batch to the
+ * remaining slots before sending any requests — closing the race where N
+ * parallel uploads each see "quota not reached" before any of their writes
+ * land.
  */
-export async function checkStarterQuota(
+export async function getQuotaStatus(
   supabase: ServiceClient,
   userId: string,
-): Promise<QuotaCheckResult> {
+): Promise<QuotaStatus> {
   // 1. Billing disabled → unlimited.
-  if (getBillingMode() === "none") return { allowed: true };
+  if (getBillingMode() === "none") return { unlimited: true };
 
   // 2. Dev unlock → unlimited.
-  if (isBillingDevUnlockEnabled()) return { allowed: true };
+  if (isBillingDevUnlockEnabled()) return { unlimited: true };
 
   // 3. Active Team plan → unlimited.
   const { data: billingRow } = await supabase
@@ -90,15 +86,26 @@ export async function checkStarterQuota(
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (hasActiveTeamPlan(billingRow)) return { allowed: true };
+  if (hasActiveTeamPlan(billingRow)) return { unlimited: true };
 
   // 4. Starter — count invoices created this UTC month.
   const used = await countBillableInvoicesThisMonth(supabase, userId);
   const limit = getStarterMonthlyLimit();
+  return { unlimited: false, used, limit };
+}
 
-  if (used < limit) return { allowed: true };
+/**
+ * Check whether a user can extract another invoice under the Starter quota.
+ * Called from the upload API route and the email extraction path.
+ */
+export async function checkStarterQuota(
+  supabase: ServiceClient,
+  userId: string,
+): Promise<QuotaCheckResult> {
+  const status = await getQuotaStatus(supabase, userId);
+  if (status.unlimited) return { allowed: true };
+  if (status.used < status.limit) return { allowed: true };
 
-  // 5. Over limit.
   const { end } = getMonthRangeUtc();
-  return { allowed: false, used, limit, resetsAt: end.toISOString() };
+  return { allowed: false, used: status.used, limit: status.limit, resetsAt: end.toISOString() };
 }

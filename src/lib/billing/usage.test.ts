@@ -3,6 +3,7 @@ import {
   checkStarterQuota,
   countBillableInvoicesThisMonth,
   getMonthRangeUtc,
+  getQuotaStatus,
   getStarterMonthlyLimit,
 } from "./usage";
 import type { BillingSubscriptionRow } from "../billing";
@@ -319,5 +320,61 @@ describe("checkStarterQuota", () => {
       expect(result.resetsAt).toBe("2026-07-01T00:00:00.000Z");
     }
     vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getQuotaStatus
+// ---------------------------------------------------------------------------
+
+describe("getQuotaStatus", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
+
+  it("returns unlimited when billing mode is none", async () => {
+    vi.stubEnv("BILLING_MODE", "none");
+    const supabase = mockSupabaseClient({});
+    const result = await getQuotaStatus(supabase, "user-1");
+    expect(result).toEqual({ unlimited: true });
+  });
+
+  it("returns unlimited when dev unlock is enabled", async () => {
+    vi.stubEnv("BILLING_DEV_UNLOCK", "true");
+    vi.stubEnv("NODE_ENV", "development");
+    const supabase = mockSupabaseClient({});
+    const result = await getQuotaStatus(supabase, "user-1");
+    expect(result).toEqual({ unlimited: true });
+  });
+
+  it("returns unlimited for an active Team plan", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const supabase = mockSupabaseClient({
+      billingRow: { plan: "team", status: "active", ends_at: null } as BillingSubscriptionRow,
+    });
+    const result = await getQuotaStatus(supabase, "user-1");
+    expect(result).toEqual({ unlimited: true });
+  });
+
+  it("returns used/limit for a Starter user under the cap", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STARTER_MONTHLY_INVOICE_LIMIT", "10");
+    const supabase = mockSupabaseClient({ billingRow: null, invoiceCount: 4 });
+    const result = await getQuotaStatus(supabase, "user-1");
+    expect(result).toEqual({ unlimited: false, used: 4, limit: 10 });
+  });
+
+  it("returns used/limit for a Starter user already over the cap", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STARTER_MONTHLY_INVOICE_LIMIT", "10");
+    const supabase = mockSupabaseClient({ billingRow: null, invoiceCount: 15 });
+    const result = await getQuotaStatus(supabase, "user-1");
+    expect(result).toEqual({ unlimited: false, used: 15, limit: 10 });
   });
 });
