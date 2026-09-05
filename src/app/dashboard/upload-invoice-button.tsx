@@ -141,9 +141,6 @@ export function UploadInvoiceButton() {
     if (pending.length === 0 || isUploading) return;
 
     const files = pending.map((item) => item.file);
-    const quota = await fetchQuotaStatus();
-    const { toUpload, skipped } = splitFilesByQuota(files, quota);
-
     setProgress({ current: 0, total: files.length });
     const outcomes: UploadOutcome[] = [];
     let stopped = false;
@@ -154,6 +151,9 @@ export function UploadInvoiceButton() {
     }
 
     try {
+      const quota = await fetchQuotaStatus();
+      const { toUpload, skipped } = splitFilesByQuota(files, quota);
+
       await runWithConcurrencyLimit(toUpload, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
         if (stopped) {
           recordOutcome({ ok: false, fileName: file.name, error: "Skipped — rate limited" });
