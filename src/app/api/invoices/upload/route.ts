@@ -5,6 +5,7 @@ import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { MAX_UPLOAD_BYTES } from "@/lib/validation/upload";
 import { checkContentLength, parseUploadForm } from "@/lib/validation/common";
+import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
 import { MAX_UPLOAD_REQUEST_BYTES } from "@/constants/validation";
 import { sha256Hex } from "@/lib/file-hash";
 import { checkUploadRateLimit } from "@/lib/rate-limit";
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
         tax: extracted.tax,
         line_items: extracted.line_items,
         confidence_score: extracted.confidence_score,
-        needs_review: extracted.confidence_score < 0.7,
+        needs_review: extracted.confidence_score < EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD,
         raw_extracted_json: extracted,
         extraction_provider: metrics.provider,
         extraction_model: metrics.model,
