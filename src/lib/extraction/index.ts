@@ -4,6 +4,8 @@ import { buildExtractionMetrics, type ExtractionMetrics } from "./usage";
 import { extractWithAnthropic } from "./anthropic";
 import { extractWithGoogle } from "./google";
 import { extractWithDeepseek } from "./deepseek";
+import { classifyPdf } from "./pdf-classify";
+import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
 
 export type { ExtractionInput, InvoiceExtraction } from "./schema";
 export type { ExtractionMetrics } from "./usage";
@@ -15,8 +17,8 @@ export type ExtractionOutcome = {
 };
 
 // Which model reads invoices. Override per deployment via EXTRACTION_PROVIDER.
-//   anthropic → Claude Haiku 4.5  (PDF / image / HTML)
-//   google    → Gemini 2.5 Flash  (PDF / image / HTML)
+//   anthropic → Claude Haiku 4.5  (PDF / image / HTML / text)
+//   google    → Gemini 2.5 Flash  (PDF / image / HTML / text)
 //   deepseek  → DeepSeek Chat      (HTML / text only)
 type Provider = "anthropic" | "google" | "deepseek";
 
@@ -34,8 +36,11 @@ function resolveProvider(): Provider {
   );
 }
 
-export async function extractInvoice(input: ExtractionInput): Promise<ExtractionOutcome> {
-  const provider = resolveProvider();
+async function callProvider(
+  provider: Provider,
+  input: ExtractionInput,
+  method: ExtractionMetrics["method"],
+): Promise<ExtractionOutcome> {
   // Timed here rather than in each wrapper: this is the one layer that knows
   // which provider ran, and it keeps the wrappers free of timing code.
   const startedAt = Date.now();
@@ -44,8 +49,55 @@ export async function extractInvoice(input: ExtractionInput): Promise<Extraction
     extraction: result.extraction,
     metrics: buildExtractionMetrics({
       provider,
+      method,
       usage: result.usage,
       durationMs: Date.now() - startedAt,
     }),
   };
+}
+
+export async function extractInvoice(input: ExtractionInput): Promise<ExtractionOutcome> {
+  const provider = resolveProvider();
+
+  // Only PDFs can carry a local text layer worth extracting — image and
+  // HTML-body inputs are unchanged from today's behavior.
+  if (input.type !== "pdf") {
+    return callProvider(provider, input, null);
+  }
+
+  let classification;
+  try {
+    classification = await classifyPdf(input.data);
+  } catch (err) {
+    console.error("PDF classification failed, falling back to vision extraction", err);
+    return callProvider(provider, input, "vision");
+  }
+  if (!classification.markdown) {
+    return callProvider(provider, input, "vision");
+  }
+
+  const localOutcome = await callProvider(
+    provider,
+    { type: "text", text: classification.markdown },
+    "local_text",
+  );
+
+  if (localOutcome.extraction.confidence_score >= EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD) {
+    return localOutcome;
+  }
+
+  // Local extraction wasn't confident enough to trust — pay for the full
+  // vision call instead of returning a low-quality result. The discarded
+  // local call's cost is logged, not persisted: the invoice row records
+  // whichever call actually produced its data, same convention as a
+  // rejected (is_invoice=false) document costing a call with nothing to
+  // show for it in the metrics columns.
+  console.log("Local text extraction below confidence threshold, escalating to vision", {
+    confidenceScore: localOutcome.extraction.confidence_score,
+    threshold: EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD,
+    discardedInputTokens: localOutcome.metrics.inputTokens,
+    discardedOutputTokens: localOutcome.metrics.outputTokens,
+  });
+
+  return callProvider(provider, input, "vision_fallback");
 }
