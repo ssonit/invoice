@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { validateUploadFile } from "@/lib/validation/upload";
+import { runWithConcurrencyLimit } from "@/lib/concurrency/run-with-limit";
+import { splitFilesByQuota } from "@/lib/invoices/upload-batch";
+import type { QuotaStatus } from "@/lib/billing/usage";
+import { UPLOAD_CONCURRENCY_LIMIT } from "@/constants/upload";
 
 type PendingFile = {
   id: string;
@@ -76,6 +80,18 @@ function toastUploadResults(outcomes: UploadOutcome[]) {
   }
 }
 
+async function fetchQuotaStatus(): Promise<QuotaStatus> {
+  try {
+    const res = await fetch("/api/invoices/quota");
+    if (!res.ok) return { unlimited: true };
+    return await res.json();
+  } catch {
+    // Fail open — don't block the upload UI on a quota-check hiccup; the
+    // per-request 429 from /api/invoices/upload still enforces the real limit.
+    return { unlimited: true };
+  }
+}
+
 export function UploadInvoiceButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingFile[]>([]);
@@ -125,33 +141,45 @@ export function UploadInvoiceButton() {
     if (pending.length === 0 || isUploading) return;
 
     const files = pending.map((item) => item.file);
+    const quota = await fetchQuotaStatus();
+    const { toUpload, skipped } = splitFilesByQuota(files, quota);
+
     setProgress({ current: 0, total: files.length });
     const outcomes: UploadOutcome[] = [];
+    let stopped = false;
+
+    function recordOutcome(outcome: UploadOutcome) {
+      outcomes.push(outcome);
+      setProgress((prev) => (prev ? { current: prev.current + 1, total: prev.total } : prev));
+    }
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]!;
-        setProgress({ current: i + 1, total: files.length });
+      await runWithConcurrencyLimit(toUpload, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
+        if (stopped) {
+          recordOutcome({ ok: false, fileName: file.name, error: "Skipped — rate limited" });
+          return;
+        }
         try {
           const outcome = await uploadOne(file);
-          outcomes.push(outcome);
+          recordOutcome(outcome);
           if (!outcome.ok && /too many uploads/i.test(outcome.error)) {
-            for (let j = i + 1; j < files.length; j++) {
-              outcomes.push({
-                ok: false,
-                fileName: files[j]!.name,
-                error: "Skipped — rate limited",
-              });
-            }
-            break;
+            stopped = true;
           }
         } catch {
-          outcomes.push({
+          recordOutcome({
             ok: false,
             fileName: file.name,
             error: "Upload failed — check your connection and try again",
           });
         }
+      });
+
+      for (const file of skipped) {
+        recordOutcome({
+          ok: false,
+          fileName: file.name,
+          error: "Skipped — monthly invoice limit reached",
+        });
       }
 
       toastUploadResults(outcomes);
