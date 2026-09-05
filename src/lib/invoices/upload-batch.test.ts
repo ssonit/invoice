@@ -31,4 +31,9 @@ describe("splitFilesByQuota", () => {
     const result = splitFilesByQuota([], { unlimited: false, used: 0, limit: 10 });
     expect(result).toEqual({ toUpload: [], skipped: [] });
   });
+
+  it("fails open when used/limit are not finite", () => {
+    const result = splitFilesByQuota(["a", "b"], { unlimited: false, used: Number.NaN, limit: 10 });
+    expect(result).toEqual({ toUpload: ["a", "b"], skipped: [] });
+  });
 });

@@ -16,9 +16,13 @@ export function splitFilesByQuota<T>(
   if (quota.unlimited) {
     return { toUpload: [...files], skipped: [] };
   }
-  const remaining = Math.max(0, quota.limit - quota.used);
+  const remaining = quota.limit - quota.used;
+  if (!Number.isFinite(remaining)) {
+    return { toUpload: [...files], skipped: [] };
+  }
+  const slots = Math.max(0, remaining);
   return {
-    toUpload: files.slice(0, remaining),
-    skipped: files.slice(remaining),
+    toUpload: files.slice(0, slots),
+    skipped: files.slice(slots),
   };
 }
