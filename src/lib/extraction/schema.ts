@@ -33,7 +33,8 @@ export type InvoiceExtraction = z.infer<typeof InvoiceExtractionSchema>;
 export type ExtractionInput =
   | { type: "pdf"; data: Buffer }
   | { type: "image"; data: Buffer; mimeType: string }
-  | { type: "html"; html: string };
+  | { type: "html"; html: string }
+  | { type: "text"; text: string };
 
 /** What a provider reports about the call it just made. */
 export type ExtractionUsage = {

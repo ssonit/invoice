@@ -59,6 +59,8 @@ export async function extractWithGoogle(
     parts.push({
       inlineData: { mimeType: input.mimeType, data: input.data.toString("base64") },
     });
+  } else if (input.type === "text") {
+    parts.push({ text: `Extracted document text:\n\n${input.text}` });
   } else {
     parts.push({ text: `Email HTML content:\n\n${input.html}` });
   }
