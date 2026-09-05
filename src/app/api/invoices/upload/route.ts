@@ -152,6 +152,7 @@ export async function POST(request: Request) {
         extraction_input_tokens: metrics.inputTokens,
         extraction_output_tokens: metrics.outputTokens,
         extraction_ms: metrics.durationMs,
+        extraction_method: metrics.method,
         file_url: uploaded?.path ?? null,
         content_hash: contentHash,
       },

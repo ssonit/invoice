@@ -131,6 +131,7 @@ export async function processExtraction(params: {
       extraction_input_tokens: metrics.inputTokens,
       extraction_output_tokens: metrics.outputTokens,
       extraction_ms: metrics.durationMs,
+      extraction_method: metrics.method,
       file_url: fileUrl,
       source_message_id: messageId,
       source_ref: sourceRef,
