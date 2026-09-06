@@ -76,11 +76,17 @@ export async function extractInvoice(input: ExtractionInput): Promise<Extraction
     return callProvider(provider, input, "vision");
   }
 
-  const localOutcome = await callProvider(
-    provider,
-    { type: "text", text: classification.markdown },
-    "local_text",
-  );
+  let localOutcome: ExtractionOutcome;
+  try {
+    localOutcome = await callProvider(
+      provider,
+      { type: "text", text: classification.markdown },
+      "local_text",
+    );
+  } catch (err) {
+    console.error("Local text extraction failed, falling back to vision extraction", err);
+    return callProvider(provider, input, "vision_fallback");
+  }
 
   if (localOutcome.extraction.confidence_score >= EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD) {
     return localOutcome;
