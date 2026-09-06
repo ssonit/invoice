@@ -28,11 +28,16 @@ const SCHEMA_HINT = `Return a JSON object with exactly these keys:
 export async function extractWithDeepseek(
   input: ExtractionInput,
 ): Promise<ExtractionResult> {
-  if (input.type !== "html") {
+  if (input.type !== "html" && input.type !== "text") {
     throw new Error(
       "DeepSeek cannot read PDF/image attachments — set EXTRACTION_PROVIDER=anthropic or google for file input.",
     );
   }
+
+  const userContent =
+    input.type === "text"
+      ? `Extracted document text:\n\n${input.text}`
+      : `Email HTML content:\n\n${input.html}`;
 
   const response = await fetch(API_URL, {
     method: "POST",
@@ -45,7 +50,7 @@ export async function extractWithDeepseek(
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: `${EXTRACTION_PROMPT}\n\n${SCHEMA_HINT}` },
-        { role: "user", content: `Email HTML content:\n\n${input.html}` },
+        { role: "user", content: userContent },
       ],
     }),
   });

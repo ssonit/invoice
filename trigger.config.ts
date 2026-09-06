@@ -21,6 +21,6 @@ export default defineConfig({
   },
   build: {
     // Optional AgentMail peer used only for x402 payments; not needed for inbox replies.
-    external: ["@x402/fetch"],
+    external: ["@x402/fetch", "@firecrawl/pdf-inspector"],
   },
 });

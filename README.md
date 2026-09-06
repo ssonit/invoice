@@ -81,6 +81,7 @@ Every invoice records what it cost to extract:
 | --- | --- |
 | `extraction_provider` | `anthropic`, `google`, or `deepseek` |
 | `extraction_model` | The model that actually ran |
+| `extraction_method` | `local_text` (PDF text extracted locally, cheap text-only LLM call), `vision` (sent as a document/image block, today's original cost), `vision_fallback` (local extraction tried but escalated to vision), or `null` (image/HTML-body input, not routed by this feature) |
 | `extraction_input_tokens` / `extraction_output_tokens` | Token counts, `null` when the provider didn't report them |
 | `extraction_ms` | End-to-end latency of the provider call |
 | `duplicate_hit_count` | How many times the identical file arrived again and reused this row instead of paying for a new extraction |
@@ -90,6 +91,7 @@ Spend and dedupe savings for a month:
 ```sql
 select
   extraction_provider,
+  extraction_method,
   count(*)                          as extractions,
   sum(extraction_input_tokens)      as input_tokens,
   sum(extraction_output_tokens)     as output_tokens,
@@ -97,7 +99,7 @@ select
   round(avg(extraction_ms))         as avg_ms
 from invoices
 where created_at >= date_trunc('month', now())
-group by extraction_provider;
+group by extraction_provider, extraction_method;
 ```
 
 Documents the model rejects (`is_invoice = false`) cost a call but produce no row, so they

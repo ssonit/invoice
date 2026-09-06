@@ -14,6 +14,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
     "@base-ui/react": "^1.6.0",
+    "@firecrawl/pdf-inspector": "^1.17.0",
     "@google/genai": "^2.12.0",
     "@gsap/react": "^2.1.2",
     "@polar-sh/sdk": "^0.49.0",

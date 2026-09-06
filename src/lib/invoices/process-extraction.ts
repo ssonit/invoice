@@ -1,3 +1,4 @@
+import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
 import type { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice, type ExtractionInput } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
@@ -123,13 +124,14 @@ export async function processExtraction(params: {
       tax: extracted.tax,
       line_items: extracted.line_items,
       confidence_score: extracted.confidence_score,
-      needs_review: extracted.confidence_score < 0.7,
+      needs_review: extracted.confidence_score < EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD,
       raw_extracted_json: extracted,
       extraction_provider: metrics.provider,
       extraction_model: metrics.model,
       extraction_input_tokens: metrics.inputTokens,
       extraction_output_tokens: metrics.outputTokens,
       extraction_ms: metrics.durationMs,
+      extraction_method: metrics.method,
       file_url: fileUrl,
       source_message_id: messageId,
       source_ref: sourceRef,

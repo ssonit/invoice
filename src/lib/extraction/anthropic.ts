@@ -38,6 +38,8 @@ export async function extractWithAnthropic(
         data: input.data.toString("base64"),
       },
     });
+  } else if (input.type === "text") {
+    content.push({ type: "text", text: `Extracted document text:\n\n${input.text}` });
   } else {
     content.push({ type: "text", text: `Email HTML content:\n\n${input.html}` });
   }
