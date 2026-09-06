@@ -1,5 +1,6 @@
 import "server-only";
-import { classifyPdfAsync, extractPagesMarkdownAsync } from "@firecrawl/pdf-inspector";
+
+type PdfInspector = typeof import("@firecrawl/pdf-inspector");
 
 export type PdfClassificationResult = {
   pdfType: string;
@@ -17,9 +18,12 @@ export type PdfClassificationResult = {
  * callers can treat it identically to a Scanned result.
  */
 export async function classifyPdf(data: Buffer): Promise<PdfClassificationResult> {
-  let classification: Awaited<ReturnType<typeof classifyPdfAsync>>;
+  let classification: Awaited<ReturnType<PdfInspector["classifyPdfAsync"]>>;
+  let extractPagesMarkdownAsync: PdfInspector["extractPagesMarkdownAsync"];
   try {
-    classification = await classifyPdfAsync(data);
+    const inspector = await import("@firecrawl/pdf-inspector");
+    classification = await inspector.classifyPdfAsync(data);
+    extractPagesMarkdownAsync = inspector.extractPagesMarkdownAsync;
   } catch (err) {
     console.error("PDF classification failed", err);
     return { pdfType: "unknown", markdown: null };
