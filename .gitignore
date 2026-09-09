@@ -53,5 +53,8 @@ next-env.d.ts
 # brainstorm visual companion
 .superpowers/
 
+# git worktrees (isolated feature checkouts)
+.claude/worktrees/
+
 # trigger.dev
 /.trigger/
