@@ -2,15 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/extraction", () => ({ extractInvoice: vi.fn() }));
 vi.mock("@/lib/vendors", () => ({ ensureVendorRecord: vi.fn() }));
-vi.mock("@/lib/billing/usage", () => ({ checkStarterQuota: vi.fn() }));
 
 import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
-import { checkStarterQuota } from "@/lib/billing/usage";
 import { processExtraction } from "./process-extraction";
 
 const mockedExtract = vi.mocked(extractInvoice);
-const mockedCheckQuota = vi.mocked(checkStarterQuota);
 
 function invoiceResult(overrides: Record<string, unknown> = {}) {
   return {
@@ -50,31 +47,13 @@ function mockSupabase() {
   const maybeSingle = vi.fn().mockResolvedValue({ data: null });
   const selectEq2 = vi.fn().mockReturnValue({ maybeSingle });
   const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
-
-  // Invoice count chain (for checkStarterQuota): .from("invoices")
-  //   .select("*", { count: "exact", head: true }).eq(...).gte(...)
-  const gte = vi.fn().mockResolvedValue({ count: 0, error: null });
-  const countEq = vi.fn().mockReturnValue({ gte });
-
-  const select = vi.fn((_columns?: unknown, options?: { head?: boolean }) => {
-    if (options?.head) return { eq: countEq };
-    return { eq: selectEq1 };
-  });
-
-  // Billing subscription chain (for checkStarterQuota):
-  //   .from("billing_subscriptions").select(...).eq(...).maybeSingle()
-  const billingMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-  const billingSelectEq = vi.fn().mockReturnValue({ maybeSingle: billingMaybeSingle });
-  const billingSelect = vi.fn().mockReturnValue({ eq: billingSelectEq });
+  const select = vi.fn().mockReturnValue({ eq: selectEq1 });
 
   // Duplicate-counter increment chain: .from("invoices").update(...).eq("id", ...)
   const updateEq = vi.fn().mockResolvedValue({ error: null });
   const update = vi.fn().mockReturnValue({ eq: updateEq });
 
-  const from = vi.fn((table: string) => {
-    if (table === "billing_subscriptions") return { select: billingSelect };
-    return { upsert, select, update };
-  });
+  const from = vi.fn(() => ({ upsert, select, update }));
 
   const upload = vi.fn().mockResolvedValue({ data: { path: "u/p.pdf" }, error: null });
   const storageFrom = vi.fn().mockReturnValue({ upload });
@@ -85,7 +64,6 @@ function mockSupabase() {
     upload,
     select,
     maybeSingle,
-    billingMaybeSingle,
     update,
     updateEq,
   };
@@ -93,7 +71,6 @@ function mockSupabase() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedCheckQuota.mockResolvedValue({ allowed: true });
 });
 
 describe("processExtraction", () => {
@@ -110,8 +87,6 @@ describe("processExtraction", () => {
       fileName: null,
     });
     expect(result).toEqual({ saved: false });
-    // checkStarterQuota queries billing_subscriptions before extraction,
-    // so from() is called even when the result is "not an invoice".
     expect(mockedExtract).toHaveBeenCalled();
   });
 
@@ -331,31 +306,5 @@ describe("processExtraction", () => {
       saved: true,
       invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
     });
-  });
-
-  it("returns saved:false with quota details when the Starter limit is reached", async () => {
-    const resetDate = new Date("2026-08-31T23:59:59.999Z").toISOString();
-    mockedCheckQuota.mockResolvedValue({
-      allowed: false,
-      used: 50,
-      limit: 50,
-      resetsAt: resetDate,
-    });
-    const sb = mockSupabase();
-    const result = await processExtraction({
-      supabase: sb.client,
-      userId: "user-1",
-      messageId: "msg-1",
-      sourceRef: "body",
-      input: { type: "html", html: "<p>hi</p>" },
-      fileBuffer: null,
-      fileName: null,
-    });
-    expect(result).toEqual({
-      saved: false,
-      quota: { used: 50, limit: 50, resetsAt: resetDate },
-    });
-    // Must not call extraction when quota is exceeded — saves LLM cost.
-    expect(mockedExtract).not.toHaveBeenCalled();
   });
 });

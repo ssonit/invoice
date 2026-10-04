@@ -4,7 +4,6 @@ import { extractInvoice, type ExtractionInput } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { sanitizeFilename } from "@/lib/validation/common";
 import { sha256Hex } from "@/lib/file-hash";
-import { checkStarterQuota } from "@/lib/billing/usage";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -16,7 +15,7 @@ export type SavedInvoiceSummary = {
 
 export type ProcessExtractionResult =
   | { saved: true; invoice: SavedInvoiceSummary }
-  | { saved: false; quota?: { used: number; limit: number; resetsAt: string } };
+  | { saved: false };
 
 /**
  * Run the multi-provider extractor on one input and, if it's an invoice,
@@ -76,19 +75,6 @@ export async function processExtraction(params: {
         },
       };
     }
-  }
-
-  // Starter-plan monthly quota — skip the LLM call when the user has
-  // reached their cap this month. Team and dev_unlock always pass through.
-  // Checked after dedup so duplicate hits don't count toward the limit.
-  const quota = await checkStarterQuota(supabase, userId);
-  if (!quota.allowed) {
-    console.log(
-      "Starter quota exceeded — skipping extraction",
-      userId,
-      { used: quota.used, limit: quota.limit },
-    );
-    return { saved: false, quota: { used: quota.used, limit: quota.limit, resetsAt: quota.resetsAt } };
   }
 
   const { extraction: extracted, metrics } = await extractInvoice(input);

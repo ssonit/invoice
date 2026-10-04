@@ -16,8 +16,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { validateUploadFile } from "@/lib/validation/upload";
 import { runWithConcurrencyLimit } from "@/lib/concurrency/run-with-limit";
-import { splitFilesByQuota } from "@/lib/invoices/upload-batch";
-import type { QuotaStatus } from "@/lib/billing/usage";
 import { UPLOAD_CONCURRENCY_LIMIT } from "@/constants/upload";
 
 type PendingFile = {
@@ -80,18 +78,6 @@ function toastUploadResults(outcomes: UploadOutcome[]) {
   }
 }
 
-async function fetchQuotaStatus(): Promise<QuotaStatus> {
-  try {
-    const res = await fetch("/api/invoices/quota");
-    if (!res.ok) return { unlimited: true };
-    return await res.json();
-  } catch {
-    // Fail open — don't block the upload UI on a quota-check hiccup; the
-    // per-request 429 from /api/invoices/upload still enforces the real limit.
-    return { unlimited: true };
-  }
-}
-
 export function UploadInvoiceButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingFile[]>([]);
@@ -151,10 +137,7 @@ export function UploadInvoiceButton() {
     }
 
     try {
-      const quota = await fetchQuotaStatus();
-      const { toUpload, skipped } = splitFilesByQuota(files, quota);
-
-      await runWithConcurrencyLimit(toUpload, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
+      await runWithConcurrencyLimit(files, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
         if (stopped) {
           recordOutcome({ ok: false, fileName: file.name, error: "Skipped — rate limited" });
           return;
@@ -173,14 +156,6 @@ export function UploadInvoiceButton() {
           });
         }
       });
-
-      for (const file of skipped) {
-        recordOutcome({
-          ok: false,
-          fileName: file.name,
-          error: "Skipped — monthly invoice limit reached",
-        });
-      }
 
       toastUploadResults(outcomes);
       if (outcomes.some((o) => o.ok)) {
