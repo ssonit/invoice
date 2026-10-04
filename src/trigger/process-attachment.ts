@@ -1,5 +1,5 @@
 import { task } from "@trigger.dev/sdk";
-import { agentmail } from "@/lib/agentmail";
+import { getAgentMailClient } from "@/lib/agentmail";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   processExtraction,
@@ -37,7 +37,7 @@ export const processAttachment = task({
     const { attachment } = payload;
     const mimeType = attachment.contentType ?? "application/octet-stream";
 
-    const { downloadUrl } = await agentmail.inboxes.messages.getAttachment(
+    const { downloadUrl } = await getAgentMailClient().inboxes.messages.getAttachment(
       payload.inboxId,
       payload.messageId,
       attachment.attachmentId,

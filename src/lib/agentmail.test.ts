@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -18,6 +18,20 @@ import { createUserInbox } from "./agentmail";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("AGENTMAIL_API_KEY", "test-agentmail-key");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("getAgentMailClient", () => {
+  it("throws when AGENTMAIL_API_KEY is not set", async () => {
+    vi.resetModules();
+    vi.stubEnv("AGENTMAIL_API_KEY", "");
+    const { getAgentMailClient } = await import("./agentmail");
+    expect(() => getAgentMailClient()).toThrow("AGENTMAIL_API_KEY is not set");
+  });
 });
 
 describe("createUserInbox", () => {

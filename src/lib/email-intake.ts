@@ -5,7 +5,8 @@ export const EMAIL_INTAKE_ENV_KEYS = [
 ] as const;
 
 export type EmailIntakeEnvKey = (typeof EMAIL_INTAKE_ENV_KEYS)[number];
-export type EmailIntakeEnv = Partial<Record<EmailIntakeEnvKey, string | undefined>>;
+// Index signature (not Partial<Record<EmailIntakeEnvKey, …>>) so `process.env` is assignable.
+export type EmailIntakeEnv = Readonly<Record<string, string | undefined>>;
 
 function isSet(value: string | undefined): boolean {
   return typeof value === "string" && value.trim().length > 0;

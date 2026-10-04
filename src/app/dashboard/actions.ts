@@ -7,6 +7,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
+import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
 export async function logout() {
   const supabase = await createClient();
@@ -28,6 +29,9 @@ export async function createInbox(): Promise<CreateInboxResult> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  if (!isEmailIntakeConfigured(process.env)) {
+    return { ok: false, error: "Email forwarding is not configured on this instance." };
+  }
 
   const service = createServiceClient();
 

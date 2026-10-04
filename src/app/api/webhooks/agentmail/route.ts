@@ -5,8 +5,13 @@ import type { AgentMail } from "agentmail";
 import type { processInboundEmail } from "@/trigger/process-inbound-email";
 import { checkContentLength } from "@/lib/validation/common";
 import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
+import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
 export async function POST(request: NextRequest) {
+  if (!isEmailIntakeConfigured(process.env)) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+
   const contentLength = checkContentLength(request, MAX_WEBHOOK_BODY_BYTES);
   if (!contentLength.success) {
     return NextResponse.json({ error: contentLength.error }, { status: 413 });
