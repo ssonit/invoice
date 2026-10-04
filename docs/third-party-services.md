@@ -52,15 +52,15 @@ search), not the vendor's own pricing page — re-check `trigger.dev/pricing` be
 committing to a paid tier. The AgentMail table was verified against `agentmail.to/pricing`
 directly on 2026-08-23.
 
-## Upstash Redis (upload rate limiting)
+## Upstash Redis (upload + auth rate limiting)
 
-- Free tier: 500K commands/month, no credit card required — plenty for a per-user
-  sliding-window limit on a single route (`/api/invoices/upload`, 10 requests/min/user,
-  see `src/lib/rate-limit.ts`).
+- Free tier: 500K commands/month, no credit card required — plenty for sliding-window
+  limits on uploads (`/api/invoices/upload`, 10 requests/min/user) and login / sign-up /
+  password-reset attempts (see `src/lib/rate-limit.ts`). Email intake is **not** limited.
 - Create a Redis database at https://console.upstash.com, then copy the REST URL/token
   into `.env.local` (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`).
-- **Optional, not validated at boot**: if unset, rate limiting silently no-ops (uploads are
-  unlimited, same as before this existed) rather than blocking `npm run dev` or the build.
+- **Optional, not validated at boot**: if unset, rate limiting silently no-ops (uploads and
+  auth attempts are unlimited) rather than blocking `npm run dev` or the build.
   Set it before a real production launch — without it, an authenticated user can burn
   unlimited LLM extraction calls.
 

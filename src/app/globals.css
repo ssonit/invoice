@@ -367,7 +367,7 @@ html.landing-scroll body {
   --landing-text-grad-to: #0f766e;
 }
 
-/* Selective gradient helpers — use only on hero accent / final CTA / featured pricing */
+/* Selective gradient helpers — use only on hero accent / final CTA / featured cards */
 .landing-text-gradient {
   background-image: linear-gradient(
     135deg,

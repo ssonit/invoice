@@ -36,7 +36,7 @@ graphify update .
 
 | Step | Command | What it catches |
 |------|---------|-----------------|
-| 1. Test | `npm run test` | Unit test regressions (Vitest, 358 tests) |
+| 1. Test | `npm run test` | Unit test regressions (Vitest) |
 | 2. Lint | `npm run lint` | React/TS code quality, unused vars, hook rules |
 | 3. Type-check | `npx tsc --noEmit` | Type errors across the whole project |
 | 4. Graphify | `graphify update .` | Refresh knowledge graph after merge |

@@ -14,8 +14,8 @@ const nextConfig: NextConfig = {
   },
 
   // Baseline hardening headers. Deliberately not a full Content-Security-Policy —
-  // this app pulls from enough third-party origins (Supabase, Lemon Squeezy,
-  // AgentMail) that a CSP needs its own dedicated audit rather than a guess here.
+  // this app pulls from enough third-party origins (Supabase, AgentMail,
+  // LLM providers) that a CSP needs its own dedicated audit rather than a guess here.
   async headers() {
     return [
       {

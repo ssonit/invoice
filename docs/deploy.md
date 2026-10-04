@@ -23,11 +23,13 @@ Required variables:
 - `ANTHROPIC_API_KEY` (or `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` per provider)
 
 Optional (skip if not using):
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (rate limiting — strongly recommended for a public deploy)
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (rate limits uploads and login / sign-up / password-reset — strongly recommended for a public deploy; does not cover email intake)
 - Email forwarding — set **all three or none** (a partial set fails at startup):
   - `AGENTMAIL_API_KEY`
   - `AGENTMAIL_WEBHOOK_SECRET`
   - `TRIGGER_SECRET_KEY`
+
+> **Warning:** email intake has no rate limit or cap. Every signed-up user can create an AgentMail inbox (consuming your plan's inbox quota), and anyone who knows a forwarding address can trigger LLM extractions on your key. Enable it only for trusted users and monitor LLM spend. See `docs/SETUP.md`.
 
 ### 3. Supabase — push migrations
 

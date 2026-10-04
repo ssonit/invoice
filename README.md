@@ -8,8 +8,8 @@ AI-powered invoice inbox: forward bills to a unique email address or upload PDFs
 
 - **Next.js** (App Router) + React + Tailwind / shadcn
 - **Supabase** — Auth, Postgres, Storage, RLS
-- **AgentMail** — inbound email forwarding + webhooks
-- **Trigger.dev** — background processing for inbound email
+- **AgentMail** — inbound email forwarding + webhooks (optional)
+- **Trigger.dev** — background processing for inbound email (optional)
 - **LLM extraction** — Anthropic / Gemini / DeepSeek (see `EXTRACTION_PROVIDER`)
 - **Upstash Redis** — rate limits invoice uploads (optional — no-ops if unset)
 
@@ -115,7 +115,7 @@ Target is **Vercel**. Full operator runbook: [`docs/deploy.md`](docs/deploy.md).
 Quick checklist:
 1. Mirror [`.env.local.example`](.env.local.example) into Vercel env (Preview + Production).
 2. Apply migrations: `npx supabase db push`.
-3. Deploy background tasks: `npx trigger.dev@latest deploy`.
+3. If email forwarding is enabled: deploy background tasks with `npx trigger.dev@latest deploy`.
 4. Set Supabase Auth Site URL + Redirect URLs to the production domain.
 5. Run the post-deploy smoke checklist in [`docs/deploy.md`](docs/deploy.md).
 

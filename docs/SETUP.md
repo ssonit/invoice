@@ -17,8 +17,9 @@ You need: Node 20.9 or newer (22+ recommended; CI uses 24), a free Supabase proj
 Everything works at this point except forwarding by email.
 
 ## Recommended before going public — rate limiting
-Without it, any signed-in user can trigger unlimited LLM calls on your key (uploads), and login / sign-up / password-reset attempts are not throttled.
+Upstash limits two things only: uploads (10/min/user) and login / sign-up / password-reset attempts. Without it, any signed-in user can trigger unlimited LLM calls on your key through uploads, and auth attempts are not throttled.
 Create a free Upstash Redis database (https://console.upstash.com) and set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`. When unset, every limiter silently no-ops.
+Upstash does **not** cover email forwarding — that path has no rate limit at all (see the warning below).
 
 ## Optional — email forwarding
 Adds a per-user forwarding address; forwarded emails are parsed automatically.
@@ -28,6 +29,14 @@ Set **all three** or none (the app refuses to start with a partial setup):
 - `TRIGGER_SECRET_KEY` — cloud.trigger.dev. Edit `project` in `trigger.config.ts` to your own project ref, then `npx trigger.dev@latest deploy` (locally, run `npx trigger.dev@latest dev` next to `npm run dev`).
 
 When none are set, the Automation page and the forwarding address are hidden and the webhook route returns 404.
+
+> **Warning — email intake is not rate-limited or capped.** Upstash only limits uploads and auth. With email enabled:
+> - every signed-up user can create an AgentMail inbox, and each one counts against your AgentMail plan's inbox quota (once it runs out, inbox creation fails for everyone else);
+> - anyone who knows a forwarding address can send unlimited mail, and every message with attachments triggers LLM extractions on your API key.
+>
+> Enable email forwarding only for trusted users (e.g. a closed or invite-only sign-up), and monitor your LLM provider spend and AgentMail inbox count.
+
+The landing page, auth pages and legal pages mention email forwarding regardless of this setting. If you leave it off, edit that copy in `src/lib/landing/dictionary.ts`, `src/components/auth/auth-aside.tsx` (the side panel on the login and sign-up pages), `src/app/signup/page.tsx`, `src/app/page.tsx` (metadata description) and `src/lib/legal/dictionary.ts`.
 
 ## Production
 See `docs/deploy.md` (Vercel). Supabase free tier pauses after 7 days idle — see `docs/third-party-services.md` (`/api/health` keep-alive).
