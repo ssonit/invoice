@@ -18,10 +18,6 @@ Pricing verified directly against `agentmail.to/pricing` on 2026-08-23.
   inbox per customer (`createUserInbox`), so customers map 1:1 onto the inbox quota:
   customer #4 forces the $20 plan, and **customer #11 forces a 10x jump to $200/mo**.
   There is no tier between $20 and $200.
-- Cost as a share of revenue (Team plan is $29/mo/customer): ~7% at 10 customers, **~63% at
-  11 customers**, ~20% at 35, ~5% at 150. The painful band is roughly 11-35 customers; past
-  ~50 the $200 is noise. Budget for it rather than architecting around it unless the
-  business will sit in that band for a long time.
 - Sends and receives share the same quota — an auto-reply costs the same as an inbound
   message.
 - **Pods do not reduce cost.** Pods (`client.pods.*`) give per-tenant data isolation,
@@ -55,23 +51,6 @@ Pricing verified directly against `agentmail.to/pricing` on 2026-08-23.
 search), not the vendor's own pricing page — re-check `trigger.dev/pricing` before
 committing to a paid tier. The AgentMail table was verified against `agentmail.to/pricing`
 directly on 2026-08-23.
-
-## Polar (billing)
-
-- Merchant of Record — Lemon Squeezy is the seller of record and handles global
-  VAT/sales-tax compliance. Fee: ~5% + 50¢ per transaction.
-- One paid variant (Team, $29/mo). Store/variant IDs and API key come from the
-  Lemon Squeezy dashboard; set in `.env.local` (`POLAR_ACCESS_TOKEN`,
-  `POLAR_ORGANIZATION_ID`, `POLAR_TEAM_PRODUCT_ID`,
-  `POLAR_WEBHOOK_SECRET`).
-- **Test mode**: Lemon Squeezy stores support a test mode that runs the full
-  checkout/webhook flow without a real charge — use it for local dev and the
-  manual verification below instead of a real card.
-- Webhook endpoint: configure `https://<your-domain>/api/webhooks/polar`
-  in the store's Settings → Webhooks, subscribed to `subscription_*` events.
-  For local dev, use a tunnel (e.g. `ngrok http 3000`) and point the webhook
-  at the tunnel URL.
-- Architecture details: [`docs/billing-polar.md`](billing-polar.md).
 
 ## Upstash Redis (upload rate limiting)
 

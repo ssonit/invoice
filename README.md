@@ -9,7 +9,6 @@ AI-powered invoice inbox: forward bills to a unique email address or upload PDFs
 - **AgentMail** — inbound email forwarding + webhooks
 - **Trigger.dev** — background processing for inbound email
 - **LLM extraction** — Anthropic / Gemini / DeepSeek (see `EXTRACTION_PROVIDER`)
-- **Lemon Squeezy** — billing (Merchant of Record), Team plan checkout + webhook
 - **Upstash Redis** — rate limits invoice uploads (optional — no-ops if unset)
 
 ## Prerequisites
@@ -17,8 +16,8 @@ AI-powered invoice inbox: forward bills to a unique email address or upload PDFs
 - Node.js 20+
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (local stack)
 - Accounts/keys for AgentMail, Trigger.dev, and at least one extraction provider
-- Lemon Squeezy account (billing) and, optionally, an Upstash Redis database
-  (upload rate limiting — https://console.upstash.com, free tier)
+- Optionally, an Upstash Redis database (upload rate limiting —
+  https://console.upstash.com, free tier)
 
 ## Setup
 
@@ -56,7 +55,6 @@ All required variables are listed in [`.env.local.example`](.env.local.example):
 | `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification |
 | `TRIGGER_SECRET_KEY` / `TRIGGER_PROJECT_REF` | Trigger.dev task queue |
 | `EXTRACTION_PROVIDER` + provider API keys | Invoice OCR / extraction |
-| `LEMONSQUEEZY_API_KEY` / `LEMONSQUEEZY_STORE_ID` / `LEMONSQUEEZY_TEAM_VARIANT_ID` / `LEMONSQUEEZY_WEBHOOK_SECRET` | Team plan checkout + subscription webhook |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upload rate limiting (optional) |
 
 Everything except the Upstash pair and the extraction-provider keys you're not using is
@@ -115,8 +113,7 @@ Quick checklist:
 2. Apply migrations: `npx supabase db push`.
 3. Deploy background tasks: `npx trigger.dev@latest deploy`.
 4. Set Supabase Auth Site URL + Redirect URLs to the production domain.
-5. Create the Lemon Squeezy webhook at `https://<domain>/api/webhooks/lemonsqueezy`.
-6. Run the post-deploy smoke checklist in [`docs/deploy.md`](docs/deploy.md).
+5. Run the post-deploy smoke checklist in [`docs/deploy.md`](docs/deploy.md).
 
 CI gates every PR with `lint → test → tsc --noEmit → build` — see
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
@@ -126,5 +123,5 @@ CI gates every PR with `lint → test → tsc --noEmit → build` — see
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — plan → code → test → security review → deploy
 - [`docs/DASHBOARD.md`](docs/DASHBOARD.md) — dashboard UI map
 - [`docs/system-hardening.md`](docs/system-hardening.md) — auth recovery, upload dedup, account soft-delete
-- [`docs/third-party-services.md`](docs/third-party-services.md) — AgentMail, Trigger.dev, Lemon Squeezy, Upstash setup notes
+- [`docs/third-party-services.md`](docs/third-party-services.md) — AgentMail, Trigger.dev, Upstash, Supabase setup notes
 - [`.claude/rules/`](.claude/rules/) — standing code conventions

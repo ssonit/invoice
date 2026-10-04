@@ -9,7 +9,6 @@ import { LandingHowItWorks } from "@/components/landing/how-it-works"
 import { LandingI18nProvider } from "@/components/landing/landing-i18n"
 import { LandingThemeProvider } from "@/components/landing/landing-theme"
 import { LandingNav } from "@/components/landing/nav"
-import { LandingPricing } from "@/components/landing/pricing"
 import { LandingTestimonial } from "@/components/landing/testimonial"
 import { LandingTrustMarquee } from "@/components/landing/trust-marquee"
 import { LenisProvider } from "@/components/landing/lenis-provider"
@@ -34,7 +33,6 @@ export function LandingPage() {
               <LandingAgents />
             </div>
             <LandingFeaturesPan />
-            <LandingPricing />
             <LandingTestimonial />
             <LandingFinalCta />
           </main>

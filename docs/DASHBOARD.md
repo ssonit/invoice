@@ -299,7 +299,6 @@ Bottom of sidebar. `border-t border-[#242424] pt-3`.
 Click opens shadcn `DropdownMenu`:
 - My Profile
 - Account Settings
-- Billing & Plans
 - `Separator`
 - Dark Mode — label left + `Switch` right — row `bg-[#1a1a1a] rounded-[8px]`
 - `Separator`

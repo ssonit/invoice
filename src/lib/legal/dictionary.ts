@@ -23,7 +23,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
       title: "Terms of Service",
       updated: "2026-07-30",
       banner:
-        "Draft — not legal advice. Replace with lawyer-reviewed copy before charging for this product.",
+        "Draft — not legal advice. Replace with lawyer-reviewed copy before going to production.",
       sections: [
         {
           heading: "1. What Invoice Reader does",
@@ -39,7 +39,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
         },
         {
           heading: "4. Payments & billing",
-          body: "Payments for paid plans are processed by Polar, which acts as our Merchant of Record. By subscribing to a paid plan you agree to Polar's terms of service as well. Subscription pricing, cancellation, and refund policies are as described on our pricing page at the time of purchase.",
+          body: "This service does not process payments.",
         },
         {
           heading: "5. Acceptable use",
@@ -67,7 +67,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
       title: "Privacy Policy",
       updated: "2026-07-30",
       banner:
-        "Draft — not legal advice. Replace with lawyer-reviewed copy before charging for this product.",
+        "Draft — not legal advice. Replace with lawyer-reviewed copy before going to production.",
       sections: [
         {
           heading: "1. Data we collect",
@@ -75,11 +75,11 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
         },
         {
           heading: "2. How we use your data",
-          body: "We use your data to: extract structured invoice information and display it in your dashboard; provide, maintain, and improve the service; communicate with you about your account (billing, feature updates, support); and comply with legal obligations. We do NOT sell your data to third parties.",
+          body: "We use your data to: extract structured invoice information and display it in your dashboard; provide, maintain, and improve the service; communicate with you about your account (feature updates, support); and comply with legal obligations. We do NOT sell your data to third parties.",
         },
         {
           heading: "3. Data sharing with third parties",
-          body: "We share forwarded invoice content with LLM providers (currently Anthropic, Google, and DeepSeek) solely for extraction purposes. These providers process data per their respective data-processing terms and do not use it for model training. Payments are processed by Polar, which receives billing information per its own privacy policy. We use Supabase for database hosting and authentication. We do not share your data with any other third parties except as required by law.",
+          body: "We share forwarded invoice content with LLM providers (currently Anthropic, Google, and DeepSeek) solely for extraction purposes. These providers process data per their respective data-processing terms and do not use it for model training. We use Supabase for database hosting and authentication. We do not share your data with any other third parties except as required by law.",
         },
         {
           heading: "4. Data retention",
@@ -121,7 +121,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
       title: "Điều khoản dịch vụ",
       updated: "2026-07-30",
       banner:
-        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi thu phí sản phẩm này.",
+        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi đưa vào production.",
       sections: [
         {
           heading: "1. Invoice Reader làm gì",
@@ -137,7 +137,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
         },
         {
           heading: "4. Thanh toán & hóa đơn",
-          body: "Thanh toán cho gói trả phí được xử lý bởi Polar, đơn vị đóng vai trò Merchant of Record của chúng tôi. Khi đăng ký gói trả phí, bạn đồng ý với điều khoản dịch vụ của Polar. Giá gói, chính sách hủy và hoàn tiền theo mô tả trên trang bảng giá của chúng tôi tại thời điểm mua.",
+          body: "Dịch vụ này không xử lý thanh toán.",
         },
         {
           heading: "5. Sử dụng được phép",
@@ -165,7 +165,7 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
       title: "Chính sách quyền riêng tư",
       updated: "2026-07-30",
       banner:
-        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi thu phí sản phẩm này.",
+        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi đưa vào production.",
       sections: [
         {
           heading: "1. Dữ liệu chúng tôi thu thập",
@@ -173,11 +173,11 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
         },
         {
           heading: "2. Cách chúng tôi dùng dữ liệu",
-          body: "Chúng tôi dùng dữ liệu của bạn để: trích xuất thông tin hóa đơn có cấu trúc và hiển thị trong dashboard của bạn; cung cấp, duy trì và cải thiện dịch vụ; liên lạc với bạn về tài khoản (thanh toán, cập nhật tính năng, hỗ trợ); và tuân thủ nghĩa vụ pháp lý. Chúng tôi KHÔNG bán dữ liệu của bạn cho bên thứ ba.",
+          body: "Chúng tôi dùng dữ liệu của bạn để: trích xuất thông tin hóa đơn có cấu trúc và hiển thị trong dashboard của bạn; cung cấp, duy trì và cải thiện dịch vụ; liên lạc với bạn về tài khoản (cập nhật tính năng, hỗ trợ); và tuân thủ nghĩa vụ pháp lý. Chúng tôi KHÔNG bán dữ liệu của bạn cho bên thứ ba.",
         },
         {
           heading: "3. Chia sẻ dữ liệu với bên thứ ba",
-          body: "Chúng tôi chia sẻ nội dung hóa đơn chuyển tiếp với các nhà cung cấp LLM (hiện tại là Anthropic, Google và DeepSeek) chỉ nhằm mục đích trích xuất. Các nhà cung cấp này xử lý dữ liệu theo điều khoản xử lý dữ liệu riêng của họ và không dùng để huấn luyện mô hình. Thanh toán được xử lý bởi Polar, đơn vị nhận thông tin thanh toán theo chính sách quyền riêng tư của họ. Chúng tôi dùng Supabase để lưu trữ cơ sở dữ liệu và xác thực. Chúng tôi không chia sẻ dữ liệu của bạn với bất kỳ bên thứ ba nào khác trừ khi pháp luật yêu cầu.",
+          body: "Chúng tôi chia sẻ nội dung hóa đơn chuyển tiếp với các nhà cung cấp LLM (hiện tại là Anthropic, Google và DeepSeek) chỉ nhằm mục đích trích xuất. Các nhà cung cấp này xử lý dữ liệu theo điều khoản xử lý dữ liệu riêng của họ và không dùng để huấn luyện mô hình. Chúng tôi dùng Supabase để lưu trữ cơ sở dữ liệu và xác thực. Chúng tôi không chia sẻ dữ liệu của bạn với bất kỳ bên thứ ba nào khác trừ khi pháp luật yêu cầu.",
         },
         {
           heading: "4. Lưu trữ dữ liệu",

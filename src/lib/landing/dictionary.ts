@@ -6,7 +6,6 @@ export type LandingDictionary = {
     signup: string
     how: string
     features: string
-    pricing: string
     agents: string
     langEn: string
     langVi: string
@@ -41,20 +40,6 @@ export type LandingDictionary = {
     body: string
     cta: string
   }
-  pricing: {
-    eyebrow: string
-    title: string
-    subtitle: string
-    plans: {
-      name: string
-      description: string
-      price: string
-      period: string
-      cta: string
-      featured?: boolean
-      features: string[]
-    }[]
-  }
   testimonial: {
     quote: string
     name: string
@@ -78,7 +63,6 @@ export type LandingDictionary = {
       dashboard: string
       how: string
       agents: string
-      pricing: string
       terms: string
       privacy: string
     }
@@ -93,7 +77,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       signup: "Sign up",
       how: "How it works",
       features: "Features",
-      pricing: "Pricing",
       agents: "Agents",
       langEn: "EN",
       langVi: "VI",
@@ -172,42 +155,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       body: "One prompt. Any agent. Your invoices, forwarded.",
       cta: "Set up in the app",
     },
-    pricing: {
-      eyebrow: "Pricing",
-      title: "Simple pricing for finance teams.",
-      subtitle:
-        "Start free with upload and analytics. Upgrade for email forwarding, unlimited volume, and exports.",
-      plans: [
-        {
-          name: "Starter",
-          description: "For solo operators clearing their inbox",
-          price: "$0",
-          period: "/ month",
-          cta: "Log in",
-          features: [
-            "Manual upload",
-            "AI field extraction",
-            "Dashboard + filters",
-            "Analytics",
-            "50 invoices / month",
-          ],
-        },
-        {
-          name: "Team",
-          description: "For ops and finance working together",
-          price: "$29",
-          period: "/ month",
-          cta: "Sign up",
-          featured: true,
-          features: [
-            "Everything in Starter",
-            "Forwarding inbox",
-            "Unlimited invoices",
-            "Export-ready rows",
-          ],
-        },
-      ],
-    },
     testimonial: {
       quote:
         "We stopped copy-pasting invoice PDFs into sheets. The inbox catches what accounting used to chase.",
@@ -216,7 +163,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     },
     cta: {
       title: "Stop chasing invoice PDFs.",
-      body: "Log in and let the next attachment parse itself. No credit card required.",
+      body: "Log in and let the next attachment parse itself.",
       button: "Get started",
     },
     footer: {
@@ -232,7 +179,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         dashboard: "Dashboard",
         how: "How it works",
         agents: "Agents",
-        pricing: "Pricing",
         terms: "Terms",
         privacy: "Privacy",
       },
@@ -245,7 +191,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       signup: "Đăng ký",
       how: "Cách hoạt động",
       features: "Tính năng",
-      pricing: "Bảng giá",
       agents: "AI agents",
       langEn: "EN",
       langVi: "VI",
@@ -324,42 +269,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
       body: "Một prompt. Mọi agent. Hóa đơn của bạn, tự động chuyển tiếp.",
       cta: "Thiết lập trong app",
     },
-    pricing: {
-      eyebrow: "Bảng giá",
-      title: "Giá đơn giản cho team finance.",
-      subtitle:
-        "Bắt đầu miễn phí với tải lên và analytics. Nâng cấp để chuyển tiếp email, không giới hạn số lượng, và export.",
-      plans: [
-        {
-          name: "Starter",
-          description: "Cho người tự xử lý hộp thư",
-          price: "$0",
-          period: "/ tháng",
-          cta: "Đăng nhập",
-          features: [
-            "Tải lên thủ công",
-            "AI trích xuất trường",
-            "Dashboard + bộ lọc",
-            "Analytics",
-            "50 hóa đơn / tháng",
-          ],
-        },
-        {
-          name: "Team",
-          description: "Cho ops và finance làm chung",
-          price: "$29",
-          period: "/ tháng",
-          cta: "Đăng ký",
-          featured: true,
-          features: [
-            "Mọi thứ trong Starter",
-            "Hộp thư chuyển tiếp",
-            "Không giới hạn hóa đơn",
-            "Xuất dữ liệu sẵn sàng",
-          ],
-        },
-      ],
-    },
     testimonial: {
       quote:
         "Chúng tôi không còn copy PDF hóa đơn vào sheet. Hộp thư bắt được những gì kế toán từng phải đuổi theo.",
@@ -368,7 +277,7 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
     },
     cta: {
       title: "Ngừng đuổi theo PDF hóa đơn.",
-      body: "Đăng nhập và để tệp đính kèm tiếp theo tự được đọc. Không cần thẻ.",
+      body: "Đăng nhập và để tệp đính kèm tiếp theo tự được đọc.",
       button: "Bắt đầu",
     },
     footer: {
@@ -384,7 +293,6 @@ export const dictionaries: Record<LandingLocale, LandingDictionary> = {
         dashboard: "Dashboard",
         how: "Cách hoạt động",
         agents: "AI agents",
-        pricing: "Bảng giá",
         terms: "Điều khoản",
         privacy: "Riêng tư",
       },

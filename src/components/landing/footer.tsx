@@ -61,15 +61,6 @@ export function LandingFooter() {
               </button>
             </li>
             <li>
-              <button
-                type="button"
-                className="hover:text-[var(--landing-fg)]"
-                onClick={() => scrollToId("pricing")}
-              >
-                {t.footer.links.pricing}
-              </button>
-            </li>
-            <li>
               <Link
                 href="/dashboard"
                 className="hover:text-[var(--landing-fg)]"

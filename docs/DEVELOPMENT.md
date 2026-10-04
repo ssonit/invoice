@@ -109,5 +109,5 @@ The full operator runbook is in [`docs/deploy.md`](deploy.md). Quick summary:
 - **Pre-deploy checklist:** CI green on the PR, `npm run build` clean (with real env),
   all migrations applied to the target Supabase project, `security-review` passed for
   any sensitive change since the last deploy.
-- **Post-deploy smoke:** signup/login, dashboard, upload/forward one invoice, Settings
-  billing card — full checklist in [`docs/deploy.md`](deploy.md).
+- **Post-deploy smoke:** signup/login, dashboard, upload/forward one invoice, CSV
+  export — full checklist in [`docs/deploy.md`](deploy.md).

@@ -46,7 +46,6 @@ src/app/dashboard/analytics/page.tsx  — RSC page (ContentShell + all sections)
 ## What it deliberately doesn't do
 
 - Exports / CSV download
-- Team plan gating
 - FX conversion, currency picker
 - Custom date pickers, comparison to prior period
 - SQL aggregate views / materialized caches
