@@ -50,7 +50,7 @@ understate what actually landed.
 
 ## Local smoke test
 
-1. Set `TRIGGER_SECRET_KEY` in `.env.local` and put the real project ref in `trigger.config.ts` (and `TRIGGER_PROJECT_REF`).
+1. Set `TRIGGER_SECRET_KEY` in `.env.local` and edit `project` in `trigger.config.ts` to your real project ref.
 2. `npm run dev` and `npx trigger.dev@latest dev` in parallel.
 3. Deliver a `message.received` webhook; expect `{"status":"queued"}`, a successful `process-inbound-email` run, a child reply run, an `invoices` row with `source` / `source_message_id` / `source_ref`, and an auto-reply. Re-delivering the same `messageId` must not start a duplicate run.
 

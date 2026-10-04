@@ -19,15 +19,15 @@ Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY`
-- `AGENTMAIL_API_KEY`
-- `AGENTMAIL_WEBHOOK_SECRET`
-- `TRIGGER_SECRET_KEY`
-- `TRIGGER_PROJECT_REF`
 - `EXTRACTION_PROVIDER` (e.g. `anthropic`)
 - `ANTHROPIC_API_KEY` (or `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` per provider)
 
 Optional (skip if not using):
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (upload rate limiting)
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (rate limiting — strongly recommended for a public deploy)
+- Email forwarding — set **all three or none** (a partial set fails at startup):
+  - `AGENTMAIL_API_KEY`
+  - `AGENTMAIL_WEBHOOK_SECRET`
+  - `TRIGGER_SECRET_KEY`
 
 ### 3. Supabase — push migrations
 
@@ -49,11 +49,13 @@ If using Vercel Preview deployments, also add the preview URL pattern (e.g. `htt
 
 ### 5. Trigger.dev — deploy background tasks
 
+If you use email forwarding:
+
 ```bash
 npx trigger.dev@latest deploy
 ```
 
-Requires `TRIGGER_SECRET_KEY` and `TRIGGER_PROJECT_REF` set to production values in your local `.env.local`.
+Uses `TRIGGER_SECRET_KEY` from your local `.env.local` (production value); edit `project` in `trigger.config.ts` to your own Trigger.dev project ref first.
 
 ## Every deploy — pre-flight
 
@@ -74,7 +76,7 @@ After Vercel deploys (Preview or Production):
 - [ ] **Signup:** Create a new account (or log in with an existing one).
 - [ ] **Dashboard:** Dashboard loads without errors.
 - [ ] **Upload invoice:** Upload a PDF or image → extraction completes → invoice appears in the list.
-- [ ] **Forward invoice:** Send an email to your AgentMail inbox → invoice appears (verify Trigger.dev is processing).
+- [ ] **Forward invoice (if email forwarding is configured):** Send an email to your AgentMail inbox → invoice appears (verify Trigger.dev is processing).
 - [ ] **Settings:** Settings page loads.
 - [ ] **Exports:** CSV export downloads.
 - [ ] **Logout/Login:** Session persistence works across browser restart.

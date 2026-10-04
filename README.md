@@ -1,5 +1,7 @@
 # Invoice Reader
 
+> New here? Start with [docs/SETUP.md](docs/SETUP.md).
+
 AI-powered invoice inbox: forward bills to a unique email address or upload PDFs/images, extract vendor/amount/dates with an LLM, and review everything in a dashboard.
 
 ## Stack
@@ -13,9 +15,10 @@ AI-powered invoice inbox: forward bills to a unique email address or upload PDFs
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20.9+
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (local stack)
-- Accounts/keys for AgentMail, Trigger.dev, and at least one extraction provider
+- A key for at least one extraction provider
+- Optionally, AgentMail + Trigger.dev accounts (email forwarding — set all three keys or none)
 - Optionally, an Upstash Redis database (upload rate limiting —
   https://console.upstash.com, free tier)
 
@@ -52,14 +55,15 @@ All required variables are listed in [`.env.local.example`](.env.local.example):
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser + server Supabase client |
 | `SUPABASE_SECRET_KEY` | Privileged server paths (bypass RLS carefully) |
-| `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification |
-| `TRIGGER_SECRET_KEY` / `TRIGGER_PROJECT_REF` | Trigger.dev task queue |
+| `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification (optional, with `TRIGGER_SECRET_KEY`) |
+| `TRIGGER_SECRET_KEY` | Trigger.dev task queue (optional, with the AgentMail pair); edit `project` in `trigger.config.ts` |
 | `EXTRACTION_PROVIDER` + provider API keys | Invoice OCR / extraction |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upload rate limiting (optional) |
 
-Everything except the Upstash pair and the extraction-provider keys you're not using is
-validated at server startup (`src/instrumentation.ts`) — a missing required variable fails
-fast with a clear error instead of an obscure runtime failure. Never commit `.env.local`.
+Supabase and the selected extraction provider's key are validated at server startup
+(`src/instrumentation.ts`), as is the email-forwarding group (all three or none) — a
+missing required variable fails fast with a clear error instead of an obscure runtime
+failure. Never commit `.env.local`.
 
 ## Scripts
 
