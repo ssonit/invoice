@@ -9,12 +9,10 @@ export function AutomationView({
   forwardAddress,
   receivedCount,
   agents,
-  canProvision,
 }: {
   forwardAddress: string | null;
   receivedCount: number;
   agents: readonly AutomationAgent[];
-  canProvision: boolean;
 }) {
   return (
     <ContentShell
@@ -25,7 +23,6 @@ export function AutomationView({
         <ConnectionPanel
           forwardAddress={forwardAddress}
           receivedCount={receivedCount}
-          canProvision={canProvision}
         />
 
         {forwardAddress ? (
@@ -36,9 +33,7 @@ export function AutomationView({
           </>
         ) : (
           <p className="text-[13px] text-muted-foreground">
-            {canProvision
-              ? "Create your forwarding address above to get the agent setup prompts."
-              : "Upgrade to Team above to create a forwarding address and unlock agent setup prompts."}
+            Create your forwarding address above to get the agent setup prompts.
           </p>
         )}
       </div>

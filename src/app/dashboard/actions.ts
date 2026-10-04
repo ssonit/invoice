@@ -2,14 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
-import { createPolarCheckout, createPolarCustomerPortal } from "@/lib/polar";
-import { canProvisionInbox, getBillingMode } from "@/lib/billing";
 
 export async function logout() {
   const supabase = await createClient();
@@ -24,9 +21,7 @@ export type CreateInboxResult =
 // Provisions the AgentMail forwarding inbox on demand. Called from the
 // dashboard when the user chooses to set up email forwarding, rather than
 // automatically at signup. Exactly one inbox per user (enforced by a DB
-// unique constraint as well as the check below). New provisioning requires
-// Team (or billing disabled / non-prod unlock); existing inboxes are
-// grandfathered and returned without a plan check.
+// unique constraint as well as the check below).
 export async function createInbox(): Promise<CreateInboxResult> {
   const supabase = await createClient();
   const {
@@ -46,19 +41,6 @@ export async function createInbox(): Promise<CreateInboxResult> {
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/automation");
     return { ok: true, email: existing.email_address, alreadyExisted: true };
-  }
-
-  const { data: billingRow } = await service
-    .from("billing_subscriptions")
-    .select("plan, status, ends_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!canProvisionInbox(billingRow)) {
-    return {
-      ok: false,
-      error: "Forwarding inbox requires the Team plan. Upgrade in Settings to create one.",
-    };
   }
 
   try {
@@ -155,67 +137,4 @@ export async function deleteAccount(confirmEmail: string): Promise<DeleteAccount
 
   await supabase.auth.signOut();
   redirect("/");
-}
-
-export type CreateCheckoutUrlResult = { ok: true; url: string } | { ok: false; error: string };
-
-// Starts a Polar hosted checkout for the Team plan. Card data never touches
-// this server — the user completes payment on Polar's page.
-export async function createCheckoutUrl(): Promise<CreateCheckoutUrlResult> {
-  if (getBillingMode() === "none") {
-    return { ok: false, error: "Billing is not enabled on this instance." };
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const origin = (await headers()).get("origin");
-
-  try {
-    const url = await createPolarCheckout({
-      userId: user.id,
-      email: user.email!,
-      redirectUrl: `${origin}/dashboard/settings?checkout=success`,
-    });
-    return { ok: true, url };
-  } catch (err) {
-    console.error("Failed to create checkout", user.id, err);
-    return { ok: false, error: "Could not start checkout. Please try again." };
-  }
-}
-
-export type OpenCustomerPortalResult =
-  | { ok: true; url: string }
-  | { ok: false; error: string };
-
-// Opens the Polar customer portal where the user can manage their subscription.
-// The current user's polar_customer_id is resolved server-side — the client
-// never passes it, avoiding an IDOR where one user could access another's portal.
-export async function openCustomerPortal(): Promise<OpenCustomerPortalResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: row } = await supabase
-    .from("billing_subscriptions")
-    .select("polar_customer_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!row?.polar_customer_id) {
-    return { ok: false, error: "No billing profile found." };
-  }
-
-  try {
-    const url = await createPolarCustomerPortal(row.polar_customer_id);
-    return { ok: true, url };
-  } catch (err) {
-    console.error("Failed to open customer portal", user.id, err);
-    return { ok: false, error: "Could not open the billing portal. Please try again." };
-  }
 }

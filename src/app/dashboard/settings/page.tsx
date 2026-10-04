@@ -1,18 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
 import { CopyButton } from "@/components/dashboard/copy-button";
-import { InboxProvisionPanel } from "@/components/dashboard/inbox-provision-panel";
+import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountSection } from "./delete-account-section";
-import { BillingCard } from "./billing-card";
-import type { BillingSubscriptionRow } from "@/lib/billing";
-import {
-  canProvisionInbox,
-  getBillingMode,
-  hasActiveTeamPlan,
-  isBillingDevUnlockEnabled,
-} from "@/lib/billing";
-import { getMonthRangeUtc, getStarterMonthlyLimit } from "@/lib/billing/usage";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -23,51 +14,22 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle2 } from "lucide-react";
 
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ checkout?: string }>;
-}) {
-  const rawParams = await searchParams;
-  const justCheckedOut = rawParams.checkout === "success";
-
+export default async function SettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: inbox }, { data: subscription, error: subscriptionError }] = await Promise.all([
-    supabase.from("inboxes").select("email_address").eq("user_id", user!.id).maybeSingle(),
-    supabase
-      .from("billing_subscriptions")
-      .select("plan, status, polar_customer_id, renews_at, ends_at")
-      .eq("user_id", user!.id)
-      .single<BillingSubscriptionRow>(),
-  ]);
-
-  if (subscriptionError) {
-    console.error("Failed to load billing subscription", user!.id, subscriptionError);
-  }
-
-  // Usage meter — only for Starter (Team has no cap).
-  let usage: { used: number; limit: number; resetsAt: string } | null = null;
-  const isTeam = hasActiveTeamPlan(subscription);
-  const mayProvisionInbox = canProvisionInbox(subscription);
-  if (!isTeam && subscription) {
-    const { start, end } = getMonthRangeUtc();
-    const limit = getStarterMonthlyLimit();
-    const { count } = await supabase
-      .from("invoices")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user!.id)
-      .gte("created_at", start.toISOString());
-    usage = { used: count ?? 0, limit, resetsAt: end.toISOString() };
-  }
+  const { data: inbox } = await supabase
+    .from("inboxes")
+    .select("email_address")
+    .eq("user_id", user!.id)
+    .maybeSingle();
 
   return (
     <ContentShell
       title="Settings"
-      description="Manage forwarding, billing, and account security."
+      description="Manage forwarding and account security."
     >
       <div className="flex flex-col gap-4">
         <Card className="rounded-[14px] shadow-none">
@@ -87,7 +49,6 @@ export default async function SettingsPage({
             <CardDescription className="text-[13px]">
               Forward invoice emails to this address, or set up an auto-forward rule in
               Gmail/Outlook. Anything that arrives is parsed and added to your invoices.
-              Available on the Team plan.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -104,31 +65,7 @@ export default async function SettingsPage({
                 </p>
               </div>
             ) : (
-              <InboxProvisionPanel canProvision={mayProvisionInbox} />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px] shadow-none">
-          <CardHeader>
-            <CardTitle className="text-[13px] font-semibold">Billing</CardTitle>
-            <CardDescription className="text-[13px]">
-              Manage your plan and payment method.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {subscription ? (
-              <BillingCard
-                subscription={subscription}
-                justCheckedOut={justCheckedOut}
-                usage={usage}
-                billingMode={getBillingMode()}
-                devUnlock={isBillingDevUnlockEnabled()}
-              />
-            ) : (
-              <p className="text-[13px] text-muted-foreground">
-                Could not load your billing status. Please refresh the page.
-              </p>
+              <CreateInboxButton />
             )}
           </CardContent>
         </Card>
