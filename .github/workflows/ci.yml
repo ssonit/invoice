@@ -14,8 +14,6 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-anon-key
       SUPABASE_SECRET_KEY: test-service-role-key
-      AGENTMAIL_API_KEY: test-agentmail-key
-      AGENTMAIL_WEBHOOK_SECRET: test-agentmail-webhook-secret
       EXTRACTION_PROVIDER: anthropic
       ANTHROPIC_API_KEY: test-anthropic-key
     steps:

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EMAIL_INTAKE_ENV_KEYS, missingEmailIntakeKeys } from "@/lib/email-intake";
 
 export type ValidationResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -13,8 +14,10 @@ const envSchema = z
     NEXT_PUBLIC_SUPABASE_URL: z.string().min(1, "NEXT_PUBLIC_SUPABASE_URL is required"),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required"),
     SUPABASE_SECRET_KEY: z.string().min(1, "SUPABASE_SECRET_KEY is required"),
-    AGENTMAIL_API_KEY: z.string().min(1, "AGENTMAIL_API_KEY is required"),
-    AGENTMAIL_WEBHOOK_SECRET: z.string().min(1, "AGENTMAIL_WEBHOOK_SECRET is required"),
+    // Email intake (forwarded invoices). Optional as a group — see superRefine below.
+    AGENTMAIL_API_KEY: z.string().optional(),
+    AGENTMAIL_WEBHOOK_SECRET: z.string().optional(),
+    TRIGGER_SECRET_KEY: z.string().optional(),
     EXTRACTION_PROVIDER: z.string().optional(),
     ANTHROPIC_API_KEY: z.string().optional(),
     GEMINI_API_KEY: z.string().optional(),
@@ -41,6 +44,17 @@ const envSchema = z
       ctx.addIssue({
         code: "custom",
         message: `EXTRACTION_PROVIDER is "${provider}" but ${requiredVar} is not set.`,
+      });
+    }
+  })
+  .superRefine((env, ctx) => {
+    const anySet = EMAIL_INTAKE_ENV_KEYS.some((key) => (env[key] ?? "").trim().length > 0);
+    if (!anySet) return;
+    const missing = missingEmailIntakeKeys(env);
+    if (missing.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Email intake is partially configured — also set: ${missing.join(", ")} (or unset all of ${EMAIL_INTAKE_ENV_KEYS.join(", ")}).`,
       });
     }
   });

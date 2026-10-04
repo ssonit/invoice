@@ -5,8 +5,6 @@ const validBase = {
   NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "anon-key",
   SUPABASE_SECRET_KEY: "service-role-key",
-  AGENTMAIL_API_KEY: "agentmail-key",
-  AGENTMAIL_WEBHOOK_SECRET: "webhook-secret",
 };
 
 function withoutKey<K extends keyof typeof validBase>(key: K) {
@@ -37,15 +35,6 @@ describe("parseEnvInput", () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/SUPABASE_SECRET_KEY/);
-  });
-
-  it("rejects a missing AGENTMAIL_WEBHOOK_SECRET", () => {
-    const result = parseEnvInput({
-      ...withoutKey("AGENTMAIL_WEBHOOK_SECRET"),
-      ANTHROPIC_API_KEY: "sk-ant-x",
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toMatch(/AGENTMAIL_WEBHOOK_SECRET/);
   });
 
   it("defaults EXTRACTION_PROVIDER to anthropic and requires ANTHROPIC_API_KEY", () => {
@@ -101,5 +90,32 @@ describe("parseEnvInput", () => {
       POLAR_ACCESS_TOKEN: "",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("email intake env (optional, all-or-nothing)", () => {
+  const baseWithLlm = { ...validBase, ANTHROPIC_API_KEY: "sk-ant-x" };
+
+  it("accepts an environment with no email intake keys at all", () => {
+    expect(parseEnvInput(baseWithLlm).success).toBe(true);
+  });
+
+  it("accepts a fully configured email intake", () => {
+    const result = parseEnvInput({
+      ...baseWithLlm,
+      AGENTMAIL_API_KEY: "am",
+      AGENTMAIL_WEBHOOK_SECRET: "whsec",
+      TRIGGER_SECRET_KEY: "tr",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a partially configured email intake and names the missing keys", () => {
+    const result = parseEnvInput({ ...baseWithLlm, AGENTMAIL_API_KEY: "am" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toMatch(/AGENTMAIL_WEBHOOK_SECRET/);
+      expect(result.error).toMatch(/TRIGGER_SECRET_KEY/);
+    }
   });
 });
