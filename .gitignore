@@ -58,3 +58,6 @@ next-env.d.ts
 
 # trigger.dev
 /.trigger/
+
+# e2e runner output
+/.e2e/
