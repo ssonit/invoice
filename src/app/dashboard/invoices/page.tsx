@@ -9,6 +9,7 @@ import {
   parseInvoiceListQuery,
 } from "@/lib/invoices/query"
 import { pageCount, paginationRange } from "@/lib/pagination"
+import { isEmailIntakeConfigured } from "@/lib/email-intake"
 
 export default async function InvoicesPage({
   searchParams,
@@ -39,11 +40,16 @@ export default async function InvoicesPage({
 
   const invoices = (data ?? []).map(normalizeInvoice)
   const totalPages = pageCount(count ?? 0, INVOICE_LIST_PAGE_SIZE)
+  const isEmailIntakeEnabled = isEmailIntakeConfigured(process.env)
 
   return (
     <ContentShell
       title="Invoices"
-      description="Every invoice extracted from your forwarded email and manual uploads."
+      description={
+        isEmailIntakeEnabled
+          ? "Every invoice extracted from your forwarded email and manual uploads."
+          : "Every invoice extracted from your uploads."
+      }
       actions={<UploadInvoiceButton />}
     >
       <InvoicesTable
@@ -51,6 +57,7 @@ export default async function InvoicesPage({
         query={query}
         totalCount={count ?? 0}
         pageCount={totalPages}
+        isEmailIntakeEnabled={isEmailIntakeEnabled}
       />
     </ContentShell>
   )

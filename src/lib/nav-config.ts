@@ -17,6 +17,7 @@ export type NavItem = {
   href: string
   icon: LucideIcon
   status?: NavStatus
+  requiresEmailIntake?: boolean
 }
 
 export type NavGroup = {
@@ -47,6 +48,7 @@ export const navGroups: NavGroup[] = [
         href: "/dashboard/automation",
         icon: Bot,
         status: "live",
+        requiresEmailIntake: true,
       },
       {
         label: "Vendors",
@@ -85,6 +87,14 @@ export const navGroups: NavGroup[] = [
     ],
   },
 ]
+
+/** Nav groups for the current instance; drops items whose feature isn't configured. */
+export function getNavGroups({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boolean }): NavGroup[] {
+  return navGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isEmailIntakeEnabled || !item.requiresEmailIntake),
+  }))
+}
 
 export const navItems: NavItem[] = navGroups.flatMap((group) => group.items)
 

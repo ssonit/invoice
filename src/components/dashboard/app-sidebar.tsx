@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation"
 import { FileText } from "lucide-react"
 
 import {
+  getNavGroups,
   isNavItemActive,
-  navGroups,
   statusLabel,
   type NavStatus,
 } from "@/lib/nav-config"
@@ -42,7 +42,7 @@ function StatusBadge({ status }: { status: NavStatus }) {
   )
 }
 
-export function AppSidebar() {
+export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boolean }) {
   const pathname = usePathname()
 
   return (
@@ -68,7 +68,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-1 py-2">
-        {navGroups.map((group, index) => (
+        {getNavGroups({ isEmailIntakeEnabled }).map((group, index) => (
           <SidebarGroup key={group.label}>
             {index > 0 ? <SidebarSeparator className="mx-0 mb-2" /> : null}
             <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">

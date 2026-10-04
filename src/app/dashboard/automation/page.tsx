@@ -1,9 +1,13 @@
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AutomationView } from "@/components/dashboard/automation/automation-view";
 import { AUTOMATION_AGENTS } from "@/lib/automation/agents";
 import { INBOX_SOURCE_FILTER } from "@/constants/inbox";
+import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
 export default async function AutomationPage() {
+  if (!isEmailIntakeConfigured(process.env)) notFound();
+
   const supabase = await createClient();
   const {
     data: { user },

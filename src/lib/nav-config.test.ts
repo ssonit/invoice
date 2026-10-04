@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findNavItem, isNavItemActive } from "./nav-config";
+import { findNavItem, getNavGroups, isNavItemActive } from "./nav-config";
 
 describe("isNavItemActive", () => {
   it("requires an exact match for the dashboard root", () => {
@@ -36,5 +36,22 @@ describe("findNavItem", () => {
     const item = findNavItem("/dashboard/automation");
     expect(item?.label).toBe("Automation");
     expect(item?.status).toBe("live");
+  });
+});
+
+describe("getNavGroups", () => {
+  const labels = (enabled: boolean) =>
+    getNavGroups({ isEmailIntakeEnabled: enabled }).flatMap((g) => g.items.map((i) => i.label));
+
+  it("includes Automation when email intake is enabled", () => {
+    expect(labels(true)).toContain("Automation");
+  });
+
+  it("hides Automation when email intake is disabled", () => {
+    expect(labels(false)).not.toContain("Automation");
+  });
+
+  it("keeps all other items either way", () => {
+    expect(labels(false)).toEqual(expect.arrayContaining(["Overview", "Invoices", "Vendors", "Analytics", "Exports", "Settings"]));
   });
 });

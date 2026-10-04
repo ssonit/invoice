@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { SiteHeader } from "@/components/dashboard/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +22,7 @@ export default async function DashboardLayout({
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar />
+        <AppSidebar isEmailIntakeEnabled={isEmailIntakeConfigured(process.env)} />
         <SidebarInset>
           <SiteHeader email={email} />
           <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>

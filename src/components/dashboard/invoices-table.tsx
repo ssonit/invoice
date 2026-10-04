@@ -36,11 +36,13 @@ export function InvoicesTable({
   query,
   totalCount,
   pageCount,
+  isEmailIntakeEnabled,
 }: {
   data: InvoiceRow[];
   query: InvoiceListQuery;
   totalCount: number;
   pageCount: number;
+  isEmailIntakeEnabled: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -82,7 +84,9 @@ export function InvoicesTable({
             </EmptyMedia>
             <EmptyTitle>No invoices yet</EmptyTitle>
             <EmptyDescription>
-              Forward an invoice to your address in Settings, or upload one directly.
+              {isEmailIntakeEnabled
+                ? "Forward an invoice to your address in Settings, or upload one directly."
+                : "Upload an invoice to get started."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
