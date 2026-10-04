@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "e2e run --exclude-tag llm",
+    "test:e2e:full": "e2e run",
+    "test:e2e:email-off": "e2e run --config e2e.email-off.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

@@ -71,6 +71,24 @@ Rules of thumb:
 - Run `npm run build` plus a manual browser smoke test of the actual user flow before
   calling a feature done.
 
+### E2E (browser) tests
+
+[TesterArmy `e2e`](https://e2e.tester.army/docs/) drives the real app in Chromium. Tests are
+deterministic (locators + `expect`, no model key needed). Two configs cover both modes:
+email forwarding configured (`e2e.config.ts`) and not (`e2e.email-off.config.ts`).
+
+Prerequisites: Docker running, `npx supabase start`, `npm run build`, `npx playwright install chromium`.
+
+| Command | Runs |
+|---------|------|
+| `npm run test:e2e` | email-on suite, without the LLM-backed upload test |
+| `npm run test:e2e:full` | email-on suite including the upload test (spends a few cents of real LLM credit) |
+| `npm run test:e2e:email-off` | email-off suite (email keys blanked) |
+
+Rules: tests log in as the local seed user (`supabase/seed.sql`); never click
+"Create forwarding address" in a test (it creates a real AgentMail inbox); never run against a
+hosted Supabase project. After UI changes, rebuild (`npm run build`) — the tests run `next start`.
+
 ## Review security
 
 Run the `security-review` skill before merging any change that touches:

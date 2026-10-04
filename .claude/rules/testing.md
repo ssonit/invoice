@@ -14,9 +14,11 @@ happy-path-only coverage.
 **What's deliberately *not* unit-tested** (established convention, not an oversight): API
 routes, Server Actions, `src/trigger/*.ts` background tasks, UI components, and thin
 LLM-SDK wrappers (`extraction/{anthropic,google,deepseek}.ts`) — these mix I/O with logic
-and get verified manually instead, using the in-app browser tools against the local dev
-server + local Supabase (and, for background tasks, `npx trigger.dev@latest dev` running
-alongside).
+and are not unit-tested. Browser flows (login, dashboard, exports, upload, email-on/off
+visibility) are covered by `npm run test:e2e` / `test:e2e:email-off` — see
+`docs/DEVELOPMENT.md`. Anything those suites do not cover (background tasks, new UI) is
+verified manually in-browser against the local dev server + local Supabase (and, for
+background tasks, `npx trigger.dev@latest dev` running alongside).
 
 **Before any commit touching `src/lib/`:** `npm run test` and `npx tsc --noEmit`.
 
