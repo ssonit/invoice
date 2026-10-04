@@ -433,19 +433,21 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 ### Task 6: Security review
 
-- [ ] **Step 1:** Run the `security-review` skill over the whole of `main` since commit `28d31c1` (all changes of this round). Focus: webhook auth (`/api/webhooks/agentmail` signature + 404 gate), the new env refinements, service-role client usage in `createInbox`, upload route (rate limit, content-type, size), RLS/grants untouched.
-- [ ] **Step 2:** Fix every HIGH/MEDIUM finding with a test where `src/lib/` logic is involved; list LOW findings in `docs/SETUP.md` under "Known limitations".
-- [ ] **Step 3:** Commit: `git commit -am "fix: address security review findings"` (skip if none).
+- [x] **Step 1:** Run the `security-review` skill over the whole of `main` since commit `28d31c1` (all changes of this round). Focus: webhook auth (`/api/webhooks/agentmail` signature + 404 gate), the new env refinements, service-role client usage in `createInbox`, upload route (rate limit, content-type, size), RLS/grants untouched.
+- [x] **Step 2:** Fix every HIGH/MEDIUM finding with a test where `src/lib/` logic is involved; list LOW findings in `docs/SETUP.md` under "Known limitations".
+- [x] **Step 3:** Commit: `git commit -am "fix: address security review findings"` (skip if none).
+
+**Result (2026-10-04):** no findings. Exports, upload, `createInbox`, the AgentMail webhook (404 gate → size limits → svix verify), and the lazy AgentMail client are all still authenticated and scoped to the session user. Low-confidence notes: (1) upload has no plan/quota cap by design, only the per-user rate limit, which is a no-op without Upstash; this is already documented in `docs/SETUP.md` → "Recommended before going public", so no new section was added. (2) The empty `src/app/api/webhooks/lemonsqueezy/` directory was deleted (it was untracked, so there was nothing to commit).
 
 ---
 
 ### Task 7: Handover prep
 
-- [ ] **Step 1: Repo hygiene** — confirm `git status` is clean, no `.env*` tracked (`git ls-files | grep -i "\.env"` shows only `.env.local.example`), no personal files in the repo root.
+- [x] **Step 1: Repo hygiene** — confirm `git status` is clean, no `.env*` tracked (`git ls-files | grep -i "\.env"` shows only `.env.local.example`), no personal files in the repo root. (2026-10-04: clean. Tracked internal files to decide on in Step 2: `.mcp.json` (contains the local path `D:\Project\invoice`, no secrets), `skills-lock.json`, and about 70 files under `docs/superpowers/`, `.claude/`, `.agents/`, `.cursor/`.)
 - [ ] **Step 2: Decide what ships** (ask the owner): keep or strip `docs/superpowers/` and `.claude/` from the buyer copy; they are internal workflow, not product.
 - [ ] **Step 3: Trigger.dev project ref** — in the **handover copy only** (not `main`, or the owner's own deploy breaks), change `project: "proj_glkyuruvgwugfznpnrxd"` in `trigger.config.ts` to `"proj_REPLACE_WITH_YOUR_PROJECT_REF"`.
 - [ ] **Step 4: License** — requires the owner's decision; do not invent legal terms. Options: (a) add a proprietary `LICENSE` stating the buyer receives all rights upon payment, (b) a permissive license (MIT) if the buyer may resell, (c) a separate signed sale agreement and no `LICENSE` file. Record the choice in `docs/SETUP.md`.
-- [ ] **Step 3: Tag the release** — `git tag v1.0.0-handover` after the final green run.
+- [ ] **Step 5: Tag the release** — `git tag v1.0.0-handover` after the final green run.
 
 ---
 
