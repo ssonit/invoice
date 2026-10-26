@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { CopyButton } from "@/components/dashboard/copy-button";
 import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
+import { DeleteInboxButton } from "@/components/dashboard/delete-inbox-button";
 import { AUTOMATION_STATUS } from "@/constants/automation";
 
 // The address is a workspace-level resource, so it is presented once, here,
@@ -65,6 +66,7 @@ export function ConnectionPanel({
               label="Copy address"
               copiedLabel="Address copied"
             />
+            <DeleteInboxButton forwardAddress={forwardAddress} />
           </div>
         ) : (
           <CreateInboxButton />

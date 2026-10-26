@@ -27,6 +27,7 @@ export default async function SettingsPage() {
         .from("inboxes")
         .select("email_address")
         .eq("user_id", user!.id)
+        .is("deleted_at", null)
         .maybeSingle()
     : { data: null };
 
