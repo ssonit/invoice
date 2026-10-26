@@ -21,6 +21,7 @@ export async function findAndCountSameInvoice(params: {
     .from("invoices")
     .select()
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .eq("vendor_key", identity.vendorKey)
     .eq("invoice_number", identity.invoiceNumber)
     .order("created_at", { ascending: true })

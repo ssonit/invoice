@@ -25,7 +25,8 @@ export default async function ExportsPage({
   let dbQuery = supabase
     .from("invoices")
     .select("issue_date, created_at, needs_review")
-    .eq("user_id", user!.id);
+    .eq("user_id", user!.id)
+    .is("deleted_at", null);
 
   if (query.range !== "all") {
     const start = rangeStartIso(new Date(), query.range);

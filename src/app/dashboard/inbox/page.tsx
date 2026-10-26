@@ -23,6 +23,7 @@ export default async function InboxPage({
     .from("invoices")
     .select("*", { count: "exact" })
     .eq("user_id", user!.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
   if (query.q) {
@@ -51,7 +52,8 @@ export default async function InboxPage({
     supabase
       .from("invoices")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user!.id),
+      .eq("user_id", user!.id)
+      .is("deleted_at", null),
   ])
 
   const invoices = (data ?? []).map(normalizeInvoice)

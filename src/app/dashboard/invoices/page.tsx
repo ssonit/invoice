@@ -28,6 +28,7 @@ export default async function InvoicesPage({
     .from("invoices")
     .select("*", { count: "exact" })
     .eq("user_id", user!.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
   if (query.vendor) {

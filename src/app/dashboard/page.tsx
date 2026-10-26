@@ -17,6 +17,7 @@ export default async function DashboardOverviewPage() {
     .from("invoices")
     .select("*")
     .eq("user_id", user!.id)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
   const invoices = (data ?? []).map(normalizeInvoice)

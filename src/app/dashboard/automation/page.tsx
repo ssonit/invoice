@@ -23,6 +23,7 @@ export default async function AutomationPage() {
       .from("invoices")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user!.id)
+      .is("deleted_at", null)
       .eq("source", INBOX_SOURCE_FILTER.EMAIL),
   ]);
 

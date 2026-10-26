@@ -352,6 +352,7 @@ export async function getVendorInvoices(vendorKey: string): Promise<GetVendorInv
     .from("invoices")
     .select("id, invoice_number, amount, currency, issue_date, due_date")
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .eq("vendor_key", parsed.data.vendorKey)
     .order("issue_date", { ascending: false });
 

@@ -29,6 +29,7 @@ export default async function AnalyticsPage({
     .from("invoices")
     .select("id, vendor, amount, currency, issue_date, created_at, needs_review")
     .eq("user_id", user!.id)
+    .is("deleted_at", null)
     .or(`issue_date.gte.${start},created_at.gte.${start}`)
     .order("created_at", { ascending: false });
 
