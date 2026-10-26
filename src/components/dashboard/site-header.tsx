@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { cn } from "@/lib/utils"
 
-export function SiteHeader({ email }: { email: string }) {
+export function SiteHeader({ email, displayName }: { email: string; displayName: string }) {
   const pathname = usePathname()
   const item = findNavItem(pathname)
   const title = item?.label ?? "Dashboard"
@@ -48,7 +48,7 @@ export function SiteHeader({ email }: { email: string }) {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <HeaderActions email={email} />
+      <HeaderActions email={email} displayName={displayName} />
     </header>
   )
 }

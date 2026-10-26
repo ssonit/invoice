@@ -7,6 +7,12 @@ import { checkContentLength } from "@/lib/validation/common";
 import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
 import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
+// Only POST is a real method here; answer anything else like a missing route
+// instead of Next's default 405 so a disabled intake looks fully absent.
+export function GET() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
+
 export async function POST(request: NextRequest) {
   if (!isEmailIntakeConfigured(process.env)) {
     return NextResponse.json({ error: "not found" }, { status: 404 });

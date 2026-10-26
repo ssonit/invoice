@@ -11,7 +11,7 @@ import { signup } from "./actions";
 import { initialSignupState } from "./signup-form-state";
 
 export function SignupForm() {
-  const [state, formAction] = useActionState(signup, initialSignupState);
+  const [state, formAction, isPending] = useActionState(signup, initialSignupState);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,7 +80,7 @@ export function SignupForm() {
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
         </Field>
-        {state.error ? (
+        {state.error && !isPending ? (
           <div
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"

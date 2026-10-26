@@ -8,7 +8,6 @@ export type LegalSection = {
 export type LegalPage = {
   title: string
   updated: string
-  banner: string
   sections: LegalSection[]
 }
 
@@ -22,8 +21,6 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
     terms: {
       title: "Terms of Service",
       updated: "2026-07-30",
-      banner:
-        "Draft — not legal advice. Replace with lawyer-reviewed copy before going to production.",
       sections: [
         {
           heading: "1. What Invoice Reader does",
@@ -66,8 +63,6 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
     privacy: {
       title: "Privacy Policy",
       updated: "2026-07-30",
-      banner:
-        "Draft — not legal advice. Replace with lawyer-reviewed copy before going to production.",
       sections: [
         {
           heading: "1. Data we collect",
@@ -120,8 +115,6 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
     terms: {
       title: "Điều khoản dịch vụ",
       updated: "2026-07-30",
-      banner:
-        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi đưa vào production.",
       sections: [
         {
           heading: "1. Invoice Reader làm gì",
@@ -164,8 +157,6 @@ export const legalCopy: Record<LegalLocale, LegalPages> = {
     privacy: {
       title: "Chính sách quyền riêng tư",
       updated: "2026-07-30",
-      banner:
-        "Bản nháp — không phải tư vấn pháp lý. Hãy thay bằng bản đã được luật sư xem xét trước khi đưa vào production.",
       sections: [
         {
           heading: "1. Dữ liệu chúng tôi thu thập",

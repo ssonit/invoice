@@ -16,8 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function HeaderActions({ email }: { email: string }) {
-  const initial = email.charAt(0).toUpperCase()
+export function HeaderActions({ email, displayName }: { email: string; displayName: string }) {
+  const initial = (displayName || email).charAt(0).toUpperCase()
 
   return (
     <div className="ml-auto flex items-center gap-1">
@@ -76,8 +76,11 @@ export function HeaderActions({ email }: { email: string }) {
           <DropdownMenuGroup>
             <DropdownMenuLabel className="font-normal">
               <p className="truncate text-sm font-medium text-foreground">
-                {email}
+                {displayName || email}
               </p>
+              {displayName ? (
+                <p className="truncate text-xs text-muted-foreground">{email}</p>
+              ) : null}
               <p className="text-xs text-muted-foreground">Signed in</p>
             </DropdownMenuLabel>
           </DropdownMenuGroup>

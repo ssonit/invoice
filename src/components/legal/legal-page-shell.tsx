@@ -52,11 +52,6 @@ export function LegalPageShell({ page }: { page: "terms" | "privacy" }) {
           {locale === "en" ? "Last updated" : "Cập nhật lần cuối"}: {legal.updated}
         </p>
 
-        {/* Draft banner */}
-        <div className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
-          {legal.banner}
-        </div>
-
         {/* Sections */}
         <article className="mt-10 space-y-8">
           {legal.sections.map((section) => (

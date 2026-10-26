@@ -18,13 +18,15 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const email = user.email ?? "account";
+  const displayName =
+    typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "";
 
   return (
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar isEmailIntakeEnabled={isEmailIntakeConfigured(process.env)} />
         <SidebarInset>
-          <SiteHeader email={email} />
+          <SiteHeader email={email} displayName={displayName} />
           <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         </SidebarInset>
       </SidebarProvider>

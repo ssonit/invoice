@@ -82,6 +82,7 @@ export function UploadInvoiceButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [open, setOpen] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(
     null,
   );
@@ -90,7 +91,10 @@ export function UploadInvoiceButton() {
 
   function handleOpenChange(next: boolean) {
     if (!next && isUploading) return;
-    if (!next) setPending([]);
+    if (!next) {
+      setPending([]);
+      setErrors({});
+    }
     setOpen(next);
   }
 
@@ -114,6 +118,7 @@ export function UploadInvoiceButton() {
     if (next.length === 0) return;
 
     setPending(next);
+    setErrors({});
     setOpen(true);
   }
 
@@ -127,6 +132,7 @@ export function UploadInvoiceButton() {
     if (pending.length === 0 || isUploading) return;
 
     const files = pending.map((item) => item.file);
+    const batch = pending;
     setProgress({ current: 0, total: files.length });
     const outcomes: UploadOutcome[] = [];
     let stopped = false;
@@ -161,19 +167,30 @@ export function UploadInvoiceButton() {
       if (outcomes.some((o) => o.ok)) {
         router.refresh();
       }
-      setPending([]);
-      setOpen(false);
+      // Keep failed files in the dialog so they can be retried in place.
+      const failedErrors: Record<string, string> = {};
+      const failedItems = batch.filter((item) => {
+        const outcome = outcomes.find((o) => !o.ok && o.fileName === item.file.name);
+        if (outcome && !outcome.ok) failedErrors[item.id] = outcome.error;
+        return Boolean(outcome);
+      });
+      setPending(failedItems);
+      setErrors(failedErrors);
+      setOpen(failedItems.length > 0);
     } finally {
       setProgress(null);
     }
   }
 
   const count = pending.length;
+  const hasErrors = Object.keys(errors).length > 0;
   const confirmLabel = isUploading
     ? progress.total === 1
       ? "Extracting..."
       : `Extracting ${progress.current}/${progress.total}...`
-    : count === 1
+    : hasErrors
+      ? `Retry ${count} failed`
+      : count === 1
       ? "Upload & extract"
       : `Upload & extract ${count} files`;
 
@@ -218,6 +235,9 @@ export function UploadInvoiceButton() {
                   <p className="text-xs text-muted-foreground">
                     {formatFileSize(item.file.size)}
                   </p>
+                  {errors[item.id] ? (
+                    <p className="text-xs text-destructive">{errors[item.id]}</p>
+                  ) : null}
                 </div>
                 {!isUploading ? (
                   <Button

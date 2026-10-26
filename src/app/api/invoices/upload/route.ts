@@ -54,6 +54,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "File is too large — max 15MB" }, { status: 413 });
   }
 
+  // A real PDF starts with "%PDF-" (within the first 1KB per the spec). Anything
+  // else is a damaged or mislabeled file — say so instead of a generic failure.
+  if (
+    mimeType === "application/pdf" &&
+    !buffer.subarray(0, 1024).toString("latin1").includes("%PDF-")
+  ) {
+    return NextResponse.json(
+      { error: "This PDF appears to be corrupted or is not a valid PDF file." },
+      { status: 422 },
+    );
+  }
+
   const contentHash = sha256Hex(buffer);
 
   const service = createServiceClient();
