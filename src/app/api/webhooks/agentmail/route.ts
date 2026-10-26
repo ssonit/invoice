@@ -1,13 +1,12 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "svix";
 import { tasks } from "@trigger.dev/sdk";
-import type { AgentMail } from "agentmail";
 import type { processInboundEmail } from "@/trigger/process-inbound-email";
 import { checkContentLength } from "@/lib/validation/common";
 import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
 import { isEmailIntakeConfigured, isTriggerConfigured } from "@/lib/email-intake";
 import { processInboundEmailInline } from "@/lib/inbound-email/process-inline";
-import type { ProcessInboundEmailPayload } from "@/lib/inbound-email/types";
+import { parseWebhookMessage } from "@/lib/inbound-email/parse-webhook-message";
 
 // Inline (no Trigger.dev) processing runs in after(); give it room for several attachments.
 export const maxDuration = 300;
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "error" }, { status: 500 });
   }
 
-  let event: { event_type: string; message: AgentMail.Message };
+  let event: { event_type: string; message: unknown };
   try {
     event = new Webhook(webhookSecret).verify(payload, headers) as typeof event;
   } catch {
@@ -52,21 +51,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "ignored" });
   }
 
-  const message = event.message;
-
-  const emailPayload: ProcessInboundEmailPayload = {
-    inboxId: message.inboxId,
-    messageId: message.messageId,
-    subject: message.subject ?? null,
-    text: message.text ?? message.extractedText ?? null,
-    html: message.html ?? message.extractedHtml ?? null,
-    attachments: (message.attachments ?? []).map((attachment) => ({
-      attachmentId: attachment.attachmentId,
-      filename: attachment.filename ?? null,
-      contentType: attachment.contentType ?? null,
-      size: attachment.size ?? null,
-    })),
-  };
+  const emailPayload = parseWebhookMessage(event.message);
+  if (!emailPayload) {
+    console.error("AgentMail webhook message is missing inbox_id or message_id", event.message);
+    return NextResponse.json({ error: "invalid message" }, { status: 400 });
+  }
 
   // No Trigger.dev: answer 200 now and do the work after the response, within
   // this route's maxDuration. No queue, so no automatic retry.
@@ -80,12 +69,17 @@ export async function POST(request: NextRequest) {
   // of starting a duplicate — no processed_messages table needed.
   try {
     await tasks.trigger<typeof processInboundEmail>("process-inbound-email", emailPayload, {
-      idempotencyKey: message.messageId,
+      idempotencyKey: emailPayload.messageId,
     });
   } catch (error) {
     // Non-2xx makes AgentMail retry the delivery. Typical causes: wrong
     // TRIGGER_SECRET_KEY environment, or tasks not deployed to that environment.
-    console.error("Failed to queue inbound email task", message.inboxId, message.messageId, error);
+    console.error(
+      "Failed to queue inbound email task",
+      emailPayload.inboxId,
+      emailPayload.messageId,
+      error,
+    );
     return NextResponse.json({ status: "error" }, { status: 500 });
   }
 
