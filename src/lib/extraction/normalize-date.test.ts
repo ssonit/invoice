@@ -37,6 +37,19 @@ describe("normalizeExtractedDate", () => {
     expect(normalizeExtractedDate("ngay 5 thang 1 nam 2026")).toBe("2026-01-05");
   });
 
+  it("reads English month-name dates (ACME-2026-0042)", () => {
+    expect(normalizeExtractedDate("Oct 26, 2026")).toBe("2026-10-26");
+    expect(normalizeExtractedDate("October 26 2026")).toBe("2026-10-26");
+    expect(normalizeExtractedDate("26 Oct 2026")).toBe("2026-10-26");
+    expect(normalizeExtractedDate("26th October, 2026")).toBe("2026-10-26");
+    expect(normalizeExtractedDate("Sept. 5, 2026")).toBe("2026-09-05");
+  });
+
+  it("rejects impossible or unknown month-name dates", () => {
+    expect(normalizeExtractedDate("Feb 30, 2026")).toBeNull();
+    expect(normalizeExtractedDate("Foo 26, 2026")).toBeNull();
+  });
+
   it("rejects impossible calendar dates", () => {
     expect(normalizeExtractedDate("2026-02-30")).toBeNull();
     expect(normalizeExtractedDate("31/02/2026")).toBeNull();

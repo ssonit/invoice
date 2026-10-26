@@ -9,6 +9,18 @@ const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/;
 const DAY_FIRST_DATE = /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/;
 const VIETNAMESE_DATE = /ng[àa]y\s+(\d{1,2})\s+th[áa]ng\s+(\d{1,2})\s+n[ăa]m\s+(\d{4})/i;
 
+// "Oct 26, 2026", "October 26 2026", "26 Oct 2026", "26th October, 2026"
+const MONTH_NAMES = [
+  "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
+];
+const MONTH_FIRST_TEXT_DATE = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/i;
+const DAY_FIRST_TEXT_DATE = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?,?\s+(\d{4})$/i;
+
+function monthFromName(name: string): number | null {
+  const index = MONTH_NAMES.indexOf(name.slice(0, 3).toLowerCase());
+  return index === -1 ? null : index + 1;
+}
+
 function toIsoDate(year: number, month: number, day: number): string | null {
   const date = new Date(Date.UTC(year, month - 1, day));
   const isRealDate =
@@ -40,6 +52,18 @@ export function normalizeExtractedDate(value: string | null | undefined): string
   if (dayFirst) {
     const [first, second, year] = [Number(dayFirst[1]), Number(dayFirst[2]), Number(dayFirst[3])];
     return toIsoDate(year, second, first) ?? toIsoDate(year, first, second);
+  }
+
+  const monthFirst = MONTH_FIRST_TEXT_DATE.exec(text);
+  if (monthFirst) {
+    const month = monthFromName(monthFirst[1]);
+    if (month) return toIsoDate(Number(monthFirst[3]), month, Number(monthFirst[2]));
+  }
+
+  const dayFirstText = DAY_FIRST_TEXT_DATE.exec(text);
+  if (dayFirstText) {
+    const month = monthFromName(dayFirstText[2]);
+    if (month) return toIsoDate(Number(dayFirstText[3]), month, Number(dayFirstText[1]));
   }
 
   return null;

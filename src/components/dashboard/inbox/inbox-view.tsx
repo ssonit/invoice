@@ -56,11 +56,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 function sourceSubtitle(invoice: InvoiceRow): string {
   if (invoice.source === INBOX_SOURCE_FILTER.UPLOAD) return "Manual upload"
-  const slug = (invoice.vendor ?? "vendor")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .slice(0, 18)
-  return `invoices@${slug || "mail"}.com`
+  // The sender address isn't stored, so don't invent one from the vendor name.
+  return "Forwarded email"
 }
 
 function buildHref(pathname: string, next: InboxListQuery): string {
