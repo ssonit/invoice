@@ -26,6 +26,7 @@ import {
   type InvoiceRow,
 } from "@/lib/invoices"
 import { INVOICE_REVIEW_STATUS } from "@/lib/validation/invoices"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 import { cn } from "@/lib/utils"
 import { InboxStatusBadge } from "@/components/dashboard/inbox/inbox-status-badge"
 import { Button } from "@/components/ui/button"
@@ -69,12 +70,13 @@ export function InvoiceDetail({
   invoice: InvoiceRow
   onClose?: () => void
 }) {
+  const { t } = useDashboardI18n()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [form, setForm] = useState<EditForm | null>(null)
   const isEditing = form !== null
   const status = getInboxStatus(invoice)
-  const title = [invoice.vendor ?? "Unknown vendor", invoice.invoice_number]
+  const title = [invoice.vendor ?? t.detail.unknownVendor, invoice.invoice_number]
     .filter(Boolean)
     .join(" · ")
 
@@ -90,7 +92,7 @@ export function InvoiceDetail({
         toast.error(result.error)
         return
       }
-      toast.success("Invoice updated.")
+      toast.success(t.detail.updated)
       setForm(null)
       router.refresh()
     })
@@ -105,8 +107,8 @@ export function InvoiceDetail({
       }
       toast.success(
         next === INVOICE_REVIEW_STATUS.APPROVED
-          ? "Invoice approved."
-          : "Marked as needs review."
+          ? t.detail.approved
+          : t.detail.markedReview
       )
       router.refresh()
     })
@@ -114,13 +116,13 @@ export function InvoiceDetail({
 
   function retry() {
     startTransition(async () => {
-      const toastId = toast.loading("Re-reading the invoice...")
+      const toastId = toast.loading(t.detail.rereading)
       const result = await retryInvoiceExtraction({ id: invoice.id })
       if (!result.ok) {
         toast.error(result.error, { id: toastId })
         return
       }
-      toast.success("Extraction updated.", { id: toastId })
+      toast.success(t.detail.extractionUpdated, { id: toastId })
       setForm(null)
       router.refresh()
     })
@@ -149,7 +151,7 @@ export function InvoiceDetail({
                 />
               }
             >
-              Actions
+              {t.detail.actions}
               <ChevronDown className="size-3.5 opacity-70" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -158,16 +160,16 @@ export function InvoiceDetail({
                   disabled={status === "approved"}
                   onClick={() => setReview(INVOICE_REVIEW_STATUS.APPROVED)}
                 >
-                  Mark approved
+                  {t.detail.markApproved}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={status === "review"}
                   onClick={() => setReview(INVOICE_REVIEW_STATUS.REVIEW)}
                 >
-                  Request review
+                  {t.detail.requestReview}
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={!invoice.file_url} onClick={retry}>
-                  Retry extraction
+                  {t.detail.retryExtraction}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -176,7 +178,7 @@ export function InvoiceDetail({
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Close detail"
+              aria-label={t.detail.closeDetail}
               onClick={onClose}
               className="text-muted-foreground"
             >
@@ -196,13 +198,13 @@ export function InvoiceDetail({
               value="overview"
               className="rounded-none px-0 data-active:text-foreground after:bg-[#E8FF47]"
             >
-              Overview
+              {t.detail.overview}
             </TabsTrigger>
             <TabsTrigger
               value="lines"
               className="rounded-none px-0 data-active:text-foreground after:bg-[#E8FF47]"
             >
-              Line Items
+              {t.detail.lineItems}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -212,7 +214,7 @@ export function InvoiceDetail({
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  Extracted details
+                  {t.detail.extractedDetails}
                 </h3>
                 {isEditing ? (
                   <div className="flex items-center gap-1.5">
@@ -222,10 +224,10 @@ export function InvoiceDetail({
                       disabled={isPending}
                       onClick={() => setForm(null)}
                     >
-                      Cancel
+                      {t.detail.cancel}
                     </Button>
                     <Button size="sm" disabled={isPending} onClick={save}>
-                      {isPending ? "Saving..." : "Save"}
+                      {isPending ? t.detail.saving : t.detail.save}
                     </Button>
                   </div>
                 ) : (
@@ -236,27 +238,27 @@ export function InvoiceDetail({
                     onClick={() => setForm(toEditForm(invoice))}
                   >
                     <Pencil className="size-3" />
-                    Edit
+                    {t.detail.edit}
                   </Button>
                 )}
               </div>
               {form ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <EditField label="Vendor">
+                  <EditField label={t.detail.vendor}>
                     <Input
                       value={form.vendor}
                       onChange={(e) => setField("vendor", e.target.value)}
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Invoice number">
+                  <EditField label={t.detail.invoiceNumber}>
                     <Input
                       value={form.invoice_number}
                       onChange={(e) => setField("invoice_number", e.target.value)}
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Invoice date">
+                  <EditField label={t.detail.invoiceDate}>
                     <Input
                       type="date"
                       value={form.issue_date}
@@ -264,7 +266,7 @@ export function InvoiceDetail({
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Due date">
+                  <EditField label={t.detail.dueDate}>
                     <Input
                       type="date"
                       value={form.due_date}
@@ -272,7 +274,7 @@ export function InvoiceDetail({
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Total amount">
+                  <EditField label={t.detail.totalAmount}>
                     <Input
                       inputMode="decimal"
                       value={form.amount}
@@ -280,7 +282,7 @@ export function InvoiceDetail({
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Currency">
+                  <EditField label={t.detail.currency}>
                     <Input
                       value={form.currency}
                       maxLength={3}
@@ -289,7 +291,7 @@ export function InvoiceDetail({
                       disabled={isPending}
                     />
                   </EditField>
-                  <EditField label="Tax">
+                  <EditField label={t.detail.tax}>
                     <Input
                       inputMode="decimal"
                       value={form.tax}
@@ -301,31 +303,31 @@ export function InvoiceDetail({
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DetailField
-                    label="Vendor"
+                    label={t.detail.vendor}
                     value={invoice.vendor ?? "—"}
                     icon={<RefreshCw className="size-3 text-muted-foreground" />}
                   />
                   <DetailField
-                    label="Invoice number"
+                    label={t.detail.invoiceNumber}
                     value={invoice.invoice_number ?? "—"}
                   />
                   <DetailField
-                    label="Invoice date"
+                    label={t.detail.invoiceDate}
                     value={formatInvoiceDate(invoice.issue_date)}
                     icon={<Calendar className="size-3 text-muted-foreground" />}
                   />
                   <DetailField
-                    label="Total amount"
+                    label={t.detail.totalAmount}
                     value={formatInvoiceMoney(invoice.amount, invoice.currency)}
                     highlight
                   />
                   <DetailField
-                    label="Due date"
+                    label={t.detail.dueDate}
                     value={formatInvoiceDate(invoice.due_date)}
                     icon={<Calendar className="size-3 text-muted-foreground" />}
                   />
                   <DetailField
-                    label="Tax"
+                    label={t.detail.tax}
                     value={
                       invoice.tax != null
                         ? formatInvoiceMoney(invoice.tax, invoice.currency)
@@ -342,16 +344,16 @@ export function InvoiceDetail({
           <TabsContent value="lines" className="m-0 p-4">
             {invoice.line_items.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                No line items extracted for this invoice.
+                {t.detail.noLineItems}
               </p>
             ) : (
               <div className="overflow-hidden rounded-xl border border-border">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-muted/40 text-[11px] tracking-wide text-muted-foreground uppercase">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Description</th>
-                      <th className="px-3 py-2 font-medium">Qty</th>
-                      <th className="px-3 py-2 text-right font-medium">Amount</th>
+                      <th className="px-3 py-2 font-medium">{t.detail.description}</th>
+                      <th className="px-3 py-2 font-medium">{t.detail.qty}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t.detail.amount}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -414,17 +416,18 @@ function DetailField({
 }
 
 function DocumentPreview({ invoice }: { invoice: InvoiceRow }) {
+  const { t } = useDashboardI18n()
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <h3 className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
-          Document
+          {t.detail.document}
         </h3>
         <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Download"
+            aria-label={t.detail.download}
             className="text-muted-foreground"
             disabled={!invoice.file_url}
           >
@@ -433,7 +436,7 @@ function DocumentPreview({ invoice }: { invoice: InvoiceRow }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Fullscreen"
+            aria-label={t.detail.fullscreen}
             className="text-muted-foreground"
             disabled
           >
@@ -442,7 +445,7 @@ function DocumentPreview({ invoice }: { invoice: InvoiceRow }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="More"
+            aria-label={t.detail.more}
             className="text-muted-foreground"
             disabled
           >
@@ -456,7 +459,7 @@ function DocumentPreview({ invoice }: { invoice: InvoiceRow }) {
           <div className="flex items-start justify-between gap-4 border-b border-zinc-200 pb-4">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
-                Invoice
+                {t.detail.invoiceHeading}
               </p>
               <p className="mt-1 text-base font-semibold">
                 {invoice.vendor ?? "Vendor"}
@@ -469,17 +472,17 @@ function DocumentPreview({ invoice }: { invoice: InvoiceRow }) {
 
           <dl className="mt-5 grid gap-3 text-sm">
             <div className="flex justify-between gap-3">
-              <dt className="text-zinc-500">Invoice date</dt>
+              <dt className="text-zinc-500">{t.detail.invoiceDate}</dt>
               <dd>{formatInvoiceDate(invoice.issue_date)}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-zinc-500">Due date</dt>
+              <dt className="text-zinc-500">{t.detail.dueDate}</dt>
               <dd className="rounded bg-[#E8FF47]/70 px-1.5 font-medium">
                 {formatInvoiceDate(invoice.due_date)}
               </dd>
             </div>
             <div className="flex justify-between gap-3 border-t border-zinc-200 pt-3">
-              <dt className="font-medium text-zinc-700">Total due</dt>
+              <dt className="font-medium text-zinc-700">{t.detail.totalDue}</dt>
               <dd className="rounded bg-[#E8FF47]/70 px-1.5 font-semibold">
                 {formatInvoiceMoney(invoice.amount, invoice.currency)}
               </dd>

@@ -37,23 +37,3 @@ export const AUTOMATION_AGENT_KIND_OPTIONS: ReadonlyArray<{
 export const AUTOMATION_KIND_LABEL: Record<AutomationAgentKind, string> = Object.fromEntries(
   AUTOMATION_AGENT_KIND_OPTIONS.map((o) => [o.value, o.label]),
 ) as Record<AutomationAgentKind, string>;
-
-export const AUTOMATION_STATUS = {
-  WAITING_LABEL: "Waiting for your first forwarded email",
-  CONNECTED_LABEL: "Connected",
-} as const;
-
-export const AUTOMATION_SETUP_STEPS: ReadonlyArray<{ title: string; body: string }> = [
-  {
-    title: "Copy the prompt",
-    body: "Pick the agent that reads your email and copy its setup prompt.",
-  },
-  {
-    title: "Paste it into your agent",
-    body: "Store it where the agent keeps standing instructions, not in a one-off chat.",
-  },
-  {
-    title: "Forward one invoice",
-    body: "The first email that arrives flips this page to connected.",
-  },
-];

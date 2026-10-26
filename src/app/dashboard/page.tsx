@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { ContentShell } from "@/components/dashboard/content-shell"
 import { OverviewReportView } from "@/components/dashboard/overview-report-view"
 import { normalizeInvoice } from "@/lib/invoices"
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server"
 
 const RECENT_INVOICES_LIMIT = 5
 
@@ -26,17 +27,18 @@ export default async function DashboardOverviewPage() {
 
   const recent = (data ?? []).map(normalizeInvoice)
   const totalCount = count ?? recent.length
+  const { t } = await getDashboardDictionary()
 
   return (
     <ContentShell
-      title="Overview"
-      description="Snapshot of your invoice inbox — open Invoices for the full list."
+      title={t.overview.title}
+      description={t.overview.description}
       actions={
         <Link
           href="/dashboard/invoices"
           className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[#E8FF47] px-4 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-[#E8FF47]/90"
         >
-          View all invoices
+          {t.overview.viewAll}
           <ArrowRight className="size-4" />
         </Link>
       }
@@ -47,22 +49,24 @@ export default async function DashboardOverviewPage() {
         <section className="rounded-xl border border-border bg-card/40">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold tracking-tight">Recent invoices</h2>
+              <h2 className="text-sm font-semibold tracking-tight">{t.overview.recentTitle}</h2>
               <p className="text-xs text-muted-foreground">
-                Latest {recent.length} of {totalCount} total
+                {t.overview.latestOf
+                  .replace("{shown}", String(recent.length))
+                  .replace("{total}", String(totalCount))}
               </p>
             </div>
             <Link
               href="/dashboard/invoices"
               className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              See all
+              {t.overview.seeAll}
             </Link>
           </div>
 
           {recent.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No invoices yet. Upload one from the Invoices page.
+              {t.overview.empty}
             </p>
           ) : (
             <ul className="divide-y divide-border">
@@ -73,12 +77,12 @@ export default async function DashboardOverviewPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium">
-                      {invoice.vendor ?? "Unknown vendor"}
+                      {invoice.vendor ?? t.overview.unknownVendor}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {invoice.invoice_number
                         ? `#${invoice.invoice_number}`
-                        : "No number"}
+                        : t.overview.noNumber}
                       {invoice.issue_date ? ` · ${invoice.issue_date}` : ""}
                     </p>
                   </div>

@@ -11,8 +11,10 @@ import {
 import { confirmSubscription } from "@/app/dashboard/vendors/actions";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function SubscriptionConfirmButtons({ vendorKey }: { vendorKey: string }) {
+  const { t } = useDashboardI18n();
   const [isPending, startTransition] = useTransition();
   const [pendingStatus, setPendingStatus] = useState<SubscriptionConfirmationStatus | null>(
     null,
@@ -29,8 +31,8 @@ export function SubscriptionConfirmButtons({ vendorKey }: { vendorKey: string })
       }
       toast.success(
         status === SUBSCRIPTION_CONFIRMATION_STATUS.ACTIVE
-          ? "Got it — we'll ask again next cycle."
-          : "Marked as cancelled.",
+          ? t.vendors.gotIt
+          : t.vendors.markedCancelled,
       );
       router.refresh();
     });
@@ -49,7 +51,7 @@ export function SubscriptionConfirmButtons({ vendorKey }: { vendorKey: string })
         ) : (
           <Check data-icon="inline-start" />
         )}
-        Still using it
+        {t.vendors.stillUsing}
       </Button>
       <Button
         size="sm"
@@ -62,7 +64,7 @@ export function SubscriptionConfirmButtons({ vendorKey }: { vendorKey: string })
         ) : (
           <X data-icon="inline-start" />
         )}
-        Cancelled
+        {t.vendors.cancelled}
       </Button>
     </div>
   );

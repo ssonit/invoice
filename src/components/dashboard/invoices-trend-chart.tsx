@@ -9,16 +9,18 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { TrendPoint } from "@/lib/invoices";
-
-const chartConfig = {
-  count: { label: "Invoices", color: "var(--chart-1)" },
-} satisfies ChartConfig;
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function InvoicesTrendChart({ data }: { data: TrendPoint[] }) {
+  const { t } = useDashboardI18n();
+  const chartConfig = {
+    count: { label: t.charts.invoicesSeries, color: "var(--chart-1)" },
+  } satisfies ChartConfig;
+
   return (
     <Card className="rounded-[14px] shadow-none">
       <CardHeader>
-        <CardTitle className="text-[13px] font-semibold">Invoices over time</CardTitle>
+        <CardTitle className="text-[13px] font-semibold">{t.charts.invoicesOverTime}</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[200px] w-full">

@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function DeleteInboxButton({ forwardAddress }: { forwardAddress: string }) {
+  const { t } = useDashboardI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function DeleteInboxButton({ forwardAddress }: { forwardAddress: string }
         return;
       }
       setIsOpen(false);
-      toast.success("Forwarding address deleted.");
+      toast.success(t.forwarding.deleted);
       router.refresh();
     });
   }
@@ -48,17 +50,15 @@ export function DeleteInboxButton({ forwardAddress }: { forwardAddress: string }
         onClick={() => setIsOpen(true)}
       >
         <Trash2 data-icon="inline-start" />
-        Delete address
+        {t.forwarding.deleteButton}
       </Button>
 
       <AlertDialog open={isOpen} onOpenChange={(next) => !isPending && setIsOpen(next)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this forwarding address?</AlertDialogTitle>
+            <AlertDialogTitle>{t.forwarding.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              {forwardAddress} will stop receiving email and can&apos;t be restored — emails
-              your agent sends to it afterwards will bounce. Invoices already extracted stay
-              in your account. You can create a new address afterwards.
+              {t.forwarding.deleteDescription.replace("{address}", forwardAddress)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {errorMessage ? (
@@ -67,7 +67,7 @@ export function DeleteInboxButton({ forwardAddress }: { forwardAddress: string }
             </p>
           ) : null}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending}>{t.forwarding.cancel}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={isPending}
@@ -77,7 +77,7 @@ export function DeleteInboxButton({ forwardAddress }: { forwardAddress: string }
               }}
             >
               {isPending ? <Spinner data-icon="inline-start" /> : null}
-              Delete address
+              {t.forwarding.deleteButton}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -12,6 +12,7 @@ import { AnalyticsStatCards } from "@/components/dashboard/analytics/analytics-s
 import { SpendTrendChart } from "@/components/dashboard/analytics/spend-trend-chart"
 import { VendorBreakdown } from "@/components/dashboard/analytics/vendor-breakdown"
 import { ChartSkeleton, ReportError, StatCardsSkeleton } from "@/components/dashboard/report-state"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 const NO_CURRENCY_KEY = "—"
 const DATE_ONLY_LENGTH = 10
@@ -28,6 +29,7 @@ export function AnalyticsReportView({
   query: AnalyticsQuery
   requestedCurrency?: string
 }) {
+  const { t } = useDashboardI18n()
   const { ref, isInView } = useInView<HTMLDivElement>()
   const startDate = rangeStartIso(new Date(), query.range).slice(0, DATE_ONLY_LENGTH)
 
@@ -70,9 +72,9 @@ export function AnalyticsReportView({
             <EmptyMedia variant="icon">
               <BarChart3 />
             </EmptyMedia>
-            <EmptyTitle>No invoices in this period</EmptyTitle>
+            <EmptyTitle>{t.analytics.emptyTitle}</EmptyTitle>
             <EmptyDescription>
-              Try a longer range or upload your first invoice to get started.
+              {t.analytics.emptyDescription}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

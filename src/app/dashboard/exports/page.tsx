@@ -5,6 +5,7 @@ import {
   rangeStartIso,
 } from "@/lib/exports/query";
 import { ExportsPanel } from "@/components/dashboard/exports/exports-panel";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 
 const DATE_ONLY_LENGTH = 10;
 
@@ -34,11 +35,12 @@ export default async function ExportsPage({
   if (error) console.error("Failed to count exportable invoices", user!.id, error);
 
   const count = Number(data ?? 0);
+  const { t } = await getDashboardDictionary();
 
   return (
     <ContentShell
-      title="Exports"
-      description="Download invoices as CSV for spreadsheets or bookkeeping."
+      title={t.exports.title}
+      description={t.exports.description}
     >
       <ExportsPanel query={query} count={count} />
     </ContentShell>

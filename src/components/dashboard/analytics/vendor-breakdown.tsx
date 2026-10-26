@@ -2,6 +2,7 @@ import { Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatInvoiceMoney } from "@/lib/invoices";
 import type { VendorSpendSlice } from "@/lib/analytics/report";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 function shareBarWidth(amount: number, total: number): string {
   if (total === 0) return "0%";
@@ -17,15 +18,16 @@ export function VendorBreakdown({
   total: number;
   currency: string | null;
 }) {
+  const { t } = useDashboardI18n();
   return (
     <Card className="rounded-[14px] shadow-none">
       <CardHeader>
-        <CardTitle className="text-[13px] font-semibold">Top vendors</CardTitle>
+        <CardTitle className="text-[13px] font-semibold">{t.charts.topVendors}</CardTitle>
       </CardHeader>
       <CardContent>
         {vendors.length === 0 ? (
           <p className="py-8 text-center text-[13px] text-muted-foreground">
-            No vendor data in this period.
+            {t.charts.noVendorData}
           </p>
         ) : (
           <ul className="space-y-3">
@@ -43,7 +45,7 @@ export function VendorBreakdown({
                           isOther ? "text-muted-foreground" : ""
                         }`}
                       >
-                        {v.label}
+                        {isOther ? t.charts.other : v.label}
                       </span>
                       <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
                         {formatInvoiceMoney(v.amount, currency)}

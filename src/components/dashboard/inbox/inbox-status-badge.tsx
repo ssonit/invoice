@@ -4,6 +4,7 @@ import { Check, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { InvoiceInboxStatus } from "@/lib/invoices"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 const statusConfig: Record<
   InvoiceInboxStatus,
@@ -32,6 +33,7 @@ export function InboxStatusBadge({
   status: InvoiceInboxStatus
   className?: string
 }) {
+  const { t } = useDashboardI18n()
   const config = statusConfig[status]
 
   return (
@@ -46,7 +48,7 @@ export function InboxStatusBadge({
         <Circle className="size-1.5 fill-current" />
       ) : null}
       {config.icon === "check" ? <Check className="size-3" strokeWidth={2.5} /> : null}
-      {config.label}
+      {t.inbox.badge[status] ?? config.label}
     </span>
   )
 }

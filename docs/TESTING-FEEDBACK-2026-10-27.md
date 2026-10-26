@@ -18,7 +18,15 @@ Decisions worth remembering:
 - **Manual "Mark as subscription":** the row was saved but dropped when the vendor's
   invoice had no `issue_date`; `buildManualCandidates` now falls back to `created_at`.
 
-Migration to apply: `supabase/migrations/20261027100000_invoices_search_and_approval.sql`
-(adds `search_text`, its trigger and backfill, and `approved_at`).
+Migrations applied to production (`invoice_reader`) on 2026-10-27:
+`20261027100000_invoices_search_and_approval.sql` (`search_text`, trigger, backfill,
+`approved_at`), `20261027110000_report_rpc_functions.sql` (analytics/overview/export
+RPCs) and `20261027120000_revoke_handle_new_user_execute.sql` (advisor fix).
+Still open in the Supabase dashboard: enable leaked-password protection (Auth settings).
 
-Not done yet: EN/VI switch in the dashboard, display name in Settings.
+- **EN/VI switch:** `src/lib/dashboard/i18n.ts` (dictionaries, cookie `dashboard-locale`).
+  Server Components use `getDashboardDictionary()`; Client Components use
+  `useDashboardI18n()`. Add strings to `en` and `vi` together; a test checks key and
+  `{placeholder}` parity. Server-action error messages and the agent prompt on the
+  Automation page stay English on purpose.
+- **Display name:** Settings -> Profile, stored in auth `user_metadata.display_name`.

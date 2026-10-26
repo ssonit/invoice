@@ -1,8 +1,10 @@
 import { ArrowUpRight } from "lucide-react";
 import type { AutomationAgent } from "@/lib/automation/agents";
 import { BrandGlyph } from "./brand-glyph";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 
-export function AgentCard({ agent }: { agent: AutomationAgent }) {
+export async function AgentCard({ agent }: { agent: AutomationAgent }) {
+  const { t } = await getDashboardDictionary();
   return (
     <div className="flex items-center gap-2 rounded-[10px] border border-border px-3 py-2 transition-colors duration-150 hover:bg-muted/40">
       <BrandGlyph name={agent.name} slug={agent.iconSlug} />
@@ -14,7 +16,7 @@ export function AgentCard({ agent }: { agent: AutomationAgent }) {
           rel="noopener noreferrer"
           className="ml-auto inline-flex items-center gap-1 text-[12px] text-muted-foreground underline-offset-4 transition-colors duration-150 hover:text-foreground hover:underline"
         >
-          Setup guide
+          {t.automation.setupGuide}
           <ArrowUpRight className="size-3" />
         </a>
       ) : null}

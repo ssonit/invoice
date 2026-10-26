@@ -18,6 +18,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 type VendorFormValues = {
   id?: string
@@ -26,20 +27,21 @@ type VendorFormValues = {
 }
 
 export function AddVendorButton() {
+  const { t } = useDashboardI18n()
   const [open, setOpen] = useState(false)
 
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
         <Plus data-icon="inline-start" />
-        Add vendor
+        {t.vendors.addVendor}
       </Button>
       <VendorFormDialog
         open={open}
         onOpenChange={setOpen}
-        title="Add vendor"
-        description="Create a vendor manually. Matching invoice names will group under it."
-        submitLabel="Create"
+        title={t.vendors.addVendor}
+        description={t.vendors.addDescription}
+        submitLabel={t.vendors.create}
         initial={{ name: "", notes: "" }}
       />
     </>
@@ -61,6 +63,7 @@ export function VendorFormDialog({
   submitLabel: string
   initial: VendorFormValues
 }) {
+  const { t } = useDashboardI18n()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [name, setName] = useState(initial.name)
@@ -89,7 +92,7 @@ export function VendorFormDialog({
         return
       }
 
-      toast.success(initial.id ? "Vendor updated." : "Vendor created.")
+      toast.success(initial.id ? t.vendors.vendorUpdated : t.vendors.vendorCreated)
       onOpenChange(false)
       router.refresh()
     })
@@ -105,12 +108,12 @@ export function VendorFormDialog({
         <form onSubmit={submit} className="flex flex-col gap-4">
           <FieldGroup>
             <Field data-invalid={!name.trim() || undefined}>
-              <FieldLabel htmlFor="vendor-name">Name</FieldLabel>
+              <FieldLabel htmlFor="vendor-name">{t.vendors.name}</FieldLabel>
               <Input
                 id="vendor-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. FPT Telecom"
+                placeholder={t.vendors.namePlaceholder}
                 required
                 maxLength={200}
                 disabled={isPending}
@@ -118,12 +121,12 @@ export function VendorFormDialog({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="vendor-notes">Notes (optional)</FieldLabel>
+              <FieldLabel htmlFor="vendor-notes">{t.vendors.notesOptional}</FieldLabel>
               <Input
                 id="vendor-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Account #, contact, …"
+                placeholder={t.vendors.notesPlaceholder}
                 maxLength={1000}
                 disabled={isPending}
               />
@@ -136,7 +139,7 @@ export function VendorFormDialog({
               disabled={isPending}
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              {t.vendors.cancel}
             </Button>
             <Button type="submit" disabled={isPending || !name.trim()}>
               {isPending ? <Spinner data-icon="inline-start" /> : null}

@@ -6,6 +6,7 @@ import { Download } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 import {
   Empty,
   EmptyDescription,
@@ -18,17 +19,8 @@ import {
   type ExportQuery,
 } from "@/lib/exports/query";
 
-const RANGE_OPTIONS: { label: string; value: ExportQuery["range"] }[] = [
-  { label: "6 months", value: 6 },
-  { label: "12 months", value: 12 },
-  { label: "All time", value: "all" },
-];
-
-const STATUS_OPTIONS: { label: string; value: ExportQuery["status"] }[] = [
-  { label: "All", value: "all" },
-  { label: "Needs review", value: "review" },
-  { label: "OK", value: "ok" },
-];
+const RANGE_VALUES: ExportQuery["range"][] = [6, 12, "all"];
+const STATUS_VALUES: ExportQuery["status"][] = ["all", "review", "ok"];
 
 const MAX_EXPORT_ROWS = 5_000;
 
@@ -47,6 +39,17 @@ export function ExportsPanel({
   query: ExportQuery;
   count: number;
 }) {
+  const { t } = useDashboardI18n();
+  const rangeLabels = {
+    6: t.exports.range6,
+    12: t.exports.range12,
+    all: t.exports.rangeAll,
+  };
+  const statusLabels = {
+    all: t.exports.statusAll,
+    review: t.exports.statusReview,
+    ok: t.exports.statusOk,
+  };
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const capped = count > MAX_EXPORT_ROWS;
@@ -59,9 +62,9 @@ export function ExportsPanel({
           <EmptyMedia variant="icon">
             <Download />
           </EmptyMedia>
-          <EmptyTitle>No invoices match your filters</EmptyTitle>
+          <EmptyTitle>{t.exports.emptyTitle}</EmptyTitle>
           <EmptyDescription>
-            Try a longer range or change the status filter to see more results.
+            {t.exports.emptyDescription}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -73,40 +76,40 @@ export function ExportsPanel({
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1">
-          {RANGE_OPTIONS.map((option) => (
+          {RANGE_VALUES.map((value) => (
             <Button
-              key={String(option.value)}
-              variant={query.range === option.value ? "secondary" : "ghost"}
+              key={String(value)}
+              variant={query.range === value ? "secondary" : "ghost"}
               size="sm"
               disabled={isPending}
               onClick={() => {
                 startTransition(() => {
                   router.push(
-                    buildPageHref({ ...query, range: option.value }),
+                    buildPageHref({ ...query, range: value }),
                   );
                 });
               }}
             >
-              {option.label}
+              {rangeLabels[value]}
             </Button>
           ))}
         </div>
         <div className="flex items-center gap-1">
-          {STATUS_OPTIONS.map((option) => (
+          {STATUS_VALUES.map((value) => (
             <Button
-              key={option.value}
-              variant={query.status === option.value ? "secondary" : "ghost"}
+              key={value}
+              variant={query.status === value ? "secondary" : "ghost"}
               size="sm"
               disabled={isPending}
               onClick={() => {
                 startTransition(() => {
                   router.push(
-                    buildPageHref({ ...query, status: option.value }),
+                    buildPageHref({ ...query, status: value }),
                   );
                 });
               }}
             >
-              {option.label}
+              {statusLabels[value]}
             </Button>
           ))}
         </div>
@@ -115,7 +118,7 @@ export function ExportsPanel({
       {/* Description + Count + Download */}
       <div className="rounded-[14px] border border-border p-6">
         <p className="text-[13px] text-muted-foreground">
-          Download invoices as CSV for spreadsheets or bookkeeping.
+          {t.exports.description}
         </p>
         <p className="mt-3 text-[13px]">
           <span className="font-semibold tabular-nums">
@@ -123,11 +126,13 @@ export function ExportsPanel({
               ? MAX_EXPORT_ROWS.toLocaleString()
               : count.toLocaleString()}
           </span>{" "}
-          invoice{capped || count !== 1 ? "s" : ""} will be included
+          {t.exports.willInclude.replace(
+            "{count}",
+            capped || count !== 1 ? t.exports.invoiceMany : t.exports.invoiceOne,
+          )}
           {capped ? (
             <span className="ml-1 text-muted-foreground">
-              — export capped at {MAX_EXPORT_ROWS.toLocaleString()} rows. Narrow
-              your filters for a smaller set.
+              {t.exports.capped.replace("{max}", MAX_EXPORT_ROWS.toLocaleString())}
             </span>
           ) : null}
         </p>
@@ -139,7 +144,7 @@ export function ExportsPanel({
           )}
         >
           <Download data-icon="inline-start" />
-          Download CSV
+          {t.exports.download}
         </a>
       </div>
     </div>

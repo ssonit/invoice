@@ -17,6 +17,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { validateUploadFile } from "@/lib/validation/upload";
 import { runWithConcurrencyLimit } from "@/lib/concurrency/run-with-limit";
 import { UPLOAD_CONCURRENCY_LIMIT } from "@/constants/upload";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
+import type { DashboardDictionary } from "@/lib/dashboard/i18n";
+
+function fill(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+    template,
+  );
+}
 
 type PendingFile = {
   id: string;
@@ -33,7 +42,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function uploadOne(file: File): Promise<UploadOutcome> {
+async function uploadOne(file: File, failedLabel: string): Promise<UploadOutcome> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch("/api/invoices/upload", { method: "POST", body: formData });
@@ -41,10 +50,10 @@ async function uploadOne(file: File): Promise<UploadOutcome> {
   try {
     body = await res.json();
   } catch {
-    return { ok: false, fileName: file.name, error: "Upload failed" };
+    return { ok: false, fileName: file.name, error: failedLabel };
   }
   if (!res.ok) {
-    return { ok: false, fileName: file.name, error: body.error ?? "Upload failed" };
+    return { ok: false, fileName: file.name, error: body.error ?? failedLabel };
   }
   return {
     ok: true,
@@ -54,7 +63,7 @@ async function uploadOne(file: File): Promise<UploadOutcome> {
   };
 }
 
-function toastUploadResults(outcomes: UploadOutcome[]) {
+function toastUploadResults(outcomes: UploadOutcome[], t: DashboardDictionary) {
   const ok = outcomes.filter((o) => o.ok);
   const fail = outcomes.filter((o) => !o.ok);
 
@@ -65,23 +74,25 @@ function toastUploadResults(outcomes: UploadOutcome[]) {
     const only = ok[0]!;
     const label = only.vendor ?? only.fileName;
     if (only.isDuplicate) {
-      toast.info(`Duplicate — ${label} is already in your invoices`);
+      toast.info(fill(t.upload.duplicateOne, { label }));
     } else {
-      toast.success(`Extracted invoice from ${label}`);
+      toast.success(fill(t.upload.extractedFrom, { label }));
     }
     return;
   }
 
   if (created.length > 0) {
     toast.success(
-      created.length === 1 ? `Extracted 1 invoice` : `Extracted ${created.length} invoices`,
+      created.length === 1
+        ? t.upload.extractedOne
+        : fill(t.upload.extractedMany, { count: created.length }),
     );
   }
   if (duplicates.length > 0) {
     toast.info(
       duplicates.length === 1
-        ? "1 file was a duplicate of an existing invoice"
-        : `${duplicates.length} files were duplicates of existing invoices`,
+        ? t.upload.duplicatesOne
+        : fill(t.upload.duplicatesMany, { count: duplicates.length }),
     );
   }
   if (fail.length > 0) {
@@ -89,12 +100,17 @@ function toastUploadResults(outcomes: UploadOutcome[]) {
     toast.error(
       fail.length === 1
         ? `${first.fileName}: ${first.error}`
-        : `${fail.length} uploads failed — first: ${first.fileName}: ${first.error}`,
+        : fill(t.upload.uploadsFailed, {
+            count: fail.length,
+            name: first.fileName,
+            error: first.error,
+          }),
     );
   }
 }
 
 export function UploadInvoiceButton() {
+  const { t } = useDashboardI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [open, setOpen] = useState(false);
@@ -161,11 +177,11 @@ export function UploadInvoiceButton() {
     try {
       await runWithConcurrencyLimit(files, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
         if (stopped) {
-          recordOutcome({ ok: false, fileName: file.name, error: "Skipped — rate limited" });
+          recordOutcome({ ok: false, fileName: file.name, error: t.upload.skippedRateLimited });
           return;
         }
         try {
-          const outcome = await uploadOne(file);
+          const outcome = await uploadOne(file, t.upload.failed);
           recordOutcome(outcome);
           if (!outcome.ok && /too many uploads/i.test(outcome.error)) {
             stopped = true;
@@ -174,12 +190,12 @@ export function UploadInvoiceButton() {
           recordOutcome({
             ok: false,
             fileName: file.name,
-            error: "Upload failed — check your connection and try again",
+            error: t.upload.connectionFailed,
           });
         }
       });
 
-      toastUploadResults(outcomes);
+      toastUploadResults(outcomes, t);
       if (outcomes.some((o) => o.ok)) {
         router.refresh();
       }
@@ -202,13 +218,16 @@ export function UploadInvoiceButton() {
   const hasErrors = Object.keys(errors).length > 0;
   const confirmLabel = isUploading
     ? progress.total === 1
-      ? "Extracting..."
-      : `Extracting ${progress.current}/${progress.total}...`
+      ? t.upload.extracting
+      : fill(t.upload.extractingProgress, {
+          current: progress.current,
+          total: progress.total,
+        })
     : hasErrors
-      ? `Retry ${count} failed`
+      ? fill(t.upload.retryFailed, { count })
       : count === 1
-      ? "Upload & extract"
-      : `Upload & extract ${count} files`;
+      ? t.upload.uploadOne
+      : fill(t.upload.uploadMany, { count });
 
   return (
     <>
@@ -222,7 +241,7 @@ export function UploadInvoiceButton() {
       />
       <Button onClick={() => inputRef.current?.click()} disabled={isUploading}>
         <UploadIcon data-icon="inline-start" />
-        Upload invoice
+        {t.upload.button}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -232,10 +251,12 @@ export function UploadInvoiceButton() {
         >
           <DialogHeader>
             <DialogTitle>
-              {count === 1 ? "Confirm upload" : `Confirm upload (${count} files)`}
+              {count === 1
+                ? t.upload.confirmOne
+                : fill(t.upload.confirmMany, { count })}
             </DialogTitle>
             <DialogDescription>
-              Review the files below. Extraction starts only after you confirm.
+              {t.upload.confirmDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -260,7 +281,7 @@ export function UploadInvoiceButton() {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remove ${item.file.name}`}
+                    aria-label={fill(t.upload.remove, { name: item.file.name })}
                     onClick={() => removePending(item.id)}
                   >
                     <Trash2 />
@@ -277,7 +298,7 @@ export function UploadInvoiceButton() {
               disabled={isUploading}
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              {t.upload.cancel}
             </Button>
             <Button
               type="button"

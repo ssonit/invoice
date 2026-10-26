@@ -52,6 +52,25 @@ describe("dashboard dictionaries", () => {
     }
   });
 
+  it("uses the same {placeholders} in every locale", () => {
+    const valueAt = (locale: (typeof DASHBOARD_LOCALES)[number], path: string) =>
+      path
+        .split(".")
+        .reduce<unknown>(
+          (node, key) => (node as Record<string, unknown>)[key],
+          dashboardDictionaries[locale],
+        ) as string;
+    const placeholders = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
+    const [first, ...others] = DASHBOARD_LOCALES;
+    for (const path of leafPaths(dashboardDictionaries[first])) {
+      for (const locale of others) {
+        expect(placeholders(valueAt(locale, path)), `${locale}:${path}`).toEqual(
+          placeholders(valueAt(first, path)),
+        );
+      }
+    }
+  });
+
   it("translates every nav item and group", () => {
     for (const locale of DASHBOARD_LOCALES) {
       const { nav } = dashboardDictionaries[locale];

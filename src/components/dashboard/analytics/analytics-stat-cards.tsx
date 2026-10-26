@@ -7,8 +7,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { formatInvoiceMoney } from "@/lib/invoices";
 import type { AnalyticsReport } from "@/lib/analytics/report";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function AnalyticsStatCards({ report }: { report: AnalyticsReport }) {
+  const { t: dict } = useDashboardI18n();
   const totals = report.totalsByCurrency;
   const joinMoney = (pick: (t: (typeof totals)[number]) => number) =>
     totals.length === 0
@@ -17,28 +19,28 @@ export function AnalyticsStatCards({ report }: { report: AnalyticsReport }) {
 
   const tiles = [
     {
-      label: "Invoices",
+      label: dict.stats.invoices,
       value: String(report.invoiceCount),
       icon: FileText,
       hint: null,
     },
     {
-      label: "Needs review",
+      label: dict.stats.needsReview,
       value: String(report.needsReview),
       icon: AlertCircle,
       hint: null,
     },
     {
-      label: "Total spend",
+      label: dict.stats.totalSpend,
       value: joinMoney((t) => t.total),
       icon: Wallet,
-      hint: report.multiCurrency ? "per currency, not converted" : null,
+      hint: report.multiCurrency ? dict.stats.perCurrencyNotConverted : null,
     },
     {
-      label: "Avg / invoice",
+      label: dict.stats.avgPerInvoice,
       value: joinMoney((t) => t.average),
       icon: Calculator,
-      hint: report.multiCurrency ? "per currency" : null,
+      hint: report.multiCurrency ? dict.stats.perCurrency : null,
     },
   ];
 

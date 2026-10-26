@@ -4,16 +4,18 @@ import { useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function CopyButton({
   value,
-  label = "Copy",
-  copiedLabel = "Copied",
+  label,
+  copiedLabel,
 }: {
   value: string;
   label?: string;
   copiedLabel?: string;
 }) {
+  const { t } = useDashboardI18n();
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -23,7 +25,7 @@ export function CopyButton({
       // Clipboard API is unavailable outside secure contexts and can be
       // permission-denied — the value stays on screen to copy by hand.
       console.error("Failed to copy value to clipboard", error);
-      toast.error("Could not copy. Select the text and copy it manually.");
+      toast.error(t.common.copyFailed);
       return;
     }
     setCopied(true);
@@ -37,7 +39,7 @@ export function CopyButton({
       ) : (
         <CopyIcon data-icon="inline-start" />
       )}
-      {copied ? copiedLabel : label}
+      {copied ? (copiedLabel ?? t.common.copied) : (label ?? t.common.copy)}
     </Button>
   );
 }

@@ -7,8 +7,10 @@ import { MailPlus } from "lucide-react";
 import { createInbox } from "@/app/dashboard/actions";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function CreateInboxButton() {
+  const { t } = useDashboardI18n();
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -26,8 +28,8 @@ export function CreateInboxButton() {
       setDone(true);
       toast.success(
         result.alreadyExisted
-          ? "You already have a forwarding address."
-          : `Forwarding address created: ${result.email}`,
+          ? t.forwarding.alreadyHave
+          : t.forwarding.created.replace("{email}", result.email),
       );
       router.refresh();
     });
@@ -41,7 +43,7 @@ export function CreateInboxButton() {
         ) : (
           <MailPlus data-icon="inline-start" />
         )}
-        {isPending ? "Creating..." : "Create forwarding address"}
+        {isPending ? t.forwarding.creating : t.forwarding.create}
       </Button>
       {errorMessage ? (
         <p role="alert" className="text-[13px] text-destructive">

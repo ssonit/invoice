@@ -41,14 +41,12 @@ import {
   type VendorQuery,
 } from "@/lib/vendors/query"
 import { pageCount, paginationRange } from "@/lib/pagination"
-import {
-  SUBSCRIPTION_CYCLE_LABELS,
-} from "@/constants/subscriptions"
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server"
 
-function CycleBadge({ cycle }: { cycle: keyof typeof SUBSCRIPTION_CYCLE_LABELS }) {
+function CycleBadge({ label }: { label: string }) {
   return (
     <Badge variant="outline" className="border-[#E8FF47]/35 bg-[#E8FF47]/10 text-[#E8FF47]">
-      {SUBSCRIPTION_CYCLE_LABELS[cycle]}
+      {label}
     </Badge>
   )
 }
@@ -293,19 +291,21 @@ export default async function VendorsPage({
   const { from, to } = paginationRange(safePage, VENDOR_LIST_PAGE_SIZE)
   const pageVendors = vendors.slice(from, to + 1)
 
+  const { t } = await getDashboardDictionary()
+
   return (
     <ContentShell
-      title="Vendors"
-      description="Manage vendors and review subscription reminders for recurring charges."
+      title={t.vendors.title}
+      description={t.vendors.description}
       actions={<AddVendorButton />}
     >
       <div className="flex flex-col gap-5">
         {due.length > 0 ? (
           <section className="rounded-xl border border-[#E8FF47]/25 bg-[#E8FF47]/4">
             <div className="border-b border-[#E8FF47]/20 px-4 py-3">
-              <h2 className="text-sm font-semibold tracking-tight">Needs your confirmation</h2>
+              <h2 className="text-sm font-semibold tracking-tight">{t.vendors.confirmTitle}</h2>
               <p className="text-xs text-muted-foreground">
-                These look like recurring charges. Still using them?
+                {t.vendors.confirmDescription}
               </p>
             </div>
             <ul className="divide-y divide-border">
@@ -317,11 +317,12 @@ export default async function VendorsPage({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium">{sub.vendorLabel}</p>
-                      <CycleBadge cycle={sub.cycle} />
+                      <CycleBadge label={t.vendors.cycles[sub.cycle] ?? sub.cycle} />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Last charge {formatInvoiceMoney(sub.lastAmount, sub.currency)} on{" "}
-                      {sub.lastIssueDate}
+                      {t.vendors.lastCharge
+                        .replace("{amount}", formatInvoiceMoney(sub.lastAmount, sub.currency))
+                        .replace("{date}", sub.lastIssueDate)}
                     </p>
                   </div>
                   <SubscriptionConfirmButtons vendorKey={sub.vendorKey} />
@@ -340,11 +341,11 @@ export default async function VendorsPage({
                 <EmptyMedia variant="icon">
                   <Users />
                 </EmptyMedia>
-                <EmptyTitle>{hasQuery ? "No matching vendors" : "No vendors yet"}</EmptyTitle>
+                <EmptyTitle>{hasQuery ? t.vendors.emptyMatchingTitle : t.vendors.emptyNoneTitle}</EmptyTitle>
                 <EmptyDescription>
                   {hasQuery
-                    ? "Try a different search, filter, or sort."
-                    : "Add a vendor manually, or wait for invoices with a vendor name."}
+                    ? t.vendors.emptyMatchingDescription
+                    : t.vendors.emptyNoneDescription}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

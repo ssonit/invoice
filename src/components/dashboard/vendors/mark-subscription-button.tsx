@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { Tag } from "lucide-react";
 import {
   SUBSCRIPTION_CYCLE,
-  SUBSCRIPTION_CYCLE_LABELS,
   type SubscriptionCycleConstant,
 } from "@/constants/subscriptions";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 import { markVendorAsSubscription } from "@/app/dashboard/vendors/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ const CYCLES: SubscriptionCycleConstant[] = [
 ];
 
 export function MarkSubscriptionButton({ vendorKey }: { vendorKey: string }) {
+  const { t } = useDashboardI18n();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -36,7 +37,7 @@ export function MarkSubscriptionButton({ vendorKey }: { vendorKey: string }) {
         toast.error(result.error);
         return;
       }
-      toast.success(`Marked as ${SUBSCRIPTION_CYCLE_LABELS[cycle]} subscription.`);
+      toast.success(t.vendors.markedAs.replace("{cycle}", t.vendors.cycles[cycle] ?? cycle));
       setOpen(false);
       router.refresh();
     });
@@ -52,7 +53,7 @@ export function MarkSubscriptionButton({ vendorKey }: { vendorKey: string }) {
             ) : (
               <Tag data-icon="inline-start" />
             )}
-            Mark as subscription
+            {t.vendors.markAsSubscription}
           </Button>
         }
       />
@@ -63,7 +64,7 @@ export function MarkSubscriptionButton({ vendorKey }: { vendorKey: string }) {
             disabled={isPending}
             onClick={() => mark(cycle)}
           >
-            {SUBSCRIPTION_CYCLE_LABELS[cycle]}
+            {t.vendors.cycles[cycle] ?? cycle}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -1,6 +1,7 @@
 import { FileText, AlertCircle, CalendarDays, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatInvoiceMoney, type InvoiceStats } from "@/lib/invoices";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 function formatValue(stats: InvoiceStats): string {
   if (stats.total === 0 || stats.totalsByCurrency.length === 0) return "—";
@@ -10,15 +11,16 @@ function formatValue(stats: InvoiceStats): string {
 }
 
 export function StatCards({ stats }: { stats: InvoiceStats }) {
+  const { t } = useDashboardI18n();
   const tiles = [
-    { label: "Total invoices", value: String(stats.total), icon: FileText, hint: null },
-    { label: "Needs review", value: String(stats.needsReview), icon: AlertCircle, hint: null },
-    { label: "This month", value: String(stats.thisMonth), icon: CalendarDays, hint: null },
+    { label: t.stats.totalInvoices, value: String(stats.total), icon: FileText, hint: null },
+    { label: t.stats.needsReview, value: String(stats.needsReview), icon: AlertCircle, hint: null },
+    { label: t.stats.thisMonth, value: String(stats.thisMonth), icon: CalendarDays, hint: null },
     {
-      label: "Total value",
+      label: t.stats.totalValue,
       value: formatValue(stats),
       icon: Wallet,
-      hint: stats.multiCurrency ? "per currency, not converted" : null,
+      hint: stats.multiCurrency ? t.stats.perCurrencyNotConverted : null,
     },
   ];
 

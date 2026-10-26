@@ -26,6 +26,7 @@ import {
   type VendorQuery,
 } from "@/lib/vendors/query"
 import { cn } from "@/lib/utils"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 export function VendorsToolbar({
   query,
@@ -36,6 +37,15 @@ export function VendorsToolbar({
   resultCount: number
   className?: string
 }) {
+  const { t } = useDashboardI18n()
+  const filterItems = VENDOR_FILTER_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t.vendors.filters[o.value] ?? o.label,
+  }))
+  const sortItems = VENDOR_SORT_OPTIONS.map((o) => ({
+    value: o.value,
+    label: t.vendors.sorts[o.value] ?? o.label,
+  }))
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
@@ -94,14 +104,14 @@ export function VendorsToolbar({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name or notes…"
+            placeholder={t.vendors.searchPlaceholder}
             className="ps-8"
-            aria-label="Search vendors"
+            aria-label={t.vendors.searchLabel}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select
-            items={[...VENDOR_FILTER_OPTIONS]}
+            items={filterItems}
             value={query.filter}
             onValueChange={(value) => {
               if (value != null) navigate({ filter: value as VendorFilter })
@@ -110,7 +120,7 @@ export function VendorsToolbar({
             <SelectTrigger
               size="sm"
               className="min-w-44 justify-between"
-              aria-label="Filter vendors"
+              aria-label={t.vendors.filterLabel}
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 <Filter className="size-3.5 shrink-0 text-muted-foreground" />
@@ -118,7 +128,7 @@ export function VendorsToolbar({
               </span>
             </SelectTrigger>
             <SelectContent align="end">
-              {VENDOR_FILTER_OPTIONS.map((option) => (
+              {filterItems.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -127,7 +137,7 @@ export function VendorsToolbar({
           </Select>
 
           <Select
-            items={[...VENDOR_SORT_OPTIONS]}
+            items={sortItems}
             value={query.sort}
             onValueChange={(value) => {
               if (value != null) navigate({ sort: value as VendorSort })
@@ -136,7 +146,7 @@ export function VendorsToolbar({
             <SelectTrigger
               size="sm"
               className="min-w-56 justify-between"
-              aria-label="Sort vendors"
+              aria-label={t.vendors.sortLabel}
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -144,7 +154,7 @@ export function VendorsToolbar({
               </span>
             </SelectTrigger>
             <SelectContent align="end">
-              {VENDOR_SORT_OPTIONS.map((option) => (
+              {sortItems.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -165,14 +175,17 @@ export function VendorsToolbar({
               }}
             >
               <X data-icon="inline-start" />
-              Clear
+              {t.vendors.clear}
             </Button>
           ) : null}
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        {resultCount} vendor{resultCount === 1 ? "" : "s"}
-        {query.q ? ` matching “${query.q}”` : ""}
+        {(resultCount === 1 ? t.vendors.countOne : t.vendors.countMany).replace(
+          "{count}",
+          String(resultCount),
+        )}
+        {query.q ? t.vendors.matching.replace("{q}", query.q) : ""}
       </p>
     </div>
   )

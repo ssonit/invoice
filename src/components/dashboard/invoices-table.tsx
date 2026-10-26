@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   type SortingState,
   flexRender,
@@ -10,7 +10,8 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Inbox } from "lucide-react";
-import { columns } from "./columns";
+import { getColumns } from "./columns";
+import { useDashboardI18n } from "./dashboard-i18n";
 import { InvoicesToolbar } from "./invoices-toolbar";
 import { InvoiceDetail } from "./invoice-detail";
 import type { InvoiceRow } from "@/lib/invoices";
@@ -46,6 +47,8 @@ export function InvoicesTable({
   pageCount: number;
   isEmailIntakeEnabled: boolean;
 }) {
+  const { t } = useDashboardI18n();
+  const columns = useMemo(() => getColumns(t), [t]);
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -86,11 +89,11 @@ export function InvoicesTable({
             <EmptyMedia variant="icon">
               <Inbox />
             </EmptyMedia>
-            <EmptyTitle>No invoices yet</EmptyTitle>
+            <EmptyTitle>{t.invoicesList.emptyTitle}</EmptyTitle>
             <EmptyDescription>
               {isEmailIntakeEnabled
-                ? "Forward an invoice to your address in Settings, or upload one directly."
-                : "Upload an invoice to get started."}
+                ? t.invoicesList.emptyWithEmail
+                : t.invoicesList.emptyNoEmail}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -143,7 +146,7 @@ export function InvoicesTable({
                     colSpan={columns.length}
                     className="h-20 text-center text-[13px] text-muted-foreground"
                   >
-                    No invoices match your filters.
+                    {t.invoicesList.noMatches}
                   </TableCell>
                 </TableRow>
               )}
@@ -152,7 +155,7 @@ export function InvoicesTable({
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          <p className="text-[12px] text-muted-foreground">{totalCount} invoice(s) total</p>
+          <p className="text-[12px] text-muted-foreground">{t.invoicesList.totalCount.replace("{count}", String(totalCount))}</p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -160,10 +163,12 @@ export function InvoicesTable({
               onClick={() => goToPage(query.page - 1)}
               disabled={query.page <= 1}
             >
-              Previous
+              {t.invoicesList.previous}
             </Button>
             <span className="text-[12px] text-muted-foreground">
-              Page {query.page} of {pageCount}
+              {t.invoicesList.pageOf
+                .replace("{page}", String(query.page))
+                .replace("{total}", String(pageCount))}
             </span>
             <Button
               variant="outline"
@@ -171,7 +176,7 @@ export function InvoicesTable({
               onClick={() => goToPage(query.page + 1)}
               disabled={query.page >= pageCount}
             >
-              Next
+              {t.invoicesList.next}
             </Button>
           </div>
         </div>
@@ -184,9 +189,9 @@ export function InvoicesTable({
         }}
       >
         <SheetContent className="w-full gap-0 p-0 sm:max-w-xl" showCloseButton={false}>
-          <SheetTitle className="sr-only">Invoice details</SheetTitle>
+          <SheetTitle className="sr-only">{t.invoicesList.detailsTitle}</SheetTitle>
           <SheetDescription className="sr-only">
-            View and edit the extracted fields of this invoice.
+            {t.invoicesList.detailsDescription}
           </SheetDescription>
           {selectedInvoice ? (
             <InvoiceDetail

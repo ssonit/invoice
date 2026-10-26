@@ -10,17 +10,18 @@ import {
 import { CopyButton } from "@/components/dashboard/copy-button";
 import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
 import { DeleteInboxButton } from "@/components/dashboard/delete-inbox-button";
-import { AUTOMATION_STATUS } from "@/constants/automation";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 
 // The address is a workspace-level resource, so it is presented once, here,
 // with its status. Agent cards never repeat it.
-export function ConnectionPanel({
+export async function ConnectionPanel({
   forwardAddress,
   receivedCount,
 }: {
   forwardAddress: string | null;
   receivedCount: number;
 }) {
+  const { t } = await getDashboardDictionary();
   const isConnected = receivedCount > 0;
 
   return (
@@ -28,7 +29,7 @@ export function ConnectionPanel({
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-[13px] font-semibold">
-            Your forwarding address
+            {t.automation.panelTitle}
           </CardTitle>
           {forwardAddress ? (
             <Badge
@@ -45,14 +46,13 @@ export function ConnectionPanel({
                 <Clock className="size-3" />
               )}
               {isConnected
-                ? `${AUTOMATION_STATUS.CONNECTED_LABEL}, ${receivedCount} received`
-                : AUTOMATION_STATUS.WAITING_LABEL}
+                ? t.automation.connected.replace("{count}", String(receivedCount))
+                : t.automation.waiting}
             </Badge>
           ) : null}
         </div>
         <CardDescription className="text-[13px]">
-          Give this address to your AI agent. It decides which emails are invoices and
-          forwards only those. Nothing else in your mailbox is touched.
+          {t.automation.panelDescription}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -63,8 +63,8 @@ export function ConnectionPanel({
             </code>
             <CopyButton
               value={forwardAddress}
-              label="Copy address"
-              copiedLabel="Address copied"
+              label={t.automation.copyAddress}
+              copiedLabel={t.automation.addressCopied}
             />
             <DeleteInboxButton forwardAddress={forwardAddress} />
           </div>

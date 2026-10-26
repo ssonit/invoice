@@ -31,7 +31,9 @@ import {
 } from "@/lib/invoices"
 import type { InboxListQuery } from "@/lib/invoices/inbox-query"
 import { paginationRange } from "@/lib/pagination"
+import type { DashboardDictionary } from "@/lib/dashboard/i18n"
 import { cn } from "@/lib/utils"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 import { InboxStatusBadge } from "@/components/dashboard/inbox/inbox-status-badge"
 import { InvoiceDetail } from "@/components/dashboard/invoice-detail"
 import { Button } from "@/components/ui/button"
@@ -47,10 +49,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
-function sourceSubtitle(invoice: InvoiceRow): string {
-  if (invoice.source === INBOX_SOURCE_FILTER.UPLOAD) return "Manual upload"
+function sourceSubtitle(invoice: InvoiceRow, t: DashboardDictionary): string {
+  if (invoice.source === INBOX_SOURCE_FILTER.UPLOAD) return t.inbox.manualUpload
   // The sender address isn't stored, so don't invent one from the vendor name.
-  return "Forwarded email"
+  return t.inbox.forwardedEmail
 }
 
 function buildHref(pathname: string, next: InboxListQuery): string {
@@ -64,6 +66,17 @@ function buildHref(pathname: string, next: InboxListQuery): string {
 }
 
 type Group = { label: string; items: InvoiceRow[] }
+
+// inboxGroupLabel / inboxTimeLabel return English "Today" / "Yesterday".
+function groupLabel(label: string, t: DashboardDictionary): string {
+  if (label === "Today") return t.inbox.today
+  if (label === "Yesterday") return t.inbox.yesterday
+  return label
+}
+
+function timeLabel(label: string, t: DashboardDictionary): string {
+  return label === "Yesterday" ? t.inbox.yesterday : label
+}
 
 export function InboxView({
   invoices,
@@ -80,6 +93,7 @@ export function InboxView({
   grandTotal: number
   pageCount: number
 }) {
+  const { t } = useDashboardI18n()
   const router = useRouter()
   const pathname = usePathname()
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -155,7 +169,7 @@ export function InboxView({
     <div className="-m-4 flex h-[calc(100dvh-3rem)] min-h-[32rem] flex-col overflow-hidden border-t border-border/60 md:-m-6">
       <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border/80 px-4">
         <h1 className="font-[family-name:var(--font-outfit)] text-[15px] font-semibold tracking-tight">
-          Invoice Inbox
+          {t.inbox.title}
         </h1>
         <p className="text-[12px] text-muted-foreground tabular-nums">
           {totalCount} of {grandTotal}
@@ -171,7 +185,7 @@ export function InboxView({
                 <Input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search invoices..."
+                  placeholder={t.inbox.searchPlaceholder}
                   className="h-8 bg-muted/30 pl-8"
                 />
               </div>
@@ -181,7 +195,7 @@ export function InboxView({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Filter invoices"
+                      aria-label={t.inbox.filterLabel}
                       className={cn(
                         "relative text-muted-foreground",
                         filtersActive && "text-[#E8FF47]"
@@ -196,13 +210,13 @@ export function InboxView({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel>Status</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t.inbox.statusHeading}</DropdownMenuLabel>
                     {INBOX_STATUS_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
                         onClick={() => navigate({ status: opt.value })}
                       >
-                        <span className="flex-1">{opt.label}</span>
+                        <span className="flex-1">{t.inbox.statusFilters[opt.value] ?? opt.label}</span>
                         {query.status === opt.value ? (
                           <Check className="size-3.5 text-[#E8FF47]" />
                         ) : null}
@@ -211,13 +225,13 @@ export function InboxView({
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel>Source</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t.inbox.sourceHeading}</DropdownMenuLabel>
                     {INBOX_SOURCE_FILTER_OPTIONS.map((opt) => (
                       <DropdownMenuItem
                         key={opt.value}
                         onClick={() => navigate({ source: opt.value })}
                       >
-                        <span className="flex-1">{opt.label}</span>
+                        <span className="flex-1">{t.inbox.sourceFilters[opt.value] ?? opt.label}</span>
                         {query.source === opt.value ? (
                           <Check className="size-3.5 text-[#E8FF47]" />
                         ) : null}
@@ -235,7 +249,7 @@ export function InboxView({
                           })
                         }
                       >
-                        Clear filters
+                        {t.inbox.clearFilters}
                       </DropdownMenuItem>
                     </>
                   ) : null}
@@ -247,19 +261,13 @@ export function InboxView({
               <div className="flex flex-wrap items-center gap-1.5">
                 {query.status !== INBOX_STATUS_FILTER.ALL ? (
                   <FilterChip
-                    label={
-                      INBOX_STATUS_FILTER_OPTIONS.find((o) => o.value === query.status)
-                        ?.label ?? query.status
-                    }
+                    label={t.inbox.statusFilters[query.status] ?? query.status}
                     onClear={() => navigate({ status: INBOX_DEFAULT_STATUS_FILTER })}
                   />
                 ) : null}
                 {query.source !== INBOX_SOURCE_FILTER.ALL ? (
                   <FilterChip
-                    label={
-                      INBOX_SOURCE_FILTER_OPTIONS.find((o) => o.value === query.source)
-                        ?.label ?? query.source
-                    }
+                    label={t.inbox.sourceFilters[query.source] ?? query.source}
                     onClear={() => navigate({ source: INBOX_DEFAULT_SOURCE_FILTER })}
                   />
                 ) : null}
@@ -270,14 +278,14 @@ export function InboxView({
           <ScrollArea className="min-h-0 flex-1">
             {groups.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                No invoices match your filters.
+                {t.inbox.noMatches}
               </p>
             ) : (
               <div className="pb-2">
                 {groups.map((group) => (
                   <div key={group.label}>
                     <p className="sticky top-0 z-10 bg-background/95 px-4 py-2 text-[11px] font-semibold tracking-wide text-muted-foreground backdrop-blur">
-                      {group.label}
+                      {groupLabel(group.label, t)}
                     </p>
                     <ul>
                       {group.items.map((invoice) => {
@@ -304,14 +312,14 @@ export function InboxView({
                               <span className="min-w-0 flex-1">
                                 <span className="flex items-start justify-between gap-2">
                                   <span className="truncate text-[13px] font-medium">
-                                    {invoice.vendor ?? "Unknown vendor"}
+                                    {invoice.vendor ?? t.detail.unknownVendor}
                                   </span>
                                   <span className="shrink-0 text-[11px] text-muted-foreground">
-                                    {inboxTimeLabel(invoice.created_at, nowIso)}
+                                    {timeLabel(inboxTimeLabel(invoice.created_at, nowIso), t)}
                                   </span>
                                 </span>
                                 <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                                  {sourceSubtitle(invoice)}
+                                  {sourceSubtitle(invoice, t)}
                                 </span>
                                 <span className="mt-2 flex items-center justify-between gap-2">
                                   <span className="font-mono text-[12px] tabular-nums">
@@ -342,7 +350,7 @@ export function InboxView({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Previous page"
+                aria-label={t.inbox.previousPage}
                 disabled={query.page <= 1}
                 onClick={() => navigate({ page: Math.max(1, query.page - 1) })}
                 className="text-muted-foreground"
@@ -355,7 +363,7 @@ export function InboxView({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Next page"
+                aria-label={t.inbox.nextPage}
                 disabled={query.page >= pageCount}
                 onClick={() => navigate({ page: Math.min(pageCount, query.page + 1) })}
                 className="text-muted-foreground"
@@ -369,7 +377,7 @@ export function InboxView({
         <section className="flex min-h-0 flex-col bg-background">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
-              Select an invoice to inspect extraction details.
+              {t.inbox.selectPrompt}
             </div>
           ) : (
             <InvoiceDetail

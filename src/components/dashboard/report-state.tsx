@@ -2,15 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 export function ReportError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useDashboardI18n()
   return (
     <div className="flex flex-col items-center gap-3 rounded-[14px] border border-border px-4 py-10 text-center">
       <p className="text-sm text-muted-foreground">
-        Could not load this report. Please try again.
+        {t.report.loadError}
       </p>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        Retry
+        {t.report.retry}
       </Button>
     </div>
   )

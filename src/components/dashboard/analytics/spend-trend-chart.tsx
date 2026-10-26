@@ -9,17 +9,19 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { SpendTrendPoint } from "@/lib/analytics/report";
-
-const chartConfig = {
-  amount: { label: "Spend", color: "var(--chart-1)" },
-} satisfies ChartConfig;
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function SpendTrendChart({ data }: { data: SpendTrendPoint[] }) {
+  const { t } = useDashboardI18n();
+  const chartConfig = {
+    amount: { label: t.charts.spendSeries, color: "var(--chart-1)" },
+  } satisfies ChartConfig;
+
   return (
     <Card className="rounded-[14px] shadow-none">
       <CardHeader>
         <CardTitle className="text-[13px] font-semibold">
-          Spend over time
+          {t.charts.spendOverTime}
         </CardTitle>
       </CardHeader>
       <CardContent>

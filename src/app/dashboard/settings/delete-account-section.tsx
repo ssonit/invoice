@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Trash2 } from "lucide-react";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 export function DeleteAccountSection({ email }: { email: string }) {
+  const { t } = useDashboardI18n();
   const [confirmEmail, setConfirmEmail] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -27,16 +29,16 @@ export function DeleteAccountSection({ email }: { email: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] text-muted-foreground">
-        This deactivates your account and signs you out — you will not be able to sign
-        back in. Your invoices and other data are kept, not erased. Type{" "}
-        <span className="font-mono">{email}</span> to confirm.
+        {t.account.deleteDescription.split("{email}")[0]}
+        <span className="font-mono">{email}</span>
+        {t.account.deleteDescription.split("{email}")[1]}
       </p>
       <Input
         value={confirmEmail}
         onChange={(e) => setConfirmEmail(e.target.value)}
         placeholder={email}
         className="h-9 max-w-sm"
-        aria-label="Confirm your email to delete your account"
+        aria-label={t.account.confirmLabel}
       />
       <Button
         variant="destructive"
@@ -46,7 +48,7 @@ export function DeleteAccountSection({ email }: { email: string }) {
         onClick={handleDelete}
       >
         {isPending ? <Spinner data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}
-        {isPending ? "Deleting..." : "Delete account"}
+        {isPending ? t.account.deleting : t.account.deleteButton}
       </Button>
     </div>
   );

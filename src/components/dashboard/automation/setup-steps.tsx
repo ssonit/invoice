@@ -1,9 +1,10 @@
-import { AUTOMATION_SETUP_STEPS } from "@/constants/automation";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 
-export function SetupSteps() {
+export async function SetupSteps() {
+  const { t } = await getDashboardDictionary();
   return (
     <ol className="grid gap-3 sm:grid-cols-3">
-      {AUTOMATION_SETUP_STEPS.map((step, index) => (
+      {t.automation.steps.map((step, index) => (
         <li key={step.title} className="rounded-[14px] border border-border p-4">
           <span className="font-mono text-[11px] text-muted-foreground">
             {index + 1}

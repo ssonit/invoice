@@ -4,8 +4,9 @@ import { PromptBlock } from "./prompt-block";
 import { SetupSteps } from "./setup-steps";
 import { AgentGrid } from "./agent-grid";
 import type { AutomationAgent } from "@/lib/automation/agents";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 
-export function AutomationView({
+export async function AutomationView({
   forwardAddress,
   receivedCount,
   agents,
@@ -14,10 +15,11 @@ export function AutomationView({
   receivedCount: number;
   agents: readonly AutomationAgent[];
 }) {
+  const { t } = await getDashboardDictionary();
   return (
     <ContentShell
-      title="Automation"
-      description="Let your AI agent forward invoices for you. No mailbox access required."
+      title={t.automation.title}
+      description={t.automation.description}
     >
       <div className="flex flex-col gap-5">
         <ConnectionPanel
@@ -33,7 +35,7 @@ export function AutomationView({
           </>
         ) : (
           <p className="text-[13px] text-muted-foreground">
-            Create your forwarding address above to get the agent setup prompts.
+            {t.automation.createFirst}
           </p>
         )}
       </div>

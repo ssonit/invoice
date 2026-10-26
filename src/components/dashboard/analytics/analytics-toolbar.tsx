@@ -4,11 +4,9 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { buildAnalyticsHref, type AnalyticsQuery } from "@/lib/analytics/query";
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
-const RANGE_OPTIONS: { label: string; range: 6 | 12 }[] = [
-  { label: "6 months", range: 6 },
-  { label: "12 months", range: 12 },
-];
+const RANGE_OPTIONS: { range: 6 | 12 }[] = [{ range: 6 }, { range: 12 }];
 
 export function AnalyticsToolbar({
   query,
@@ -19,6 +17,7 @@ export function AnalyticsToolbar({
   currencies: string[]; // currency keys present in the data ("—" = none)
   currency: string; // currency key currently shown in chart / vendors
 }) {
+  const { t } = useDashboardI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -43,14 +42,14 @@ export function AnalyticsToolbar({
             disabled={isPending}
             onClick={() => go(option.range, currency)}
           >
-            {option.label}
+            {option.range === 6 ? t.analytics.range6 : t.analytics.range12}
           </Button>
         ))}
       </div>
       {currencies.length > 1 ? (
         <div className="flex items-center gap-1">
           <span className="mr-1 text-xs text-muted-foreground">
-            Chart &amp; vendors in
+            {t.analytics.chartVendorsIn}
           </span>
           {currencies.map((cur) => (
             <Button

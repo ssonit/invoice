@@ -6,10 +6,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ChevronRight, Pencil, Trash2 } from "lucide-react"
 
-import {
-  SUBSCRIPTION_CYCLE_LABELS,
-  type SubscriptionCycleConstant,
-} from "@/constants/subscriptions"
+import type { SubscriptionCycleConstant } from "@/constants/subscriptions"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 import { deleteVendor, getVendorInvoices } from "@/app/dashboard/vendors/actions"
 import { SubscriptionConfirmButtons } from "@/components/dashboard/vendors/subscription-confirm-buttons"
 import { MarkSubscriptionButton } from "@/components/dashboard/vendors/mark-subscription-button"
@@ -71,24 +69,12 @@ export type VendorListItem = {
 }
 
 function CycleBadge({ cycle }: { cycle: SubscriptionCycleConstant }) {
+  const { t } = useDashboardI18n()
   return (
     <Badge variant="outline" className="border-[#E8FF47]/35 bg-[#E8FF47]/10 text-[#E8FF47]">
-      {SUBSCRIPTION_CYCLE_LABELS[cycle]}
+      {t.vendors.cycles[cycle] ?? cycle}
     </Badge>
   )
-}
-
-function statusLabel(status: SubscriptionStatus): string {
-  switch (status) {
-    case "cancelled":
-      return "Cancelled"
-    case "confirmed_active":
-      return "Active"
-    case "due":
-      return "Due for confirmation"
-    case "upcoming":
-      return "Upcoming"
-  }
 }
 
 export function VendorsList({
@@ -101,6 +87,7 @@ export function VendorsList({
   totalCount: number
   pageCount: number
 }) {
+  const { t } = useDashboardI18n()
   const router = useRouter()
   const pathname = usePathname()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -140,7 +127,7 @@ export function VendorsList({
         toast.error(result.error)
         return
       }
-      toast.success("Vendor deleted.")
+      toast.success(t.vendors.deleted)
       setDeleteOpen(false)
       setSelectedKey(null)
       router.refresh()
@@ -167,11 +154,13 @@ export function VendorsList({
                     <p className="truncate font-medium">{vendor.label}</p>
                     {sub ? <CycleBadge cycle={sub.cycle} /> : null}
                     {sub?.status === "cancelled" ? (
-                      <Badge variant="secondary">Cancelled</Badge>
+                      <Badge variant="secondary">{t.vendors.cancelled}</Badge>
                     ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {vendor.count} invoice(s) · last {vendor.lastDate || "—"}
+                    {t.vendors.invoiceSummary
+                      .replace("{count}", String(vendor.count))
+                      .replace("{date}", vendor.lastDate || "—")}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -188,7 +177,9 @@ export function VendorsList({
 
       <div className="flex items-center justify-between border-t border-border px-4 py-3">
         <p className="text-[12px] text-muted-foreground">
-          Page {query.page} of {pageCount}
+          {t.vendors.pageOf
+            .replace("{page}", String(query.page))
+            .replace("{total}", String(pageCount))}
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -197,10 +188,12 @@ export function VendorsList({
             onClick={() => goToPage(Math.max(1, query.page - 1))}
             disabled={query.page <= 1}
           >
-            Previous
+            {t.vendors.previous}
           </Button>
           <span className="text-[12px] text-muted-foreground">
-            Page {query.page} of {pageCount}
+            {t.vendors.pageOf
+              .replace("{page}", String(query.page))
+              .replace("{total}", String(pageCount))}
           </span>
           <Button
             variant="outline"
@@ -208,7 +201,7 @@ export function VendorsList({
             onClick={() => goToPage(Math.min(pageCount, query.page + 1))}
             disabled={query.page >= pageCount}
           >
-            Next
+            {t.vendors.next}
           </Button>
         </div>
       </div>
@@ -225,7 +218,9 @@ export function VendorsList({
               <SheetHeader>
                 <SheetTitle>{selected.label}</SheetTitle>
                 <SheetDescription>
-                  {selected.count} invoice(s) · last {selected.lastDate || "—"}
+                  {t.vendors.invoiceSummary
+                    .replace("{count}", String(selected.count))
+                    .replace("{date}", selected.lastDate || "—")}
                 </SheetDescription>
               </SheetHeader>
 
@@ -238,7 +233,7 @@ export function VendorsList({
                     onClick={() => setEditOpen(true)}
                   >
                     <Pencil data-icon="inline-start" />
-                    Edit
+                    {t.vendors.edit}
                   </Button>
                   <Button
                     type="button"
@@ -247,7 +242,7 @@ export function VendorsList({
                     onClick={() => setDeleteOpen(true)}
                   >
                     <Trash2 data-icon="inline-start" />
-                    Delete
+                    {t.vendors.delete}
                   </Button>
                   {!selected.subscription && selected.count > 0 ? (
                     <MarkSubscriptionButton vendorKey={selected.key} />
@@ -256,20 +251,20 @@ export function VendorsList({
 
                 {selected.notes ? (
                   <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">Notes</p>
+                    <p className="text-[11px] text-muted-foreground">{t.vendors.notes}</p>
                     <p className="mt-0.5 text-sm whitespace-pre-wrap">{selected.notes}</p>
                   </div>
                 ) : null}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">Total spent</p>
+                    <p className="text-[11px] text-muted-foreground">{t.vendors.totalSpent}</p>
                     <p className="mt-0.5 font-mono text-sm tabular-nums">
                       {formatInvoiceMoney(selected.total, selected.currency)}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">Invoices</p>
+                    <p className="text-[11px] text-muted-foreground">{t.vendors.invoices}</p>
                     <p className="mt-0.5 text-sm font-medium">{selected.count}</p>
                   </div>
                 </div>
@@ -277,22 +272,25 @@ export function VendorsList({
                 {selected.subscription ? (
                   <div className="rounded-lg border border-border px-3 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium">Subscription</p>
+                      <p className="text-sm font-medium">{t.vendors.subscription}</p>
                       <CycleBadge cycle={selected.subscription.cycle} />
                       <Badge variant="secondary">
-                        {statusLabel(selected.subscription.status)}
+                        {t.vendors.subscriptionStatus[selected.subscription.status] ?? selected.subscription.status}
                       </Badge>
                     </div>
                     <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
                       <p>
-                        Last charge{" "}
-                        {formatInvoiceMoney(
-                          selected.subscription.lastAmount,
-                          selected.currency,
-                        )}{" "}
-                        on {selected.subscription.lastIssueDate}
+                        {t.vendors.lastCharge
+                          .replace(
+                            "{amount}",
+                            formatInvoiceMoney(
+                              selected.subscription.lastAmount,
+                              selected.currency,
+                            ),
+                          )
+                          .replace("{date}", selected.subscription.lastIssueDate)}
                       </p>
-                      <p>Next expected {selected.subscription.nextExpectedDate}</p>
+                      <p>{t.vendors.nextExpected.replace("{date}", selected.subscription.nextExpectedDate)}</p>
                     </div>
                     {selected.subscription.needsConfirmation ? (
                       <div className="mt-3">
@@ -304,14 +302,14 @@ export function VendorsList({
 
                 <div>
                   <div className="mb-2 flex items-center gap-2">
-                    <p className="text-sm font-medium">Invoices</p>
+                    <p className="text-sm font-medium">{t.vendors.invoices}</p>
                     {isLoadingInvoices ? (
                       <Spinner className="size-3.5 text-muted-foreground" />
                     ) : null}
                   </div>
                   {(fullInvoices ?? selected.invoices).length === 0 ? (
                     <p className="rounded-lg border border-border px-3 py-3 text-xs text-muted-foreground">
-                      No invoices linked yet.
+                      {t.vendors.noInvoices}
                     </p>
                   ) : (
                     <ul className="rounded-lg border border-border">
@@ -321,12 +319,12 @@ export function VendorsList({
                           <div className="flex items-start justify-between gap-3 px-3 py-2.5">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium">
-                                {invoice.invoice_number || "No invoice #"}
+                                {invoice.invoice_number || t.vendors.noInvoiceNumber}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {formatInvoiceDate(invoice.issue_date)}
                                 {invoice.due_date
-                                  ? ` · due ${formatInvoiceDate(invoice.due_date)}`
+                                  ? t.vendors.due.replace("{date}", formatInvoiceDate(invoice.due_date))
                                   : ""}
                               </p>
                             </div>
@@ -345,9 +343,9 @@ export function VendorsList({
                 key={selected.id}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                title="Edit vendor"
-                description="Renaming updates matching invoice vendor names."
-                submitLabel="Save"
+                title={t.vendors.editVendor}
+                description={t.vendors.renameNote}
+                submitLabel={t.vendors.save}
                 initial={{
                   id: selected.id,
                   name: selected.label,
@@ -358,17 +356,17 @@ export function VendorsList({
               <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {selected.label}?</AlertDialogTitle>
+                    <AlertDialogTitle>{t.vendors.deleteTitle.replace("{name}", selected.label)}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This removes the vendor from your list
+                      {t.vendors.deleteBase}
                       {selected.count > 0
-                        ? `. Its ${selected.count} linked invoice(s) are untouched and keep the vendor name`
+                        ? t.vendors.deleteWithInvoices.replace("{count}", String(selected.count))
                         : ""}
-                      . You can add the vendor again later to restore it.
+                      {t.vendors.deleteTail}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isDeleting}>{t.vendors.cancel}</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
                       disabled={isDeleting}
@@ -378,7 +376,7 @@ export function VendorsList({
                       }}
                     >
                       {isDeleting ? <Spinner data-icon="inline-start" /> : null}
-                      Delete
+                      {t.vendors.delete}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
