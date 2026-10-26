@@ -18,6 +18,7 @@ export default async function AutomationPage() {
       .from("inboxes")
       .select("email_address")
       .eq("user_id", user!.id)
+      .is("deleted_at", null)
       .maybeSingle(),
     supabase
       .from("invoices")

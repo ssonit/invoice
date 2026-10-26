@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { createUserInbox } from "@/lib/agentmail";
+import { createUserInbox, deleteUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
 import { parseDeleteAccountInput } from "@/lib/validation/account";
 import { isEmailIntakeConfigured } from "@/lib/email-intake";
@@ -40,6 +40,7 @@ export async function createInbox(): Promise<CreateInboxResult> {
     .from("inboxes")
     .select("email_address")
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .maybeSingle();
   if (existing) {
     revalidatePath("/dashboard/settings");
@@ -61,6 +62,7 @@ export async function createInbox(): Promise<CreateInboxResult> {
           .from("inboxes")
           .select("email_address")
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .maybeSingle();
         revalidatePath("/dashboard/settings");
         revalidatePath("/dashboard/automation");
@@ -95,6 +97,53 @@ export async function createInbox(): Promise<CreateInboxResult> {
         : "Could not create the forwarding address. Please try again.";
     return { ok: false, error: message };
   }
+}
+
+export type DeleteInboxResult = { ok: true } | { ok: false; error: string };
+
+// Removes the user's forwarding inbox on AgentMail (freeing a slot on the
+// plan's inbox limit), then soft-deletes the row — no `inboxes` row is
+// physically deleted, and extracted invoices are untouched. If the AgentMail
+// call succeeded but the DB update failed, retrying is safe: deleting an
+// already-removed inbox is treated as success.
+export async function deleteInbox(): Promise<DeleteInboxResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!isEmailIntakeConfigured(process.env)) {
+    return { ok: false, error: "Email forwarding is not configured on this instance." };
+  }
+
+  const service = createServiceClient();
+  const { data: inbox } = await service
+    .from("inboxes")
+    .select("id, agentmail_inbox_id")
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!inbox) return { ok: true };
+
+  try {
+    await deleteUserInbox(inbox.agentmail_inbox_id);
+  } catch (err) {
+    console.error("Failed to delete AgentMail inbox", user.id, err);
+    return { ok: false, error: "Could not delete the forwarding address. Please try again." };
+  }
+
+  const { error } = await service
+    .from("inboxes")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", inbox.id);
+  if (error) {
+    console.error("Failed to mark inbox as deleted", user.id, error);
+    return { ok: false, error: "Could not delete the forwarding address. Please try again." };
+  }
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/automation");
+  return { ok: true };
 }
 
 export type ChangePasswordResult = { ok: true } | { ok: false; error: string };

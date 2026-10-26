@@ -70,6 +70,7 @@ export const processInboundEmail = task({
       .from("inboxes")
       .select("user_id")
       .eq("agentmail_inbox_id", payload.inboxId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (!inbox) {

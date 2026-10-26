@@ -55,3 +55,13 @@ export async function createUserInbox(userId: string) {
     throw err;
   }
 }
+
+/** Deletes an AgentMail inbox. An inbox that is already gone counts as deleted. */
+export async function deleteUserInbox(inboxId: string) {
+  try {
+    await getAgentMailClient().inboxes.delete(inboxId);
+  } catch (err) {
+    if (err instanceof AgentMail.NotFoundError) return;
+    throw err;
+  }
+}
