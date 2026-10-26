@@ -1,5 +1,7 @@
 # Setup
 
+> Handing this to a customer? Start with [`CUSTOMER-SETUP.md`](CUSTOMER-SETUP.md) — the full step-by-step path including Vercel and email forwarding.
+
 ## Minimum — run the app in ~10 minutes
 You need: Node 20.9 or newer (22+ recommended; CI uses 24), a free Supabase project, one LLM key.
 

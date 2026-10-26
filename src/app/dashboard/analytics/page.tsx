@@ -1,82 +1,23 @@
-import { BarChart3 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { normalizeInvoice } from "@/lib/invoices";
-import { parseAnalyticsQuery, rangeStartIso } from "@/lib/analytics/query";
-import { buildAnalyticsReport, effectiveInvoiceDate } from "@/lib/analytics/report";
-import { AnalyticsToolbar } from "@/components/dashboard/analytics/analytics-toolbar";
-import { AnalyticsStatCards } from "@/components/dashboard/analytics/analytics-stat-cards";
-import { SpendTrendChart } from "@/components/dashboard/analytics/spend-trend-chart";
-import { VendorBreakdown } from "@/components/dashboard/analytics/vendor-breakdown";
+import { parseAnalyticsQuery } from "@/lib/analytics/query";
+import { AnalyticsReportView } from "@/components/dashboard/analytics/analytics-report-view";
 
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; currency?: string }>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const params = await searchParams;
+  const query = parseAnalyticsQuery(params);
 
-  const query = parseAnalyticsQuery(await searchParams);
-  const start = rangeStartIso(new Date(), query.range);
-
-  // Fetch invoices whose issue_date OR created_at falls within the window.
-  // Rows with null issue_date still match via the created_at clause.
-  const { data } = await supabase
-    .from("invoices")
-    .select("id, vendor, amount, currency, issue_date, created_at, needs_review")
-    .eq("user_id", user!.id)
-    .is("deleted_at", null)
-    .or(`issue_date.gte.${start},created_at.gte.${start}`)
-    .order("created_at", { ascending: false });
-
-  const allRows = (data ?? []).map(normalizeInvoice);
-
-  // Filter: keep only rows whose effective date is within the window
-  const startDate = new Date(start);
-  const inRange = allRows.filter(
-    (row) => effectiveInvoiceDate(row) >= startDate,
-  );
-
-  const report = buildAnalyticsReport(inRange, query.range);
-
-  const isEmpty = report.invoiceCount === 0;
-
+  // Numbers come from the analytics_aggregates RPC, loaded in the browser when
+  // the report scrolls into view (see AnalyticsReportView).
   return (
     <ContentShell
       title="Analytics"
       description="Spend trends, vendor breakdowns, and invoice stats for your workspace."
     >
-      <div className="space-y-5">
-        <AnalyticsToolbar query={query} />
-
-        {isEmpty ? (
-          <Empty className="rounded-[14px] border border-border">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <BarChart3 />
-              </EmptyMedia>
-              <EmptyTitle>No invoices in this period</EmptyTitle>
-              <EmptyDescription>
-                Try a longer range or upload your first invoice to get started.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <>
-            <AnalyticsStatCards report={report} />
-            <SpendTrendChart data={report.monthlySpend} />
-            <VendorBreakdown
-              vendors={report.topVendors}
-              total={report.totalSpend}
-              currency={report.currency}
-            />
-          </>
-        )}
-      </div>
+      <AnalyticsReportView query={query} requestedCurrency={params.currency} />
     </ContentShell>
   );
 }

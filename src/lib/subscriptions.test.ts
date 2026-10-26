@@ -260,6 +260,21 @@ describe("buildManualCandidates", () => {
     expect(result[0].nextExpectedDate).toBe("2026-08-14");
   });
 
+  it("falls back to created_at when the invoice has no issue_date", () => {
+    const invoice = {
+      ...makeInvoice({ vendor: "Undated SaaS", issue_date: "2026-01-01" }),
+      issue_date: null,
+      created_at: "2026-07-10T09:00:00Z",
+    };
+    const result = buildManualCandidates(
+      [invoice],
+      [{ vendor_key: "undated saas", cycle: "monthly", status: "active" }],
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].lastIssueDate).toBe("2026-07-10");
+    expect(result[0].nextExpectedDate).toBe("2026-08-09");
+  });
+
   it("skips vendors with no invoices", () => {
     const manualRows: ManualSubscriptionRow[] = [
       { vendor_key: "ghost vendor", cycle: "monthly", status: "active" },

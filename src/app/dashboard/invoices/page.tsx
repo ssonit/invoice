@@ -3,13 +3,14 @@ import { ContentShell } from "@/components/dashboard/content-shell"
 import { InvoicesTable } from "@/components/dashboard/invoices-table"
 import { UploadInvoiceButton } from "../upload-invoice-button"
 import { normalizeInvoice } from "@/lib/invoices"
-import { escapeIlike } from "@/lib/vendors/query"
+import { buildInvoiceSearchPattern } from "@/lib/invoices/search"
 import {
   INVOICE_LIST_PAGE_SIZE,
   parseInvoiceListQuery,
 } from "@/lib/invoices/query"
 import { pageCount, paginationRange } from "@/lib/pagination"
 import { isEmailIntakeConfigured } from "@/lib/email-intake"
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server"
 
 export default async function InvoicesPage({
   searchParams,
@@ -31,8 +32,9 @@ export default async function InvoicesPage({
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
-  if (query.vendor) {
-    dbQuery = dbQuery.ilike("vendor", `%${escapeIlike(query.vendor)}%`)
+  const searchPattern = buildInvoiceSearchPattern(query.vendor)
+  if (searchPattern) {
+    dbQuery = dbQuery.ilike("search_text", searchPattern)
   }
   if (query.status === "review") dbQuery = dbQuery.eq("needs_review", true)
   if (query.status === "ok") dbQuery = dbQuery.eq("needs_review", false)
@@ -42,14 +44,15 @@ export default async function InvoicesPage({
   const invoices = (data ?? []).map(normalizeInvoice)
   const totalPages = pageCount(count ?? 0, INVOICE_LIST_PAGE_SIZE)
   const isEmailIntakeEnabled = isEmailIntakeConfigured(process.env)
+  const { t } = await getDashboardDictionary()
 
   return (
     <ContentShell
-      title="Invoices"
+      title={t.invoices.title}
       description={
         isEmailIntakeEnabled
-          ? "Every invoice extracted from your forwarded email and manual uploads."
-          : "Every invoice extracted from your uploads."
+          ? t.invoices.descriptionWithEmail
+          : t.invoices.descriptionNoEmail
       }
       actions={<UploadInvoiceButton />}
     >

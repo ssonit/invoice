@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { InvoiceRow } from "@/lib/invoices";
+import { compareInvoiceAmounts, type InvoiceRow } from "@/lib/invoices";
 
 function SortHeader({
   label,
@@ -44,6 +44,9 @@ export const columns: ColumnDef<InvoiceRow>[] = [
   },
   {
     accessorKey: "amount",
+    // Amounts in different currencies are not comparable: group by currency,
+    // then order by amount within each currency.
+    sortingFn: (a, b) => compareInvoiceAmounts(a.original, b.original),
     header: ({ column }) => <SortHeader label="Amount" column={column} />,
     cell: ({ row }) => {
       const { amount, currency } = row.original;

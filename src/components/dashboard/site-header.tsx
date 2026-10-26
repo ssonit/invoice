@@ -13,11 +13,13 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb"
 import { cn } from "@/lib/utils"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
 export function SiteHeader({ email, displayName }: { email: string; displayName: string }) {
   const pathname = usePathname()
+  const { t } = useDashboardI18n()
   const item = findNavItem(pathname)
-  const title = item?.label ?? "Dashboard"
+  const title = item ? (t.nav.items[item.href] ?? item.label) : "Dashboard"
   const status = item?.status ?? "live"
 
   return (
@@ -42,7 +44,7 @@ export function SiteHeader({ email, displayName }: { email: string; displayName:
                     : "border-border bg-muted text-muted-foreground"
                 )}
               >
-                {statusLabel[status]}
+                {t.nav.status[status] ?? statusLabel[status]}
               </span>
             ) : null}
           </BreadcrumbItem>

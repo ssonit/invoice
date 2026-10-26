@@ -3,9 +3,10 @@ import { ArrowRight } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/server"
 import { ContentShell } from "@/components/dashboard/content-shell"
-import { StatCards } from "@/components/dashboard/stat-cards"
-import { InvoicesTrendChart } from "@/components/dashboard/invoices-trend-chart"
-import { computeStats, monthlyTrend, normalizeInvoice } from "@/lib/invoices"
+import { OverviewReportView } from "@/components/dashboard/overview-report-view"
+import { normalizeInvoice } from "@/lib/invoices"
+
+const RECENT_INVOICES_LIMIT = 5
 
 export default async function DashboardOverviewPage() {
   const supabase = await createClient()
@@ -13,17 +14,18 @@ export default async function DashboardOverviewPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data } = await supabase
+  // Stats and trend come from the overview_aggregates RPC (client-side, lazy);
+  // the server only fetches the few rows the "Recent" list shows.
+  const { data, count } = await supabase
     .from("invoices")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("user_id", user!.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+    .limit(RECENT_INVOICES_LIMIT)
 
-  const invoices = (data ?? []).map(normalizeInvoice)
-  const stats = computeStats(invoices)
-  const trend = monthlyTrend(invoices)
-  const recent = invoices.slice(0, 5)
+  const recent = (data ?? []).map(normalizeInvoice)
+  const totalCount = count ?? recent.length
 
   return (
     <ContentShell
@@ -40,15 +42,14 @@ export default async function DashboardOverviewPage() {
       }
     >
       <div className="flex flex-col gap-5">
-        <StatCards stats={stats} />
-        <InvoicesTrendChart data={trend} />
+        <OverviewReportView />
 
         <section className="rounded-xl border border-border bg-card/40">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold tracking-tight">Recent invoices</h2>
               <p className="text-xs text-muted-foreground">
-                Latest {recent.length} of {invoices.length} total
+                Latest {recent.length} of {totalCount} total
               </p>
             </div>
             <Link

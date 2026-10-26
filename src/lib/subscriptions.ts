@@ -164,6 +164,12 @@ export type ManualSubscriptionRow = {
   status: string;
 };
 
+/** issue_date, or the day the invoice arrived when extraction found no date —
+ *  so a manual mark on a vendor whose invoice lacks a date still takes effect. */
+function manualAnchorDate(invoice: InvoiceRow): string {
+  return invoice.issue_date ?? invoice.created_at.slice(0, 10);
+}
+
 /** Build synthetic SubscriptionCandidates from manually-marked rows.
  *  Each manual row uses the latest invoice for that vendorKey to derive
  *  lastAmount/currency/lastIssueDate/nextExpectedDate. Vendors with zero
@@ -175,10 +181,10 @@ export function buildManualCandidates(
   // Group invoices by vendor key, keep only the latest per vendor
   const latestByKey = new Map<string, InvoiceRow>();
   for (const invoice of invoices) {
-    if (!invoice.vendor || !invoice.issue_date) continue;
+    if (!invoice.vendor) continue;
     const key = normalizeVendorKey(invoice.vendor);
     const existing = latestByKey.get(key);
-    if (!existing || invoice.issue_date > existing.issue_date!) {
+    if (!existing || manualAnchorDate(invoice) > manualAnchorDate(existing)) {
       latestByKey.set(key, invoice);
     }
   }
@@ -198,8 +204,8 @@ export function buildManualCandidates(
       invoiceCount: 1, // manual mark — we don't count all invoices
       lastAmount: latest.amount,
       currency: latest.currency,
-      lastIssueDate: latest.issue_date!,
-      nextExpectedDate: addDays(latest.issue_date!, CYCLE_DAYS[cycle]),
+      lastIssueDate: manualAnchorDate(latest),
+      nextExpectedDate: addDays(manualAnchorDate(latest), CYCLE_DAYS[cycle]),
     });
   }
 

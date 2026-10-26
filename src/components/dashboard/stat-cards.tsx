@@ -1,14 +1,12 @@
 import { FileText, AlertCircle, CalendarDays, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { InvoiceStats } from "@/lib/invoices";
+import { formatInvoiceMoney, type InvoiceStats } from "@/lib/invoices";
 
 function formatValue(stats: InvoiceStats): string {
-  if (stats.total === 0 || stats.totalValue === 0) return "—";
-  const amount = stats.totalValue.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-  return stats.currency ? `${amount} ${stats.currency}` : amount;
+  if (stats.total === 0 || stats.totalsByCurrency.length === 0) return "—";
+  return stats.totalsByCurrency
+    .map((t) => formatInvoiceMoney(t.total, t.currency))
+    .join(" + ");
 }
 
 export function StatCards({ stats }: { stats: InvoiceStats }) {
@@ -20,7 +18,7 @@ export function StatCards({ stats }: { stats: InvoiceStats }) {
       label: "Total value",
       value: formatValue(stats),
       icon: Wallet,
-      hint: stats.multiCurrency ? "top currency" : null,
+      hint: stats.multiCurrency ? "per currency, not converted" : null,
     },
   ];
 
@@ -35,7 +33,11 @@ export function StatCards({ stats }: { stats: InvoiceStats }) {
                 <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t.label}
                 </p>
-                <p className="mt-2 truncate text-2xl font-semibold tracking-tight">
+                <p
+                  className={`mt-2 font-semibold tracking-tight ${
+                    t.value.length > 16 ? "text-base break-words" : "truncate text-2xl"
+                  }`}
+                >
                   {t.value}
                 </p>
                 {t.hint ? (

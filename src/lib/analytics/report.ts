@@ -1,4 +1,4 @@
-import type { InvoiceRow } from "@/lib/invoices";
+import { sumByCurrency, type CurrencyTotal, type InvoiceRow } from "@/lib/invoices";
 
 export type SpendTrendPoint = { month: string; amount: number };
 export type VendorSpendSlice = {
@@ -12,12 +12,13 @@ export type AnalyticsReport = {
   multiCurrency: boolean;
   invoiceCount: number;
   needsReview: number;
-  totalSpend: number; // dominant currency only
+  totalSpend: number; // `currency` only (selected, else dominant)
+  totalsByCurrency: CurrencyTotal[]; // every currency, never dropped
   monthlySpend: SpendTrendPoint[]; // `months` buckets, oldest first
   topVendors: VendorSpendSlice[]; // top 8 by amount + optional "Other"
 };
 
-const TOP_VENDOR_LIMIT = 8;
+export const TOP_VENDOR_LIMIT = 8;
 
 /** Effective date for spend attribution: issue_date if present, else created_at date (UTC). */
 export function effectiveInvoiceDate(row: InvoiceRow): Date {
@@ -43,6 +44,7 @@ export function buildAnalyticsReport(
   rows: InvoiceRow[],
   months: number,
   now: Date = new Date(),
+  selectedCurrency?: string,
 ): AnalyticsReport {
   // ---- Pass 1: per-currency sums (dominance) + counts ----
   const byCurrency = new Map<string, number>();
@@ -56,7 +58,8 @@ export function buildAnalyticsReport(
     }
   }
 
-  // Determine dominant currency
+  // Currency for the chart / vendor breakdown: the requested one if present,
+  // otherwise the dominant (largest-sum) currency.
   let currency: string | null = null;
   let maxSum = -Infinity;
   for (const [cur, sum] of byCurrency) {
@@ -64,6 +67,10 @@ export function buildAnalyticsReport(
       maxSum = sum;
       currency = cur === "—" ? null : cur;
     }
+  }
+  if (selectedCurrency != null && byCurrency.has(selectedCurrency)) {
+    maxSum = byCurrency.get(selectedCurrency)!;
+    currency = selectedCurrency === "—" ? null : selectedCurrency;
   }
   if (maxSum === -Infinity) maxSum = 0;
 
@@ -149,6 +156,7 @@ export function buildAnalyticsReport(
     invoiceCount: rows.length,
     needsReview,
     totalSpend: maxSum,
+    totalsByCurrency: sumByCurrency(rows),
     monthlySpend: buckets,
     topVendors,
   };

@@ -12,9 +12,11 @@ import {
 import { Inbox } from "lucide-react";
 import { columns } from "./columns";
 import { InvoicesToolbar } from "./invoices-toolbar";
+import { InvoiceDetail } from "./invoice-detail";
 import type { InvoiceRow } from "@/lib/invoices";
 import type { InvoiceListQuery } from "@/lib/invoices/query";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -48,6 +50,8 @@ export function InvoicesTable({
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedInvoice = data.find((invoice) => invoice.id === selectedId) ?? null;
 
   // TanStack Table returns non-memoizable functions; React Compiler skips it.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -117,7 +121,15 @@ export function InvoicesTable({
             <TableBody>
               {table.getRowModel().rows.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="text-[13px]">
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer text-[13px]"
+                    tabIndex={0}
+                    onClick={() => setSelectedId(row.original.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") setSelectedId(row.original.id);
+                    }}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -164,6 +176,27 @@ export function InvoicesTable({
           </div>
         </div>
       </div>
+
+      <Sheet
+        open={selectedInvoice != null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <SheetContent className="w-full gap-0 p-0 sm:max-w-xl" showCloseButton={false}>
+          <SheetTitle className="sr-only">Invoice details</SheetTitle>
+          <SheetDescription className="sr-only">
+            View and edit the extracted fields of this invoice.
+          </SheetDescription>
+          {selectedInvoice ? (
+            <InvoiceDetail
+              key={selectedInvoice.id}
+              invoice={selectedInvoice}
+              onClose={() => setSelectedId(null)}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -9,10 +9,11 @@ import { formatInvoiceMoney } from "@/lib/invoices";
 import type { AnalyticsReport } from "@/lib/analytics/report";
 
 export function AnalyticsStatCards({ report }: { report: AnalyticsReport }) {
-  const avgPerInvoice =
-    report.invoiceCount > 0
-      ? report.totalSpend / report.invoiceCount
-      : 0;
+  const totals = report.totalsByCurrency;
+  const joinMoney = (pick: (t: (typeof totals)[number]) => number) =>
+    totals.length === 0
+      ? "—"
+      : totals.map((t) => formatInvoiceMoney(pick(t), t.currency)).join(" + ");
 
   const tiles = [
     {
@@ -29,18 +30,15 @@ export function AnalyticsStatCards({ report }: { report: AnalyticsReport }) {
     },
     {
       label: "Total spend",
-      value: formatInvoiceMoney(report.totalSpend, report.currency),
+      value: joinMoney((t) => t.total),
       icon: Wallet,
-      hint: report.multiCurrency ? "top currency" : null,
+      hint: report.multiCurrency ? "per currency, not converted" : null,
     },
     {
       label: "Avg / invoice",
-      value: formatInvoiceMoney(
-        report.invoiceCount > 0 ? avgPerInvoice : null,
-        report.currency,
-      ),
+      value: joinMoney((t) => t.average),
       icon: Calculator,
-      hint: null,
+      hint: report.multiCurrency ? "per currency" : null,
     },
   ];
 
@@ -55,7 +53,11 @@ export function AnalyticsStatCards({ report }: { report: AnalyticsReport }) {
                 <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t.label}
                 </p>
-                <p className="mt-2 truncate text-2xl font-semibold tracking-tight">
+                <p
+                  className={`mt-2 font-semibold tracking-tight ${
+                    t.value.length > 16 ? "text-base break-words" : "truncate text-2xl"
+                  }`}
+                >
                   {t.value}
                 </p>
                 {t.hint ? (

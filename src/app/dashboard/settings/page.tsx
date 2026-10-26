@@ -3,6 +3,8 @@ import { ContentShell } from "@/components/dashboard/content-shell";
 import { CopyButton } from "@/components/dashboard/copy-button";
 import { CreateInboxButton } from "@/components/dashboard/create-inbox-button";
 import { ChangePasswordForm } from "./change-password-form";
+import { DisplayNameForm } from "./display-name-form";
+import { getDashboardDictionary } from "@/lib/dashboard/locale-server";
 import { DeleteAccountSection } from "./delete-account-section";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +23,12 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { t } = await getDashboardDictionary();
+  const displayName =
+    typeof user!.user_metadata?.display_name === "string"
+      ? user!.user_metadata.display_name.trim()
+      : "";
+
   const isEmailIntakeEnabled = isEmailIntakeConfigured(process.env);
   const { data: inbox } = isEmailIntakeEnabled
     ? await supabase
@@ -33,32 +41,43 @@ export default async function SettingsPage() {
 
   return (
     <ContentShell
-      title="Settings"
+      title={t.settings.title}
       description={
         isEmailIntakeEnabled
-          ? "Manage forwarding and account security."
-          : "Manage account security."
+          ? t.settings.descriptionWithEmail
+          : t.settings.descriptionNoEmail
       }
     >
       <div className="flex flex-col gap-4">
+        <Card className="rounded-[14px] shadow-none">
+          <CardHeader>
+            <CardTitle className="text-[13px] font-semibold">{t.settings.profileTitle}</CardTitle>
+            <CardDescription className="text-[13px]">
+              {t.settings.profileDescription}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DisplayNameForm initialName={displayName} />
+          </CardContent>
+        </Card>
+
         {isEmailIntakeEnabled ? (
           <Card className="rounded-[14px] shadow-none">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <CardTitle className="text-[13px] font-semibold">Forwarding address</CardTitle>
+                <CardTitle className="text-[13px] font-semibold">{t.settings.forwardingTitle}</CardTitle>
                 {inbox ? (
                   <Badge
                     variant="outline"
                     className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
                   >
                     <CheckCircle2 className="size-3" />
-                    Active
+                    {t.settings.active}
                   </Badge>
                 ) : null}
               </div>
               <CardDescription className="text-[13px]">
-                Forward invoice emails to this address, or set up an auto-forward rule in
-                Gmail/Outlook. Anything that arrives is parsed and added to your invoices.
+                {t.settings.forwardingHelp}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -71,7 +90,7 @@ export default async function SettingsPage() {
                     <CopyButton value={inbox.email_address} />
                   </div>
                   <p className="text-[12px] text-muted-foreground">
-                    This is your permanent forwarding address — you only get one per account.
+                    {t.settings.forwardingPermanent}
                   </p>
                 </div>
               ) : (
@@ -83,9 +102,9 @@ export default async function SettingsPage() {
 
         <Card className="rounded-[14px] shadow-none">
           <CardHeader>
-            <CardTitle className="text-[13px] font-semibold">Password</CardTitle>
+            <CardTitle className="text-[13px] font-semibold">{t.settings.passwordTitle}</CardTitle>
             <CardDescription className="text-[13px]">
-              Update the password you use to sign in.
+              {t.settings.passwordDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -96,7 +115,7 @@ export default async function SettingsPage() {
         <Card className="rounded-[14px] border-destructive/30 shadow-none">
           <CardHeader>
             <CardTitle className="text-[13px] font-semibold text-destructive">
-              Danger zone
+              {t.settings.dangerZone}
             </CardTitle>
           </CardHeader>
           <CardContent>

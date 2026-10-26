@@ -63,6 +63,7 @@ describe("buildAnalyticsReport", () => {
       invoiceCount: 0,
       needsReview: 0,
       totalSpend: 0,
+      totalsByCurrency: [],
       monthlySpend: [],
       topVendors: [],
     });
@@ -231,6 +232,37 @@ describe("buildAnalyticsReport", () => {
     expect(report.topVendors).toHaveLength(5);
     const other = report.topVendors.find((v) => v.label === "Other");
     expect(other).toBeUndefined();
+  });
+
+  it("reports totals and averages for every currency", () => {
+    const rows = [
+      makeRow({ id: "1", currency: "VND", amount: 1000 }),
+      makeRow({ id: "2", currency: "VND", amount: 3000 }),
+      makeRow({ id: "3", currency: "USD", amount: 20 }),
+      makeRow({ id: "4", currency: "USD", amount: 55 }),
+    ];
+    const report = buildAnalyticsReport(rows, 6, NOW);
+    expect(report.totalsByCurrency).toEqual([
+      { currency: "VND", total: 4000, count: 2, average: 2000 },
+      { currency: "USD", total: 75, count: 2, average: 37.5 },
+    ]);
+  });
+
+  it("builds chart and vendors for the selected currency", () => {
+    const rows = [
+      makeRow({ id: "1", vendor: "A", currency: "VND", amount: 1000 }),
+      makeRow({ id: "2", vendor: "Cursor", currency: "USD", amount: 20, issue_date: "2026-05-10" }),
+    ];
+    const report = buildAnalyticsReport(rows, 6, NOW, "USD");
+    expect(report.currency).toBe("USD");
+    expect(report.totalSpend).toBe(20);
+    expect(report.topVendors.map((v) => v.label)).toEqual(["Cursor"]);
+    expect(report.monthlySpend[3].amount).toBe(20);
+  });
+
+  it("falls back to dominant currency when the selected one is absent", () => {
+    const rows = [makeRow({ id: "1", currency: "VND", amount: 1000 })];
+    expect(buildAnalyticsReport(rows, 6, NOW, "EUR").currency).toBe("VND");
   });
 
   it("picks dominant currency when all sums are negative (credit notes)", () => {

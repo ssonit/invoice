@@ -1,12 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { ContentShell } from "@/components/dashboard/content-shell";
-import { normalizeInvoice } from "@/lib/invoices";
-import { effectiveInvoiceDate } from "@/lib/analytics/report";
 import {
   parseExportQuery,
   rangeStartIso,
 } from "@/lib/exports/query";
 import { ExportsPanel } from "@/components/dashboard/exports/exports-panel";
+
+const DATE_ONLY_LENGTH = 10;
 
 export default async function ExportsPage({
   searchParams,
@@ -20,41 +20,20 @@ export default async function ExportsPage({
 
   const query = parseExportQuery(await searchParams);
 
-  // Count matching invoices using the same filter logic as the API route.
-  // Select minimal columns needed for effective-date post-filtering.
-  let dbQuery = supabase
-    .from("invoices")
-    .select("issue_date, created_at, needs_review")
-    .eq("user_id", user!.id)
-    .is("deleted_at", null);
+  // Count matching invoices in Postgres (export_invoice_count RPC) instead of
+  // fetching every row; same effective-date rule as Analytics.
+  const startDate =
+    query.range === "all"
+      ? null
+      : rangeStartIso(new Date(), query.range).slice(0, DATE_ONLY_LENGTH);
 
-  if (query.range !== "all") {
-    const start = rangeStartIso(new Date(), query.range);
-    dbQuery = dbQuery.or(`issue_date.gte.${start},created_at.gte.${start}`);
-  }
+  const { data, error } = await supabase.rpc("export_invoice_count", {
+    p_start: startDate,
+    p_status: query.status,
+  });
+  if (error) console.error("Failed to count exportable invoices", user!.id, error);
 
-  if (query.status === "review") {
-    dbQuery = dbQuery.eq("needs_review", true);
-  } else if (query.status === "ok") {
-    dbQuery = dbQuery.eq("needs_review", false);
-  }
-
-  const { data } = await dbQuery;
-
-  const allRows = (data ?? []).map((r) =>
-    normalizeInvoice(r as Record<string, unknown>),
-  );
-
-  // Post-filter by effective date when range is set (same as Analytics)
-  let matchingRows = allRows;
-  if (query.range !== "all") {
-    const startDate = new Date(rangeStartIso(new Date(), query.range));
-    matchingRows = allRows.filter(
-      (row) => effectiveInvoiceDate(row) >= startDate,
-    );
-  }
-
-  const count = matchingRows.length;
+  const count = Number(data ?? 0);
 
   return (
     <ContentShell

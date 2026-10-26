@@ -12,12 +12,9 @@ import {
   type InvoiceListStatus,
 } from "@/lib/invoices/query"
 import { cn } from "@/lib/utils"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 
-const STATUS_OPTIONS: { label: string; value: InvoiceListStatus }[] = [
-  { label: "All", value: "all" },
-  { label: "Needs review", value: "review" },
-  { label: "OK", value: "ok" },
-]
+const STATUS_VALUES: InvoiceListStatus[] = ["all", "review", "ok"]
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -37,6 +34,12 @@ export function InvoicesToolbar({
   query: InvoiceListQuery
   resultCount: number
 }) {
+  const { t } = useDashboardI18n()
+  const statusLabels: Record<InvoiceListStatus, string> = {
+    all: t.invoices.statusAll,
+    review: t.invoices.statusReview,
+    ok: t.invoices.statusOk,
+  }
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
@@ -86,20 +89,20 @@ export function InvoicesToolbar({
           <Input
             value={vendor}
             onChange={(e) => setVendor(e.target.value)}
-            placeholder="Filter by vendor..."
+            placeholder={t.invoices.searchPlaceholder}
             className="h-8 ps-8"
-            aria-label="Filter by vendor"
+            aria-label={t.invoices.searchLabel}
           />
         </div>
         <div className="flex items-center gap-1">
-          {STATUS_OPTIONS.map((option) => (
+          {STATUS_VALUES.map((value) => (
             <Button
-              key={option.value}
-              variant={query.status === option.value ? "secondary" : "ghost"}
+              key={value}
+              variant={query.status === value ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => navigate({ status: option.value })}
+              onClick={() => navigate({ status: value })}
             >
-              {option.label}
+              {statusLabels[value]}
             </Button>
           ))}
         </div>
@@ -114,11 +117,11 @@ export function InvoicesToolbar({
             }}
           >
             <X data-icon="inline-start" />
-            Clear
+            {t.invoices.clear}
           </Button>
         ) : null}
       </div>
-      <p className="text-[12px] text-muted-foreground">{resultCount} invoice(s)</p>
+      <p className="text-[12px] text-muted-foreground">{resultCount} {t.invoices.resultCount}</p>
     </div>
   )
 }

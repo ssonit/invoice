@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { InboxView } from "@/components/dashboard/inbox/inbox-view"
 import { normalizeInvoice } from "@/lib/invoices"
-import { escapeIlike } from "@/lib/vendors/query"
+import { buildInvoiceSearchPattern } from "@/lib/invoices/search"
 import { parseInboxListQuery } from "@/lib/invoices/inbox-query"
 import { INBOX_LIST_PAGE_SIZE } from "@/constants/inbox"
 import { pageCount, paginationRange } from "@/lib/pagination"
@@ -26,11 +26,9 @@ export default async function InboxPage({
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
 
-  if (query.q) {
-    const pattern = `%${escapeIlike(query.q).replace(/"/g, "")}%`
-    dbQuery = dbQuery.or(
-      `vendor.ilike."${pattern}",invoice_number.ilike."${pattern}",currency.ilike."${pattern}",source.ilike."${pattern}"`,
-    )
+  const searchPattern = buildInvoiceSearchPattern(query.q)
+  if (searchPattern) {
+    dbQuery = dbQuery.ilike("search_text", searchPattern)
   }
 
   if (query.source !== "all") {

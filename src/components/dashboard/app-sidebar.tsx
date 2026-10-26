@@ -11,6 +11,7 @@ import {
   type NavStatus,
 } from "@/lib/nav-config"
 import { cn } from "@/lib/utils"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/sidebar"
 
 function StatusBadge({ status }: { status: NavStatus }) {
+  const { t } = useDashboardI18n()
   if (status === "live") return null
   return (
     <SidebarMenuBadge
@@ -37,13 +39,14 @@ function StatusBadge({ status }: { status: NavStatus }) {
           : "border-white/15 bg-white/5 text-zinc-400"
       )}
     >
-      {statusLabel[status]}
+      {t.nav.status[status] ?? statusLabel[status]}
     </SidebarMenuBadge>
   )
 }
 
 export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boolean }) {
   const pathname = usePathname()
+  const { t } = useDashboardI18n()
 
   return (
     <Sidebar collapsible="icon" className="border-r border-white/5">
@@ -72,7 +75,7 @@ export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boo
           <SidebarGroup key={group.label}>
             {index > 0 ? <SidebarSeparator className="mx-0 mb-2" /> : null}
             <SidebarGroupLabel className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              {group.label}
+              {t.nav.groups[group.label] ?? group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -80,6 +83,7 @@ export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boo
                   const isActive = isNavItemActive(pathname, item.href)
                   const Icon = item.icon
                   const status = item.status ?? "live"
+                  const label = t.nav.items[item.href] ?? item.label
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -87,8 +91,8 @@ export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boo
                         isActive={isActive}
                         tooltip={
                           status === "live"
-                            ? item.label
-                            : `${item.label} (${statusLabel[status]})`
+                            ? label
+                            : `${label} (${t.nav.status[status] ?? statusLabel[status]})`
                         }
                         className={cn(
                           "rounded-lg",
@@ -98,7 +102,7 @@ export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boo
                         render={<Link href={item.href} />}
                       >
                         <Icon strokeWidth={1.75} />
-                        <span>{item.label}</span>
+                        <span>{label}</span>
                       </SidebarMenuButton>
                       <StatusBadge status={status} />
                     </SidebarMenuItem>

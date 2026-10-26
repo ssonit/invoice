@@ -26,6 +26,7 @@ export type InvoiceRow = {
   needs_review: boolean;
   file_url: string | null;
   created_at: string;
+  approved_at?: string | null; // set by an explicit "Mark approved"
 };
 
 export type InvoiceInboxStatus = "review" | "extracted" | "approved";
@@ -33,6 +34,7 @@ export type InvoiceInboxStatus = "review" | "extracted" | "approved";
 /** Map extraction confidence + needs_review into inbox UI statuses. */
 export function getInboxStatus(row: InvoiceRow): InvoiceInboxStatus {
   if (row.needs_review) return "review";
+  if (row.approved_at) return "approved";
   if (row.confidence_score != null && row.confidence_score >= 0.9) {
     return "approved";
   }
@@ -164,16 +166,68 @@ export function normalizeInvoice(row: Record<string, unknown>): InvoiceRow {
     needs_review: Boolean(row.needs_review),
     file_url: (row.file_url as string) ?? null,
     created_at: String(row.created_at),
+    approved_at: (row.approved_at as string) ?? null,
   };
+}
+
+/**
+ * Comparator for sorting invoices by amount without mixing currencies:
+ * currency code first (no-currency last), then amount; missing amounts last.
+ */
+export function compareInvoiceAmounts(
+  a: Pick<InvoiceRow, "amount" | "currency">,
+  b: Pick<InvoiceRow, "amount" | "currency">,
+): number {
+  if (a.amount == null || b.amount == null) {
+    return (a.amount == null ? 1 : 0) - (b.amount == null ? 1 : 0);
+  }
+  if (a.currency !== b.currency) {
+    if (a.currency == null) return 1;
+    if (b.currency == null) return -1;
+    return a.currency < b.currency ? -1 : 1;
+  }
+  return a.amount - b.amount;
+}
+
+export type CurrencyTotal = {
+  currency: string | null;
+  total: number;
+  count: number; // invoices with an amount in this currency
+  average: number;
+};
+
+/**
+ * Per-currency totals (no FX conversion), largest total first. Invoices without
+ * an amount are skipped; a null currency is grouped under `currency: null`.
+ */
+export function sumByCurrency(rows: InvoiceRow[]): CurrencyTotal[] {
+  const groups = new Map<string, { total: number; count: number }>();
+  for (const row of rows) {
+    if (row.amount == null) continue;
+    const key = row.currency ?? "—";
+    const group = groups.get(key) ?? { total: 0, count: 0 };
+    group.total += row.amount;
+    group.count++;
+    groups.set(key, group);
+  }
+  return [...groups.entries()]
+    .map(([key, g]) => ({
+      currency: key === "—" ? null : key,
+      total: g.total,
+      count: g.count,
+      average: g.total / g.count,
+    }))
+    .sort((a, b) => b.total - a.total);
 }
 
 export type InvoiceStats = {
   total: number;
   needsReview: number;
   thisMonth: number;
-  totalValue: number;
+  totalValue: number; // dominant currency only; see totalsByCurrency for all
   currency: string | null;
   multiCurrency: boolean;
+  totalsByCurrency: CurrencyTotal[];
 };
 
 export function computeStats(rows: InvoiceRow[]): InvoiceStats {
@@ -217,6 +271,7 @@ export function computeStats(rows: InvoiceRow[]): InvoiceStats {
     totalValue,
     currency,
     multiCurrency: byCurrency.size > 1,
+    totalsByCurrency: sumByCurrency(rows),
   };
 }
 

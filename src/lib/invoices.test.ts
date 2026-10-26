@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareInvoiceAmounts,
   computeStats,
+  sumByCurrency,
   formatInvoiceDate,
   formatInvoiceMoney,
   getInboxStatus,
@@ -147,6 +149,45 @@ describe("normalizeInvoice", () => {
     expect(
       normalizeInvoice({ id: "1", created_at: "2026-07-01T00:00:00.000Z" }).source,
     ).toBe("email");
+  });
+});
+
+describe("compareInvoiceAmounts", () => {
+  it("never interleaves currencies", () => {
+    const rows = [
+      { amount: 409500, currency: "VND" },
+      { amount: 35, currency: "USD" },
+      { amount: 20, currency: "USD" },
+      { amount: 5, currency: "VND" },
+    ];
+    const sorted = [...rows].sort(compareInvoiceAmounts);
+    expect(sorted.map((r) => `${r.amount}${r.currency}`)).toEqual([
+      "20USD",
+      "35USD",
+      "5VND",
+      "409500VND",
+    ]);
+  });
+
+  it("puts missing amounts last", () => {
+    const rows = [
+      { amount: null, currency: null },
+      { amount: 1, currency: "USD" },
+    ];
+    expect([...rows].sort(compareInvoiceAmounts)[1].amount).toBeNull();
+  });
+});
+
+describe("sumByCurrency", () => {
+  it("keeps every currency with its own total and average", () => {
+    const mk = (amount: number | null, currency: string | null) =>
+      ({ amount, currency }) as Parameters<typeof sumByCurrency>[0][number];
+    expect(
+      sumByCurrency([mk(100, "VND"), mk(300, "VND"), mk(20, "USD"), mk(null, "USD")]),
+    ).toEqual([
+      { currency: "VND", total: 400, count: 2, average: 200 },
+      { currency: "USD", total: 20, count: 1, average: 20 },
+    ]);
   });
 });
 

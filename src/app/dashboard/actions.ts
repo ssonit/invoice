@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createUserInbox, deleteUserInbox } from "@/lib/agentmail";
 import { parseResetPasswordForm } from "@/lib/validation/auth";
-import { parseDeleteAccountInput } from "@/lib/validation/account";
+import { parseDeleteAccountInput, parseDisplayNameForm } from "@/lib/validation/account";
 import { isEmailIntakeConfigured } from "@/lib/email-intake";
 
 export async function logout() {
@@ -165,6 +165,31 @@ export async function changePassword(formData: FormData): Promise<ChangePassword
     };
   }
 
+  return { ok: true };
+}
+
+export type UpdateDisplayNameResult = { ok: true } | { ok: false; error: string };
+
+// Display name lives in auth user_metadata (set at signup), not in profiles.
+export async function updateDisplayName(formData: FormData): Promise<UpdateDisplayNameResult> {
+  const parsed = parseDisplayNameForm(formData);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase.auth.updateUser({
+    data: { display_name: parsed.data.name },
+  });
+  if (error) {
+    console.error("Failed to update display name", user.id, error);
+    return { ok: false, error: "Could not save your name. Please try again." };
+  }
+
+  revalidatePath("/dashboard", "layout");
   return { ok: true };
 }
 
