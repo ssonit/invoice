@@ -72,15 +72,18 @@ export async function POST(request: NextRequest) {
       idempotencyKey: emailPayload.messageId,
     });
   } catch (error) {
-    // Non-2xx makes AgentMail retry the delivery. Typical causes: wrong
-    // TRIGGER_SECRET_KEY environment, or tasks not deployed to that environment.
+    // Typical causes: wrong TRIGGER_SECRET_KEY environment, or tasks not
+    // deployed to that environment. Don't drop the email (or leave the webhook
+    // failing forever): process it inline instead. Writes are idempotent on
+    // messageId, so a later delivery retry can't create a duplicate.
     console.error(
-      "Failed to queue inbound email task",
+      "Failed to queue inbound email task, processing inline",
       emailPayload.inboxId,
       emailPayload.messageId,
       error,
     );
-    return NextResponse.json({ status: "error" }, { status: 500 });
+    after(() => processInboundEmailInline(emailPayload));
+    return NextResponse.json({ status: "processing" });
   }
 
   return NextResponse.json({ status: "queued" });
