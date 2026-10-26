@@ -1,7 +1,7 @@
 -- Soft-hide duplicate invoices (never physically deleted — see
 -- .claude/rules/data-safety.md). Hidden rows keep their content_hash so a
 -- re-upload of the same file is still recognised as already processed.
-alter table public.invoices add column deleted_at timestamptz;
+alter table public.invoices add column if not exists deleted_at timestamptz;
 
 -- Fold each duplicate's hit count into the oldest row of its
 -- (user, vendor, invoice number) group, then hide the later rows.
@@ -35,12 +35,12 @@ set deleted_at = now()
 from ranked r
 where i.id = r.id and r.rn > 1;
 
-create index invoices_user_active_idx on public.invoices (user_id) where deleted_at is null;
+create index if not exists invoices_user_active_idx on public.invoices (user_id) where deleted_at is null;
 
 -- Vendor views must ignore hidden rows. invoices.* now includes deleted_at, so
 -- the views are dropped and recreated (create or replace can't change columns).
-drop view public.vendor_recent_invoices;
-drop view public.vendor_invoice_stats;
+drop view if exists public.vendor_recent_invoices;
+drop view if exists public.vendor_invoice_stats;
 
 create view public.vendor_invoice_stats
 with (security_invoker = true) as
