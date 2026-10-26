@@ -7,6 +7,7 @@ import {
 } from "./schema";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const GOOGLE_PARSE_ATTEMPTS = 2;
 
 // OpenAPI-subset schema Gemini enforces on the JSON output.
 const responseSchema: Schema = {
@@ -69,22 +70,36 @@ export async function extractWithGoogle(
 
   const requestedModel = process.env.GOOGLE_EXTRACTION_MODEL || DEFAULT_MODEL;
 
-  const response = await getClient().models.generateContent({
-    model: requestedModel,
-    contents: [{ role: "user", parts }],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema,
-    },
-  });
+  // Gemini occasionally returns truncated or off-schema JSON. That is
+  // non-deterministic, so one retry recovers most cases before the upload fails.
+  let response: Awaited<ReturnType<ReturnType<typeof getClient>["models"]["generateContent"]>>;
+  let extraction: ReturnType<typeof InvoiceExtractionSchema.parse>;
+  for (let attempt = 1; ; attempt++) {
+    response = await getClient().models.generateContent({
+      model: requestedModel,
+      contents: [{ role: "user", parts }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema,
+      },
+    });
 
-  const text = response.text;
-  if (!text) {
-    throw new Error("Google extraction returned no text");
+    const text = response.text;
+    if (!text) {
+      throw new Error("Google extraction returned no text");
+    }
+
+    try {
+      extraction = InvoiceExtractionSchema.parse(JSON.parse(text));
+      break;
+    } catch (err) {
+      if (attempt >= GOOGLE_PARSE_ATTEMPTS) throw err;
+      console.error("Google extraction returned invalid JSON, retrying", err);
+    }
   }
 
   return {
-    extraction: InvoiceExtractionSchema.parse(JSON.parse(text)),
+    extraction,
     usage: {
       // modelVersion is the model that actually ran, which can differ from
       // what was requested (e.g. an alias resolving to a pinned version) —

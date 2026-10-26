@@ -9,6 +9,7 @@ import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
 import { MAX_UPLOAD_REQUEST_BYTES } from "@/constants/validation";
 import { sha256Hex } from "@/lib/file-hash";
 import { checkUploadRateLimit } from "@/lib/rate-limit";
+import { findAndCountSameInvoice } from "@/lib/invoices/find-duplicate";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -116,6 +117,13 @@ export async function POST(request: Request) {
       },
       { status: 422 },
     );
+  }
+
+  // Same vendor + invoice number as one already saved → another file of the
+  // same invoice (e.g. its receipt image). Report it instead of adding a row.
+  const sameInvoice = await findAndCountSameInvoice({ supabase: service, userId: user.id, extracted });
+  if (sameInvoice) {
+    return NextResponse.json({ invoice: sameInvoice, duplicate: true });
   }
 
   const path = `${user.id}/upload-${Date.now()}-${sanitizedFilename}`;

@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/extraction", () => ({ extractInvoice: vi.fn() }));
 vi.mock("@/lib/vendors", () => ({ ensureVendorRecord: vi.fn() }));
+vi.mock("@/lib/invoices/find-duplicate", () => ({
+  findAndCountSameInvoice: vi.fn().mockResolvedValue(null),
+}));
 
 import { extractInvoice } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
+import { findAndCountSameInvoice } from "@/lib/invoices/find-duplicate";
 import { processExtraction } from "./process-extraction";
 
 const mockedExtract = vi.mocked(extractInvoice);
@@ -74,6 +78,30 @@ beforeEach(() => {
 });
 
 describe("processExtraction", () => {
+  it("reuses an existing invoice with the same vendor and number instead of saving a new row", async () => {
+    mockedExtract.mockResolvedValue(extractOutcome() as never);
+    vi.mocked(findAndCountSameInvoice).mockResolvedValueOnce({
+      vendor: "Acme SaaS",
+      amount: 19,
+      currency: "USD",
+    } as never);
+    const sb = mockSupabase();
+    const result = await processExtraction({
+      supabase: sb.client,
+      userId: "user-1",
+      messageId: "msg-1",
+      sourceRef: "att-1",
+      input: { type: "html", html: "<p>hi</p>" },
+      fileBuffer: null,
+      fileName: null,
+    });
+    expect(result).toEqual({
+      saved: true,
+      invoice: { vendor: "Acme SaaS", amount: 19, currency: "USD" },
+    });
+    expect(sb.upsert).not.toHaveBeenCalled();
+  });
+
   it("returns saved:false and writes nothing when not an invoice", async () => {
     mockedExtract.mockResolvedValue(extractOutcome({ is_invoice: false }) as never);
     const sb = mockSupabase();

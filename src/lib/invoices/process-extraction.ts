@@ -4,6 +4,7 @@ import { extractInvoice, type ExtractionInput } from "@/lib/extraction";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { sanitizeFilename } from "@/lib/validation/common";
 import { sha256Hex } from "@/lib/file-hash";
+import { findAndCountSameInvoice } from "@/lib/invoices/find-duplicate";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -79,6 +80,20 @@ export async function processExtraction(params: {
 
   const { extraction: extracted, metrics } = await extractInvoice(input);
   if (!extracted.is_invoice) return { saved: false };
+
+  // Same vendor + invoice number as one already saved: another file of the same
+  // invoice. A task retry re-finding its own earlier save is not a new arrival.
+  const sameInvoice = await findAndCountSameInvoice({ supabase, userId, extracted });
+  if (sameInvoice) {
+    return {
+      saved: true,
+      invoice: {
+        vendor: sameInvoice.vendor,
+        amount: sameInvoice.amount,
+        currency: sameInvoice.currency,
+      },
+    };
+  }
 
   // invoice-files is a private bucket — store the object path only.
   // sanitizeFilename() strips any directory components from the

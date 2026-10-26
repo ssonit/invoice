@@ -24,7 +24,7 @@ type PendingFile = {
 };
 
 type UploadOutcome =
-  | { ok: true; vendor: string | null; fileName: string }
+  | { ok: true; vendor: string | null; fileName: string; isDuplicate: boolean }
   | { ok: false; fileName: string; error: string };
 
 function formatFileSize(bytes: number): string {
@@ -37,7 +37,7 @@ async function uploadOne(file: File): Promise<UploadOutcome> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch("/api/invoices/upload", { method: "POST", body: formData });
-  let body: { error?: string; invoice?: { vendor?: string | null } };
+  let body: { error?: string; duplicate?: boolean; invoice?: { vendor?: string | null } };
   try {
     body = await res.json();
   } catch {
@@ -50,6 +50,7 @@ async function uploadOne(file: File): Promise<UploadOutcome> {
     ok: true,
     vendor: body.invoice?.vendor ?? null,
     fileName: file.name,
+    isDuplicate: body.duplicate === true,
   };
 }
 
@@ -57,15 +58,30 @@ function toastUploadResults(outcomes: UploadOutcome[]) {
   const ok = outcomes.filter((o) => o.ok);
   const fail = outcomes.filter((o) => !o.ok);
 
+  const duplicates = ok.filter((o) => o.ok && o.isDuplicate);
+  const created = ok.filter((o) => o.ok && !o.isDuplicate);
+
   if (ok.length === 1 && fail.length === 0) {
     const only = ok[0]!;
-    toast.success(`Extracted invoice from ${only.vendor ?? only.fileName}`);
+    const label = only.vendor ?? only.fileName;
+    if (only.isDuplicate) {
+      toast.info(`Duplicate — ${label} is already in your invoices`);
+    } else {
+      toast.success(`Extracted invoice from ${label}`);
+    }
     return;
   }
 
-  if (ok.length > 0) {
+  if (created.length > 0) {
     toast.success(
-      ok.length === 1 ? `Extracted 1 invoice` : `Extracted ${ok.length} invoices`,
+      created.length === 1 ? `Extracted 1 invoice` : `Extracted ${created.length} invoices`,
+    );
+  }
+  if (duplicates.length > 0) {
+    toast.info(
+      duplicates.length === 1
+        ? "1 file was a duplicate of an existing invoice"
+        : `${duplicates.length} files were duplicates of existing invoices`,
     );
   }
   if (fail.length > 0) {
