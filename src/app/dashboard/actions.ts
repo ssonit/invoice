@@ -78,6 +78,17 @@ export async function createInbox(): Promise<CreateInboxResult> {
     return { ok: true, email: inbox.email, alreadyExisted: false };
   } catch (err) {
     console.error("Failed to create inbox for user", user.id, err);
+    const isInboxLimitReached =
+      typeof err === "object" &&
+      err !== null &&
+      (err as { body?: { code?: string } }).body?.code === "limit_exceeded";
+    if (isInboxLimitReached) {
+      return {
+        ok: false,
+        error:
+          "Email forwarding is at capacity right now, so a new address can't be created. Please contact support.",
+      };
+    }
     const message =
       err instanceof Error && err.message.includes("permission denied")
         ? "Database permission error while saving the inbox. Ask an admin to apply the latest migrations."

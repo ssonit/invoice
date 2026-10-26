@@ -11,12 +11,15 @@ import { Spinner } from "@/components/ui/spinner";
 export function CreateInboxButton() {
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
   function handleClick() {
+    setErrorMessage(null);
     startTransition(async () => {
       const result = await createInbox();
       if (!result.ok) {
+        setErrorMessage(result.error);
         toast.error(result.error);
         return;
       }
@@ -31,13 +34,20 @@ export function CreateInboxButton() {
   }
 
   return (
-    <Button size="sm" onClick={handleClick} disabled={isPending || done}>
-      {isPending ? (
-        <Spinner data-icon="inline-start" />
-      ) : (
-        <MailPlus data-icon="inline-start" />
-      )}
-      {isPending ? "Creating..." : "Create forwarding address"}
-    </Button>
+    <div className="flex flex-col items-start gap-2">
+      <Button size="sm" onClick={handleClick} disabled={isPending || done}>
+        {isPending ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <MailPlus data-icon="inline-start" />
+        )}
+        {isPending ? "Creating..." : "Create forwarding address"}
+      </Button>
+      {errorMessage ? (
+        <p role="alert" className="text-[13px] text-destructive">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }
