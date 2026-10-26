@@ -16,6 +16,11 @@ export function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  // The action's error stays in `state` until the next submit; remember which
+  // result the user has already reacted to by editing a field.
+  const [dismissedState, setDismissedState] = useState<typeof state | null>(null);
+  const dismissError = () => setDismissedState(state);
+  const shouldShowError = Boolean(state.error) && !isPending && state !== dismissedState;
 
   return (
     <form action={formAction}>
@@ -31,7 +36,10 @@ export function SignupForm() {
             placeholder="Alex Johnson"
             className="h-10"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              dismissError();
+            }}
           />
         </Field>
         <Field>
@@ -45,7 +53,10 @@ export function SignupForm() {
             placeholder="you@company.com"
             className="h-10"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              dismissError();
+            }}
           />
         </Field>
         <Field>
@@ -60,7 +71,10 @@ export function SignupForm() {
             placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
             className="h-10"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              dismissError();
+            }}
           />
           <p className="text-xs text-muted-foreground">
             Use at least {PASSWORD_MIN_LENGTH} characters.
@@ -77,10 +91,13 @@ export function SignupForm() {
             placeholder="Re-enter your password"
             className="h-10"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              dismissError();
+            }}
           />
         </Field>
-        {state.error && !isPending ? (
+        {shouldShowError ? (
           <div
             role="alert"
             className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"

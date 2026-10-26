@@ -6,6 +6,7 @@ import { extractWithAnthropic } from "./anthropic";
 import { extractWithGoogle } from "./google";
 import { extractWithDeepseek } from "./deepseek";
 import { classifyPdf } from "./pdf-classify";
+import { normalizeExtractionDates } from "./normalize-date";
 import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
 
 export type { ExtractionInput, InvoiceExtraction } from "./schema";
@@ -76,7 +77,7 @@ async function callProvider(
     method: metrics.method,
   });
 
-  return { extraction: result.extraction, metrics };
+  return { extraction: normalizeExtractionDates(result.extraction), metrics };
 }
 
 export async function extractInvoice(input: ExtractionInput): Promise<ExtractionOutcome> {
