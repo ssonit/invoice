@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRateLimitError } from "./provider-errors";
+import { isRateLimitError, isUnreadableDocumentError } from "./provider-errors";
 
 describe("isRateLimitError", () => {
   it("detects a numeric status property of 429", () => {
@@ -32,5 +32,19 @@ describe("isRateLimitError", () => {
     expect(isRateLimitError("boom")).toBe(false);
     expect(isRateLimitError(null)).toBe(false);
     expect(isRateLimitError(undefined)).toBe(false);
+  });
+});
+
+describe("isUnreadableDocumentError", () => {
+  it("is true for a provider 400", () => {
+    expect(isUnreadableDocumentError({ status: 400 })).toBe(true);
+    expect(isUnreadableDocumentError({ statusCode: 400 })).toBe(true);
+  });
+
+  it("is false for rate limits, outages, and non-objects", () => {
+    expect(isUnreadableDocumentError({ status: 429 })).toBe(false);
+    expect(isUnreadableDocumentError({ status: 500 })).toBe(false);
+    expect(isUnreadableDocumentError(new Error("boom"))).toBe(false);
+    expect(isUnreadableDocumentError(null)).toBe(false);
   });
 });

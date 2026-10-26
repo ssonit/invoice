@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractInvoice } from "@/lib/extraction";
+import { isUnreadableDocumentError } from "@/lib/extraction/provider-errors";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { MAX_UPLOAD_BYTES } from "@/lib/validation/upload";
 import { checkContentLength, parseUploadForm } from "@/lib/validation/common";
@@ -103,6 +104,17 @@ export async function POST(request: Request) {
     metrics = result.metrics;
   } catch (err) {
     console.error("Failed to extract invoice from upload", user.id, err);
+    if (isUnreadableDocumentError(err)) {
+      return NextResponse.json(
+        {
+          error:
+            mimeType === "application/pdf"
+              ? "This PDF appears to be corrupted or could not be read. Try exporting it again or upload an image instead."
+              : "This file could not be read. Try a clearer image or a PDF.",
+        },
+        { status: 422 },
+      );
+    }
     return NextResponse.json(
       { error: "Could not process the file. Please try again." },
       { status: 500 },

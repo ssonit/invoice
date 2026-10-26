@@ -66,11 +66,17 @@ export const processInboundEmail = task({
   run: async (payload: ProcessInboundEmailPayload) => {
     const supabase = createServiceClient();
 
-    const { data: inbox } = await supabase
+    // Active rows only: a deleted-then-recreated account leaves a soft-deleted
+    // row with the same AgentMail inbox id, which would make maybeSingle() error.
+    const { data: inbox, error: inboxError } = await supabase
       .from("inboxes")
       .select("user_id")
       .eq("agentmail_inbox_id", payload.inboxId)
+      .is("deleted_at", null)
       .maybeSingle();
+    if (inboxError) {
+      throw new Error(`Failed to look up inbox ${payload.inboxId}: ${inboxError.message}`);
+    }
 
     if (!inbox) {
       // Internal mapping problem, not the sender's fault — log and stop, no reply.

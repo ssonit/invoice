@@ -52,23 +52,30 @@ export async function POST(request: NextRequest) {
   // Hand off to the background queue and return immediately. idempotencyKey =
   // messageId means an AgentMail webhook retry returns the original run instead
   // of starting a duplicate — no processed_messages table needed.
-  await tasks.trigger<typeof processInboundEmail>(
-    "process-inbound-email",
-    {
-      inboxId: message.inboxId,
-      messageId: message.messageId,
-      subject: message.subject ?? null,
-      text: message.text ?? message.extractedText ?? null,
-      html: message.html ?? message.extractedHtml ?? null,
-      attachments: (message.attachments ?? []).map((attachment) => ({
-        attachmentId: attachment.attachmentId,
-        filename: attachment.filename ?? null,
-        contentType: attachment.contentType ?? null,
-        size: attachment.size ?? null,
-      })),
-    },
-    { idempotencyKey: message.messageId },
-  );
+  try {
+    await tasks.trigger<typeof processInboundEmail>(
+      "process-inbound-email",
+      {
+        inboxId: message.inboxId,
+        messageId: message.messageId,
+        subject: message.subject ?? null,
+        text: message.text ?? message.extractedText ?? null,
+        html: message.html ?? message.extractedHtml ?? null,
+        attachments: (message.attachments ?? []).map((attachment) => ({
+          attachmentId: attachment.attachmentId,
+          filename: attachment.filename ?? null,
+          contentType: attachment.contentType ?? null,
+          size: attachment.size ?? null,
+        })),
+      },
+      { idempotencyKey: message.messageId },
+    );
+  } catch (error) {
+    // Non-2xx makes AgentMail retry the delivery. Typical causes: wrong
+    // TRIGGER_SECRET_KEY environment, or tasks not deployed to that environment.
+    console.error("Failed to queue inbound email task", message.inboxId, message.messageId, error);
+    return NextResponse.json({ status: "error" }, { status: 500 });
+  }
 
   return NextResponse.json({ status: "queued" });
 }

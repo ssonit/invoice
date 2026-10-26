@@ -18,3 +18,14 @@ export function isRateLimitError(error: unknown): boolean {
 
   return false;
 }
+
+/**
+ * True when a provider rejected the *document itself* (HTTP 400 — e.g. a PDF
+ * with no readable pages), as opposed to an outage or auth problem. Retrying
+ * the same file can never succeed, so callers report it as a bad file (4xx).
+ */
+export function isUnreadableDocumentError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { status, statusCode } = error as { status?: unknown; statusCode?: unknown };
+  return status === 400 || statusCode === 400;
+}
