@@ -110,12 +110,20 @@ describe("email intake env (optional, all-or-nothing)", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts email intake without a Trigger.dev key", () => {
+    const result = parseEnvInput({
+      ...baseWithLlm,
+      AGENTMAIL_API_KEY: "am",
+      AGENTMAIL_WEBHOOK_SECRET: "whsec",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects a partially configured email intake and names the missing keys", () => {
     const result = parseEnvInput({ ...baseWithLlm, AGENTMAIL_API_KEY: "am" });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toMatch(/AGENTMAIL_WEBHOOK_SECRET/);
-      expect(result.error).toMatch(/TRIGGER_SECRET_KEY/);
     }
   });
 });

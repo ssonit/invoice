@@ -24,7 +24,7 @@ Required variables:
 
 Optional (skip if not using):
 - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (rate limits uploads and login / sign-up / password-reset — strongly recommended for a public deploy; does not cover email intake)
-- Email forwarding — set **all three or none** (a partial set fails at startup):
+- Email forwarding — set **both AgentMail keys or neither** (a partial set fails at startup). `TRIGGER_SECRET_KEY` is optional; without it emails are processed inline by the webhook (no retries):
   - `AGENTMAIL_API_KEY`
   - `AGENTMAIL_WEBHOOK_SECRET`
   - `TRIGGER_SECRET_KEY`
@@ -51,7 +51,7 @@ If using Vercel Preview deployments, also add the preview URL pattern (e.g. `htt
 
 ### 5. Trigger.dev — deploy background tasks
 
-If you use email forwarding:
+If you use email forwarding with Trigger.dev (skip this step to process emails inline in the webhook):
 
 ```bash
 npx trigger.dev@latest deploy

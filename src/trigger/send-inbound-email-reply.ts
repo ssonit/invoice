@@ -1,6 +1,6 @@
 import { task } from "@trigger.dev/sdk";
-import { getAgentMailClient } from "@/lib/agentmail";
-import { buildReplyText, type EmailReplyOutcome } from "@/lib/email-reply-templates";
+import type { EmailReplyOutcome } from "@/lib/email-reply-templates";
+import { sendInboundEmailReplyNow } from "@/lib/inbound-email/send-reply";
 
 export type SendInboundEmailReplyPayload = {
   inboxId: string;
@@ -12,10 +12,7 @@ export const sendInboundEmailReply = task({
   id: "send-inbound-email-reply",
   retry: { maxAttempts: 3 },
   run: async (payload: SendInboundEmailReplyPayload) => {
-    const text = buildReplyText(payload.outcome);
-    await getAgentMailClient().inboxes.messages.reply(payload.inboxId, payload.messageId, {
-      text,
-    });
+    await sendInboundEmailReplyNow(payload);
     return { status: "sent" as const, outcome: payload.outcome.type };
   },
 });

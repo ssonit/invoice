@@ -1,28 +1,12 @@
 import { task } from "@trigger.dev/sdk";
-import { getAgentMailClient } from "@/lib/agentmail";
-import { createServiceClient } from "@/lib/supabase/service";
+import type { ProcessExtractionResult } from "@/lib/invoices/process-extraction";
+import { downloadAndExtractAttachment } from "@/lib/inbound-email/download-and-extract-attachment";
 import {
-  processExtraction,
-  type ProcessExtractionResult,
-} from "@/lib/invoices/process-extraction";
+  EXTRACTION_CONCURRENCY_LIMIT,
+  type ProcessAttachmentPayload,
+} from "@/lib/inbound-email/types";
 
-export type ProcessAttachmentPayload = {
-  inboxId: string;
-  messageId: string;
-  userId: string;
-  attachment: {
-    attachmentId: string;
-    filename: string | null;
-    contentType: string | null;
-    size: number | null;
-  };
-};
-
-// Concurrent LLM calls + Supabase writes across the whole system. Each
-// attachment is now its own task run rather than one email looping over all
-// of its attachments, so this is the queue that actually needs the cap —
-// moved here from process-inbound-email.ts for that reason.
-export const EXTRACTION_CONCURRENCY_LIMIT = 5;
+export type { ProcessAttachmentPayload };
 
 // No onFailure here: a single attachment's exhausted retries aren't
 // independently reported to anyone. process-inbound-email.ts's
@@ -32,44 +16,6 @@ export const processAttachment = task({
   id: "process-attachment",
   queue: { concurrencyLimit: EXTRACTION_CONCURRENCY_LIMIT },
   retry: { maxAttempts: 3 },
-  run: async (payload: ProcessAttachmentPayload): Promise<ProcessExtractionResult> => {
-    const supabase = createServiceClient();
-    const { attachment } = payload;
-    const mimeType = attachment.contentType ?? "application/octet-stream";
-
-    const { downloadUrl } = await getAgentMailClient().inboxes.messages.getAttachment(
-      payload.inboxId,
-      payload.messageId,
-      attachment.attachmentId,
-    );
-    const fileRes = await fetch(downloadUrl);
-    if (!fileRes.ok) {
-      throw new Error(
-        `Failed to download attachment ${attachment.attachmentId}: AgentMail returned ${fileRes.status} ${fileRes.statusText}`,
-      );
-    }
-    const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
-
-    const input =
-      mimeType === "application/pdf"
-        ? ({ type: "pdf", data: fileBuffer } as const)
-        : mimeType.startsWith("image/")
-          ? ({ type: "image", data: fileBuffer, mimeType } as const)
-          : null;
-    // Unreachable in practice today (the parent's shouldExtractAttachment
-    // gate already restricts to pdf/image mime types before this task is
-    // ever triggered), kept as a defensive fallback matching the original
-    // loop's behavior: silently not saved, not treated as a failure.
-    if (!input) return { saved: false };
-
-    return processExtraction({
-      supabase,
-      userId: payload.userId,
-      messageId: payload.messageId,
-      sourceRef: attachment.attachmentId,
-      input,
-      fileBuffer,
-      fileName: attachment.filename ?? attachment.attachmentId,
-    });
-  },
+  run: async (payload: ProcessAttachmentPayload): Promise<ProcessExtractionResult> =>
+    downloadAndExtractAttachment(payload),
 });

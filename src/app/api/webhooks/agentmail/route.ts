@@ -1,11 +1,16 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "svix";
 import { tasks } from "@trigger.dev/sdk";
 import type { AgentMail } from "agentmail";
 import type { processInboundEmail } from "@/trigger/process-inbound-email";
 import { checkContentLength } from "@/lib/validation/common";
 import { MAX_WEBHOOK_BODY_BYTES } from "@/constants/validation";
-import { isEmailIntakeConfigured } from "@/lib/email-intake";
+import { isEmailIntakeConfigured, isTriggerConfigured } from "@/lib/email-intake";
+import { processInboundEmailInline } from "@/lib/inbound-email/process-inline";
+import type { ProcessInboundEmailPayload } from "@/lib/inbound-email/types";
+
+// Inline (no Trigger.dev) processing runs in after(); give it room for several attachments.
+export const maxDuration = 300;
 
 // Only POST is a real method here; answer anything else like a missing route
 // instead of Next's default 405 so a disabled intake looks fully absent.
@@ -49,27 +54,34 @@ export async function POST(request: NextRequest) {
 
   const message = event.message;
 
+  const emailPayload: ProcessInboundEmailPayload = {
+    inboxId: message.inboxId,
+    messageId: message.messageId,
+    subject: message.subject ?? null,
+    text: message.text ?? message.extractedText ?? null,
+    html: message.html ?? message.extractedHtml ?? null,
+    attachments: (message.attachments ?? []).map((attachment) => ({
+      attachmentId: attachment.attachmentId,
+      filename: attachment.filename ?? null,
+      contentType: attachment.contentType ?? null,
+      size: attachment.size ?? null,
+    })),
+  };
+
+  // No Trigger.dev: answer 200 now and do the work after the response, within
+  // this route's maxDuration. No queue, so no automatic retry.
+  if (!isTriggerConfigured(process.env)) {
+    after(() => processInboundEmailInline(emailPayload));
+    return NextResponse.json({ status: "processing" });
+  }
+
   // Hand off to the background queue and return immediately. idempotencyKey =
   // messageId means an AgentMail webhook retry returns the original run instead
   // of starting a duplicate — no processed_messages table needed.
   try {
-    await tasks.trigger<typeof processInboundEmail>(
-      "process-inbound-email",
-      {
-        inboxId: message.inboxId,
-        messageId: message.messageId,
-        subject: message.subject ?? null,
-        text: message.text ?? message.extractedText ?? null,
-        html: message.html ?? message.extractedHtml ?? null,
-        attachments: (message.attachments ?? []).map((attachment) => ({
-          attachmentId: attachment.attachmentId,
-          filename: attachment.filename ?? null,
-          contentType: attachment.contentType ?? null,
-          size: attachment.size ?? null,
-        })),
-      },
-      { idempotencyKey: message.messageId },
-    );
+    await tasks.trigger<typeof processInboundEmail>("process-inbound-email", emailPayload, {
+      idempotencyKey: message.messageId,
+    });
   } catch (error) {
     // Non-2xx makes AgentMail retry the delivery. Typical causes: wrong
     // TRIGGER_SECRET_KEY environment, or tasks not deployed to that environment.

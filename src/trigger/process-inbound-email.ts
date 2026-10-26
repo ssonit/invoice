@@ -12,21 +12,13 @@ import { aggregateAttachmentResults } from "@/lib/invoices/aggregate-attachment-
 import { buildFailureOutcome } from "@/lib/invoices/build-failure-outcome";
 import type { EmailReplyOutcome } from "@/lib/email-reply-templates";
 import type { sendInboundEmailReply } from "./send-inbound-email-reply";
-import type { processAttachment, ProcessAttachmentPayload } from "./process-attachment";
+import type { processAttachment } from "./process-attachment";
+import type {
+  ProcessAttachmentPayload,
+  ProcessInboundEmailPayload,
+} from "@/lib/inbound-email/types";
 
-export type ProcessInboundEmailPayload = {
-  inboxId: string;
-  messageId: string;
-  subject: string | null;
-  text: string | null;
-  html: string | null;
-  attachments: {
-    attachmentId: string;
-    filename: string | null;
-    contentType: string | null;
-    size: number | null;
-  }[];
-};
+export type { ProcessInboundEmailPayload };
 
 // SavedInvoiceSummary is structurally identical to the reply builder's
 // ReplyInvoiceSummary, so a saved-invoices array satisfies EmailReplyOutcome.
