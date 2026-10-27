@@ -311,6 +311,9 @@ export function InvoiceDetail({
                     label={t.detail.invoiceNumber}
                     value={invoice.invoice_number ?? "—"}
                   />
+                  {invoice.source_sender ? (
+                    <DetailField label={t.detail.sender} value={invoice.source_sender} />
+                  ) : null}
                   <DetailField
                     label={t.detail.invoiceDate}
                     value={formatInvoiceDate(invoice.issue_date)}

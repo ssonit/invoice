@@ -98,6 +98,7 @@ export const processInboundEmail = task({
           supabase,
           userId: inbox.user_id,
           messageId: payload.messageId,
+          sender: payload.sender,
           sourceRef: "body",
           input: { type: "html", html },
           fileBuffer: null,
@@ -124,6 +125,7 @@ export const processInboundEmail = task({
               inboxId: payload.inboxId,
               messageId: payload.messageId,
               userId: inbox.user_id,
+              sender: payload.sender,
               attachment,
             } satisfies ProcessAttachmentPayload,
             // A retry of process-inbound-email re-runs this whole function

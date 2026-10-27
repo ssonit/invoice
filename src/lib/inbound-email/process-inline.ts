@@ -32,6 +32,7 @@ async function extractWithRetry(
         inboxId: payload.inboxId,
         messageId: payload.messageId,
         userId,
+        sender: payload.sender,
         attachment,
       });
     } catch (error) {
@@ -84,6 +85,7 @@ async function run(payload: ProcessInboundEmailPayload) {
         supabase,
         userId: inbox.user_id,
         messageId: payload.messageId,
+        sender: payload.sender,
         sourceRef: "body",
         input: { type: "html", html: payload.html ?? payload.text ?? "" },
         fileBuffer: null,

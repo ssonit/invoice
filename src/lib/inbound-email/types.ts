@@ -8,6 +8,7 @@ export type InboundAttachment = {
 export type ProcessInboundEmailPayload = {
   inboxId: string;
   messageId: string;
+  sender: string | null;
   subject: string | null;
   text: string | null;
   html: string | null;
@@ -18,6 +19,7 @@ export type ProcessAttachmentPayload = {
   inboxId: string;
   messageId: string;
   userId: string;
+  sender: string | null;
   attachment: InboundAttachment;
 };
 

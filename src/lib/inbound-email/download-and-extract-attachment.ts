@@ -42,6 +42,7 @@ export async function downloadAndExtractAttachment(
     supabase,
     userId: payload.userId,
     messageId: payload.messageId,
+    sender: payload.sender,
     sourceRef: attachment.attachmentId,
     input,
     fileBuffer,

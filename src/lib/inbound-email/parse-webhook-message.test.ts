@@ -6,6 +6,7 @@ describe("parseWebhookMessage", () => {
     const parsed = parseWebhookMessage({
       inbox_id: "inv-3c4f0757@agentmail.to",
       message_id: "<abc@email.amazonses.com>",
+      from: "Web Tester <webtester@mail.grokbot.com>",
       subject: "Fwd: X.AI invoice CQN8-8WLV-Y3RB",
       text: "Test forwarding #2: X.AI invoice attached.",
       extracted_text: "ignored when text exists",
@@ -22,6 +23,7 @@ describe("parseWebhookMessage", () => {
     expect(parsed).toEqual({
       inboxId: "inv-3c4f0757@agentmail.to",
       messageId: "<abc@email.amazonses.com>",
+      sender: "webtester@mail.grokbot.com",
       subject: "Fwd: X.AI invoice CQN8-8WLV-Y3RB",
       text: "Test forwarding #2: X.AI invoice attached.",
       html: null,

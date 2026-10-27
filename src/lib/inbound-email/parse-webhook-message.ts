@@ -1,3 +1,4 @@
+import { extractSenderAddress } from "./sender";
 import type { ProcessInboundEmailPayload } from "./types";
 
 type RawRecord = Record<string, unknown>;
@@ -54,6 +55,7 @@ export function parseWebhookMessage(message: unknown): ProcessInboundEmailPayloa
   return {
     inboxId,
     messageId,
+    sender: extractSenderAddress(message.from ?? message.from_ ?? message.from_address),
     subject: pickString(message, "subject"),
     text: pickString(message, "text", "extracted_text", "extractedText"),
     html: pickString(message, "html", "extracted_html", "extractedHtml"),

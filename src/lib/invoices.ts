@@ -23,6 +23,7 @@ export type InvoiceRow = {
   line_items: InvoiceLineItem[];
   confidence_score: number | null;
   source: string;
+  source_sender?: string | null; // email From address; null for uploads
   needs_review: boolean;
   file_url: string | null;
   created_at: string;
@@ -163,6 +164,7 @@ export function normalizeInvoice(row: Record<string, unknown>): InvoiceRow {
     line_items: normalizeLineItems(row.line_items),
     confidence_score: asNumber(row.confidence_score),
     source: String(row.source ?? "email"),
+    source_sender: (row.source_sender as string) ?? null,
     needs_review: Boolean(row.needs_review),
     file_url: (row.file_url as string) ?? null,
     created_at: String(row.created_at),

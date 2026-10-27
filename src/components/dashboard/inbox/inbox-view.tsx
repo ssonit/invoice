@@ -51,8 +51,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 function sourceSubtitle(invoice: InvoiceRow, t: DashboardDictionary): string {
   if (invoice.source === INBOX_SOURCE_FILTER.UPLOAD) return t.inbox.manualUpload
-  // The sender address isn't stored, so don't invent one from the vendor name.
-  return t.inbox.forwardedEmail
+  // Only show an address we actually received; never infer one from the vendor name.
+  return invoice.source_sender ?? t.inbox.forwardedEmail
 }
 
 function buildHref(pathname: string, next: InboxListQuery): string {

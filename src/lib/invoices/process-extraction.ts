@@ -31,12 +31,14 @@ export async function processExtraction(params: {
   supabase: ServiceClient;
   userId: string;
   messageId: string;
+  /** Email address the message came from; null for body-less/unknown senders. */
+  sender?: string | null;
   sourceRef: string;
   input: ExtractionInput;
   fileBuffer: Buffer | null;
   fileName: string | null;
 }): Promise<ProcessExtractionResult> {
-  const { supabase, userId, messageId, sourceRef, input, fileBuffer, fileName } = params;
+  const { supabase, userId, messageId, sender, sourceRef, input, fileBuffer, fileName } = params;
 
   // Same file, seen before → reuse the invoice instead of paying for another
   // extraction. Only attachments can be hashed; an HTML body has no buffer.
@@ -116,6 +118,7 @@ export async function processExtraction(params: {
     {
       user_id: userId,
       source: "email",
+      source_sender: sender ?? null,
       vendor: extracted.vendor,
       invoice_number: extracted.invoice_number,
       amount: extracted.amount,
