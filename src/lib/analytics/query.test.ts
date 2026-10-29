@@ -36,21 +36,21 @@ describe("buildAnalyticsHref", () => {
 });
 
 describe("rangeStartIso", () => {
-  it("returns an ISO date string at month start, N months before now", () => {
+  it("includes the current month in the six-month chart window", () => {
     const now = new Date("2026-07-15T12:00:00Z");
     const result = rangeStartIso(now, 6);
-    expect(result).toBe("2026-01-01T00:00:00.000Z");
+    expect(result).toBe("2026-02-01T00:00:00.000Z");
   });
 
   it("handles year boundary", () => {
     const now = new Date("2026-02-15T12:00:00Z");
     const result = rangeStartIso(now, 6);
-    expect(result).toBe("2025-08-01T00:00:00.000Z");
+    expect(result).toBe("2025-09-01T00:00:00.000Z");
   });
 
   it("handles 12-month range", () => {
     const now = new Date("2026-07-15T12:00:00Z");
     const result = rangeStartIso(now, 12);
-    expect(result).toBe("2025-07-01T00:00:00.000Z");
+    expect(result).toBe("2025-08-01T00:00:00.000Z");
   });
 });

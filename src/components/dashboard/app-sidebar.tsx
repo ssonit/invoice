@@ -114,7 +114,7 @@ export function AppSidebar({ isEmailIntakeEnabled }: { isEmailIntakeEnabled: boo
         ))}
       </SidebarContent>
 
-      <SidebarRail />
+      <SidebarRail label={t.common.toggleSidebar} />
     </Sidebar>
   )
 }

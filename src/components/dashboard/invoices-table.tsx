@@ -78,7 +78,11 @@ export function InvoicesTable({
     });
   }
 
-  const isEmpty = data.length === 0 && totalCount === 0;
+  // Onboarding copy is only right for an account with no invoices at all; a
+  // filtered search that matches nothing falls through to the table's
+  // "no matches" row, keeping the toolbar's Clear button reachable.
+  const hasActiveFilters = Boolean(query.vendor) || query.status !== "all";
+  const isEmpty = data.length === 0 && totalCount === 0 && !hasActiveFilters;
 
   if (isEmpty) {
     return (

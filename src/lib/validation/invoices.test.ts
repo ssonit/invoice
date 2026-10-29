@@ -86,6 +86,23 @@ describe("parseUpdateInvoiceInput", () => {
       parseUpdateInvoiceInput({ ...BLANK, id: ID, vendor: "x".repeat(201) }).success,
     ).toBe(false);
   });
+
+  it("accepts reviewed line items without accepting model approval or ownership fields", () => {
+    const line_items = [{ description: "Service", quantity: 2, unit_price: 10, amount: 20 }];
+    const result = parseUpdateInvoiceInput({
+      ...BLANK, id: ID, line_items, user_id: "other", approved_at: "now", needs_review: false,
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.line_items).toEqual(line_items);
+    expect(result.data).not.toHaveProperty("user_id");
+    expect(result.data).not.toHaveProperty("approved_at");
+    expect(result.data).not.toHaveProperty("needs_review");
+  });
+
+  it("rejects invalid line items", () => {
+    expect(parseUpdateInvoiceInput({ ...BLANK, id: ID, line_items: [{ description: "Service", quantity: null, unit_price: null, amount: Infinity }] }).success).toBe(false);
+  });
 });
 
 describe("parseSetInvoiceReviewInput", () => {
@@ -103,5 +120,18 @@ describe("parseRetryExtractionInput", () => {
   it("requires a uuid", () => {
     expect(parseRetryExtractionInput({ id: ID }).success).toBe(true);
     expect(parseRetryExtractionInput({ id: "1" }).success).toBe(false);
+  });
+});
+
+describe("parseDeleteInvoiceInput", () => {
+  it("accepts a valid invoice id", async () => {
+    const { parseDeleteInvoiceInput } = await import("./invoices");
+    expect(parseDeleteInvoiceInput({ id: "3f2b8a0e-6c1d-4f4e-9a57-0d5d9b1c2e11" }).success).toBe(true);
+  });
+
+  it("rejects a missing or malformed id", async () => {
+    const { parseDeleteInvoiceInput } = await import("./invoices");
+    expect(parseDeleteInvoiceInput({}).success).toBe(false);
+    expect(parseDeleteInvoiceInput({ id: "nope" }).success).toBe(false);
   });
 });

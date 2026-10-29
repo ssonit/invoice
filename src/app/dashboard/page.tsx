@@ -6,6 +6,8 @@ import { ContentShell } from "@/components/dashboard/content-shell"
 import { OverviewReportView } from "@/components/dashboard/overview-report-view"
 import { normalizeInvoice } from "@/lib/invoices"
 import { getDashboardDictionary } from "@/lib/dashboard/locale-server"
+import { GettingStarted } from "@/components/dashboard/getting-started"
+import { isEmailIntakeConfigured } from "@/lib/email-intake"
 
 const RECENT_INVOICES_LIMIT = 5
 
@@ -44,6 +46,7 @@ export default async function DashboardOverviewPage() {
       }
     >
       <div className="flex flex-col gap-5">
+        {totalCount === 0 ? <GettingStarted t={t} emailEnabled={isEmailIntakeConfigured(process.env)} /> : null}
         <OverviewReportView />
 
         <section className="rounded-xl border border-border bg-card/40">

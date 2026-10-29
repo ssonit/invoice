@@ -8,15 +8,20 @@ import { extractInvoice } from "@/lib/extraction";
 import { isUnreadableDocumentError } from "@/lib/extraction/provider-errors";
 import { ensureVendorRecord } from "@/lib/vendors";
 import { mimeTypeFromPath } from "@/lib/invoices/file-type";
-import { EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD } from "@/constants/extraction";
+import { checkUploadRateLimit } from "@/lib/rate-limit";
+import type { InvoiceExtraction } from "@/lib/extraction/schema";
 import {
   INVOICE_REVIEW_STATUS,
+  parseDeleteInvoiceInput,
   parseRetryExtractionInput,
   parseSetInvoiceReviewInput,
   parseUpdateInvoiceInput,
 } from "@/lib/validation/invoices";
 
 export type InvoiceMutationResult = { ok: true } | { ok: false; error: string };
+export type InvoiceExtractionPreviewResult =
+  | { ok: true; extraction: InvoiceExtraction }
+  | { ok: false; error: string };
 
 async function requireUser() {
   const supabase = await createClient();
@@ -34,6 +39,7 @@ function revalidateInvoiceViews() {
     "/dashboard/invoices",
     "/dashboard/analytics",
     "/dashboard/vendors",
+    "/dashboard/exports",
   ]) {
     revalidatePath(path);
   }
@@ -50,7 +56,7 @@ export async function updateInvoice(input: unknown): Promise<InvoiceMutationResu
 
   const { data, error } = await service
     .from("invoices")
-    .update(fields)
+    .update({ ...fields, needs_review: true, approved_at: null })
     .eq("id", id)
     .eq("user_id", user.id)
     .is("deleted_at", null)
@@ -106,8 +112,36 @@ export async function setInvoiceReviewStatus(input: unknown): Promise<InvoiceMut
   return { ok: true };
 }
 
-// Re-runs extraction on the stored file and overwrites the extracted fields.
-export async function retryInvoiceExtraction(input: unknown): Promise<InvoiceMutationResult> {
+// Soft delete: flips deleted_at so lists, totals, analytics and vendor counts
+// drop the invoice while the row and stored file stay recoverable.
+export async function deleteInvoice(input: unknown): Promise<InvoiceMutationResult> {
+  const parsed = parseDeleteInvoiceInput(input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
+  const user = await requireUser();
+  const service = createServiceClient();
+
+  const { data, error } = await service
+    .from("invoices")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to delete invoice", user.id, parsed.data.id, error);
+    return { ok: false, error: "Could not delete the invoice. Please try again." };
+  }
+  if (!data) return { ok: false, error: "Invoice not found." };
+
+  revalidateInvoiceViews();
+  return { ok: true };
+}
+
+// Read-only proposal. Persist changes only through updateInvoice after review.
+export async function previewInvoiceExtraction(input: unknown): Promise<InvoiceExtractionPreviewResult> {
   const parsed = parseRetryExtractionInput(input);
   if (!parsed.success) return { ok: false, error: parsed.error };
 
@@ -129,6 +163,11 @@ export async function retryInvoiceExtraction(input: unknown): Promise<InvoiceMut
       ok: false,
       error: "There is no stored PDF or image to re-read for this invoice.",
     };
+  }
+
+  const rateLimit = await checkUploadRateLimit(user.id);
+  if (rateLimit.limited) {
+    return { ok: false, error: `Too many extraction requests. Try again in ${rateLimit.retryAfterSeconds} seconds.` };
   }
 
   const { data: blob, error: downloadError } = await service.storage
@@ -156,42 +195,14 @@ export async function retryInvoiceExtraction(input: unknown): Promise<InvoiceMut
     return { ok: false, error: "Extraction failed. Please try again." };
   }
 
-  const { extraction, metrics } = result;
+  const { extraction } = result;
   if (!extraction.is_invoice) {
     return { ok: false, error: "The file no longer looks like an invoice." };
   }
 
-  const { error: updateError } = await service
-    .from("invoices")
-    .update({
-      vendor: extraction.vendor,
-      invoice_number: extraction.invoice_number,
-      amount: extraction.amount,
-      currency: extraction.currency,
-      issue_date: extraction.issue_date,
-      due_date: extraction.due_date,
-      tax: extraction.tax,
-      line_items: extraction.line_items,
-      confidence_score: extraction.confidence_score,
-      needs_review: extraction.confidence_score < EXTRACTION_CONFIDENCE_REVIEW_THRESHOLD,
-      approved_at: null,
-      raw_extracted_json: extraction,
-      extraction_provider: metrics.provider,
-      extraction_model: metrics.model,
-      extraction_input_tokens: metrics.inputTokens,
-      extraction_output_tokens: metrics.outputTokens,
-      extraction_ms: metrics.durationMs,
-      extraction_method: metrics.method,
-    })
-    .eq("id", invoice.id)
-    .eq("user_id", user.id);
+  // Preview calls incur cost even when cancelled; do not overwrite the saved
+  // invoice's original extraction metrics before the user chooses to save.
+  console.info("Invoice extraction preview completed", { userId: user.id, invoiceId: invoice.id, ...result.metrics });
 
-  if (updateError) {
-    console.error("Failed to save retried extraction", user.id, invoice.id, updateError);
-    return { ok: false, error: "Could not save the new extraction. Please try again." };
-  }
-
-  await ensureVendorRecord(service, user.id, extraction.vendor);
-  revalidateInvoiceViews();
-  return { ok: true };
+  return { ok: true, extraction };
 }

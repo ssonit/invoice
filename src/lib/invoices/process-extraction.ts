@@ -83,8 +83,6 @@ export async function processExtraction(params: {
   const { extraction: extracted, metrics } = await extractInvoice(input);
   if (!extracted.is_invoice) return { saved: false };
 
-  // Same vendor + invoice number as one already saved: another file of the same
-  // invoice. A task retry re-finding its own earlier save is not a new arrival.
   const sameInvoice = await findAndCountSameInvoice({ supabase, userId, extracted });
   if (sameInvoice) {
     return {

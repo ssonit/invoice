@@ -102,6 +102,34 @@ export async function markVendorAsSubscription(
   return { ok: true };
 }
 
+// "Stop tracking": soft-deletes the user's confirmation row (manual mark or
+// reminder answer) so the vendor no longer shows a subscription. Nothing is
+// physically removed — confirmSubscription/markVendorAsSubscription revive it.
+export async function unmarkVendorSubscription(
+  vendorKey: string,
+): Promise<ConfirmSubscriptionResult> {
+  const parsed = parseVendorKeyInput(vendorKey);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+
+  const user = await requireUser();
+  const service = createServiceClient();
+
+  const { error } = await service
+    .from("subscription_confirmations")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .eq("vendor_key", parsed.data.vendorKey)
+    .is("deleted_at", null);
+
+  if (error) {
+    console.error("Failed to unmark vendor subscription", user.id, error);
+    return { ok: false, error: "Could not update the subscription. Please try again." };
+  }
+
+  revalidatePath("/dashboard/vendors");
+  return { ok: true };
+}
+
 export async function createVendor(input: {
   name: string;
   notes?: string;

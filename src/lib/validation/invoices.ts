@@ -67,6 +67,13 @@ export const updateInvoiceSchema = z.object({
   issue_date: optionalDate("Invoice date"),
   due_date: optionalDate("Due date"),
   tax: optionalMoney("Tax"),
+  // Only supplied when the user explicitly saves a new extraction preview.
+  line_items: z.array(z.object({
+    description: z.string().max(4000),
+    quantity: z.number().finite().nullable(),
+    unit_price: z.number().finite().nullable(),
+    amount: z.number().finite().nullable(),
+  })).max(1000).optional(),
 });
 
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
@@ -102,5 +109,9 @@ export function parseSetInvoiceReviewInput(input: unknown) {
 }
 
 export function parseRetryExtractionInput(input: unknown) {
+  return parseWith(retryExtractionSchema, input);
+}
+
+export function parseDeleteInvoiceInput(input: unknown) {
   return parseWith(retryExtractionSchema, input);
 }

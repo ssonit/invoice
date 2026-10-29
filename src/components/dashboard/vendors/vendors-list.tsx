@@ -10,6 +10,7 @@ import type { SubscriptionCycleConstant } from "@/constants/subscriptions"
 import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
 import { deleteVendor, getVendorInvoices } from "@/app/dashboard/vendors/actions"
 import { SubscriptionConfirmButtons } from "@/components/dashboard/vendors/subscription-confirm-buttons"
+import { SubscriptionManageButtons } from "@/components/dashboard/vendors/subscription-manage-buttons"
 import { MarkSubscriptionButton } from "@/components/dashboard/vendors/mark-subscription-button"
 import { VendorFormDialog } from "@/components/dashboard/vendors/vendor-form-dialog"
 import {
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/sheet"
 import { Spinner } from "@/components/ui/spinner"
 import { formatInvoiceDate, formatInvoiceMoney } from "@/lib/invoices"
+import { INTL_LOCALE } from "@/lib/dashboard/format-date"
 import type { SubscriptionStatus } from "@/lib/subscriptions"
 import { buildVendorsHref, type VendorQuery } from "@/lib/vendors/query"
 import { cn } from "@/lib/utils"
@@ -87,7 +89,7 @@ export function VendorsList({
   totalCount: number
   pageCount: number
 }) {
-  const { t } = useDashboardI18n()
+  const { t, locale } = useDashboardI18n()
   const router = useRouter()
   const pathname = usePathname()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -297,6 +299,12 @@ export function VendorsList({
                         <SubscriptionConfirmButtons vendorKey={selected.key} />
                       </div>
                     ) : null}
+                    <div className="mt-3 border-t border-border pt-3">
+                      <SubscriptionManageButtons
+                        vendorKey={selected.key}
+                        isCancelled={selected.subscription.status === "cancelled"}
+                      />
+                    </div>
                   </div>
                 ) : null}
 
@@ -322,9 +330,9 @@ export function VendorsList({
                                 {invoice.invoice_number || t.vendors.noInvoiceNumber}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {formatInvoiceDate(invoice.issue_date)}
+                                {formatInvoiceDate(invoice.issue_date, INTL_LOCALE[locale])}
                                 {invoice.due_date
-                                  ? t.vendors.due.replace("{date}", formatInvoiceDate(invoice.due_date))
+                                  ? t.vendors.due.replace("{date}", formatInvoiceDate(invoice.due_date, INTL_LOCALE[locale]))
                                   : ""}
                               </p>
                             </div>

@@ -3,6 +3,17 @@
 // numeric columns can arrive as strings from PostgREST.
 
 import { ZERO_DECIMAL_CURRENCIES } from "@/constants/currencies";
+import {
+  DEFAULT_INTL_LOCALE,
+  FALLBACK_TIME_ZONE,
+  dayKeyInTimeZone,
+  formatCalendarDate,
+  formatClockTime,
+  formatFullDate,
+  formatMonthDay,
+  formatShortMonth,
+  previousDayKeyInTimeZone,
+} from "@/lib/dashboard/format-date";
 
 export type InvoiceLineItem = {
   description: string;
@@ -32,13 +43,10 @@ export type InvoiceRow = {
 
 export type InvoiceInboxStatus = "review" | "extracted" | "approved";
 
-/** Map extraction confidence + needs_review into inbox UI statuses. */
+/** Approval is an explicit human decision; model confidence never grants it. */
 export function getInboxStatus(row: InvoiceRow): InvoiceInboxStatus {
   if (row.needs_review) return "review";
   if (row.approved_at) return "approved";
-  if (row.confidence_score != null && row.confidence_score >= 0.9) {
-    return "approved";
-  }
   return "extracted";
 }
 
@@ -64,23 +72,8 @@ function formatFixedNumber(n: number, fractionDigits: number): string {
     : `${sign}${withCommas}`;
 }
 
-const MONTHS_SHORT = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
 /** Format YYYY-MM-DD without timezone shifts. */
-export function formatInvoiceDate(value: string | null): string {
+export function formatInvoiceDate(value: string | null, locale: string = DEFAULT_INTL_LOCALE): string {
   if (!value) return "—";
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   if (!match) return value;
@@ -88,48 +81,40 @@ export function formatInvoiceDate(value: string | null): string {
   const month = Number(match[2]);
   const day = Number(match[3]);
   if (month < 1 || month > 12) return value;
-  return `${MONTHS_SHORT[month - 1]} ${day}, ${year}`;
+  return formatCalendarDate({ year, month, day }, locale);
 }
 
-function utcDayKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-}
+export type InboxLabelOptions = { locale?: string; timeZone?: string };
 
-function startOfUtcDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-/** Group label relative to a fixed `now` (pass the same ISO from the server). */
-export function inboxGroupLabel(createdAt: string, nowIso: string): string {
+/**
+ * Group label relative to a fixed `now` (pass the same ISO from the server).
+ * "Today" / "Yesterday" are returned as English sentinels for the caller to
+ * translate; other days are formatted in the viewer's locale and time zone.
+ */
+export function inboxGroupLabel(
+  createdAt: string,
+  nowIso: string,
+  { locale = DEFAULT_INTL_LOCALE, timeZone = FALLBACK_TIME_ZONE }: InboxLabelOptions = {},
+): string {
   const date = new Date(createdAt);
   const now = new Date(nowIso);
-  const today = startOfUtcDay(now);
-  const yesterday = new Date(today);
-  yesterday.setUTCDate(today.getUTCDate() - 1);
-  const day = startOfUtcDay(date);
-
-  if (utcDayKey(day) === utcDayKey(today)) return "Today";
-  if (utcDayKey(day) === utcDayKey(yesterday)) return "Yesterday";
-  return `${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCDate()}, ${day.getUTCFullYear()}`;
+  const dayKey = dayKeyInTimeZone(date, timeZone);
+  if (dayKey === dayKeyInTimeZone(now, timeZone)) return "Today";
+  if (dayKey === previousDayKeyInTimeZone(now, timeZone)) return "Yesterday";
+  return formatFullDate(date, locale, timeZone);
 }
 
-export function inboxTimeLabel(createdAt: string, nowIso: string): string {
+export function inboxTimeLabel(
+  createdAt: string,
+  nowIso: string,
+  { locale = DEFAULT_INTL_LOCALE, timeZone = FALLBACK_TIME_ZONE }: InboxLabelOptions = {},
+): string {
   const date = new Date(createdAt);
   const now = new Date(nowIso);
-  const today = startOfUtcDay(now);
-  const yesterday = new Date(today);
-  yesterday.setUTCDate(today.getUTCDate() - 1);
-  const day = startOfUtcDay(date);
-
-  if (utcDayKey(day) === utcDayKey(today)) {
-    let hours = date.getUTCHours();
-    const minutes = date.getUTCMinutes();
-    const period = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12;
-    return `${hours}:${String(minutes).padStart(2, "0")} ${period}`;
-  }
-  if (utcDayKey(day) === utcDayKey(yesterday)) return "Yesterday";
-  return `${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCDate()}`;
+  const dayKey = dayKeyInTimeZone(date, timeZone);
+  if (dayKey === dayKeyInTimeZone(now, timeZone)) return formatClockTime(date, locale, timeZone);
+  if (dayKey === previousDayKeyInTimeZone(now, timeZone)) return "Yesterday";
+  return formatMonthDay(date, locale, timeZone);
 }
 
 function asNumber(value: unknown): number | null {
@@ -280,7 +265,11 @@ export function computeStats(rows: InvoiceRow[]): InvoiceStats {
 export type TrendPoint = { month: string; count: number };
 
 // Invoice counts for the last `months` calendar months, oldest first.
-export function monthlyTrend(rows: InvoiceRow[], months = 6): TrendPoint[] {
+export function monthlyTrend(
+  rows: InvoiceRow[],
+  months = 6,
+  locale: string = DEFAULT_INTL_LOCALE,
+): TrendPoint[] {
   const buckets: TrendPoint[] = [];
   const index = new Map<string, number>();
   const now = new Date();
@@ -288,7 +277,7 @@ export function monthlyTrend(rows: InvoiceRow[], months = 6): TrendPoint[] {
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
     const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
-    const label = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+    const label = formatShortMonth(d, locale);
     index.set(key, buckets.length);
     buckets.push({ month: label, count: 0 });
   }

@@ -86,18 +86,18 @@ describe("buildExportHref", () => {
 });
 
 describe("rangeStartIso", () => {
-  it("returns first-of-month ISO 6 months ago", () => {
+  it("returns the start of six calendar months including the current month", () => {
     const now = new Date("2026-07-15T12:00:00Z");
-    expect(rangeStartIso(now, 6)).toBe("2026-01-01T00:00:00.000Z");
+    expect(rangeStartIso(now, 6)).toBe("2026-02-01T00:00:00.000Z");
   });
 
-  it("returns first-of-month ISO 12 months ago", () => {
+  it("returns the start of twelve calendar months including the current month", () => {
     const now = new Date("2026-07-15T12:00:00Z");
-    expect(rangeStartIso(now, 12)).toBe("2025-07-01T00:00:00.000Z");
+    expect(rangeStartIso(now, 12)).toBe("2025-08-01T00:00:00.000Z");
   });
 
   it("handles January boundary", () => {
     const now = new Date("2026-01-15T12:00:00Z");
-    expect(rangeStartIso(now, 6)).toBe("2025-07-01T00:00:00.000Z");
+    expect(rangeStartIso(now, 6)).toBe("2025-08-01T00:00:00.000Z");
   });
 });

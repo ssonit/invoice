@@ -169,20 +169,20 @@ export function UploadInvoiceButton() {
     const outcomes: UploadOutcome[] = [];
     let stopped = false;
 
-    function recordOutcome(outcome: UploadOutcome) {
-      outcomes.push(outcome);
+    function recordOutcome(outcome: UploadOutcome, index: number) {
+      outcomes[index] = outcome;
       setProgress((prev) => (prev ? { current: prev.current + 1, total: prev.total } : prev));
     }
 
     try {
-      await runWithConcurrencyLimit(files, UPLOAD_CONCURRENCY_LIMIT, async (file) => {
+      await runWithConcurrencyLimit(files, UPLOAD_CONCURRENCY_LIMIT, async (file, index) => {
         if (stopped) {
-          recordOutcome({ ok: false, fileName: file.name, error: t.upload.skippedRateLimited });
+          recordOutcome({ ok: false, fileName: file.name, error: t.upload.skippedRateLimited }, index);
           return;
         }
         try {
           const outcome = await uploadOne(file, t.upload.failed);
-          recordOutcome(outcome);
+          recordOutcome(outcome, index);
           if (!outcome.ok && /too many uploads/i.test(outcome.error)) {
             stopped = true;
           }
@@ -191,7 +191,7 @@ export function UploadInvoiceButton() {
             ok: false,
             fileName: file.name,
             error: t.upload.connectionFailed,
-          });
+          }, index);
         }
       });
 
@@ -199,12 +199,11 @@ export function UploadInvoiceButton() {
       if (outcomes.some((o) => o.ok)) {
         router.refresh();
       }
-      // Keep failed files in the dialog so they can be retried in place.
       const failedErrors: Record<string, string> = {};
-      const failedItems = batch.filter((item) => {
-        const outcome = outcomes.find((o) => !o.ok && o.fileName === item.file.name);
+      const failedItems = batch.filter((item, index) => {
+        const outcome = outcomes[index];
         if (outcome && !outcome.ok) failedErrors[item.id] = outcome.error;
-        return Boolean(outcome);
+        return outcome && !outcome.ok;
       });
       setPending(failedItems);
       setErrors(failedErrors);

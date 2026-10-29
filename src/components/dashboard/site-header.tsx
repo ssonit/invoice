@@ -24,7 +24,7 @@ export function SiteHeader({ email, displayName }: { email: string; displayName:
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/80 px-4">
-      <SidebarTrigger className="-ml-1" />
+      <SidebarTrigger className="-ml-1" label={t.common.toggleSidebar} />
       <Separator
         orientation="vertical"
         className="mr-1 data-[orientation=vertical]:h-4"

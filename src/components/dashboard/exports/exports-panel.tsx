@@ -55,25 +55,8 @@ export function ExportsPanel({
   const capped = count > MAX_EXPORT_ROWS;
   const downloadHref = buildExportHref(query);
 
-  if (count === 0) {
-    return (
-      <Empty className="rounded-[14px] border border-border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Download />
-          </EmptyMedia>
-          <EmptyTitle>{t.exports.emptyTitle}</EmptyTitle>
-          <EmptyDescription>
-            {t.exports.emptyDescription}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1">
           {RANGE_VALUES.map((value) => (
@@ -115,38 +98,49 @@ export function ExportsPanel({
         </div>
       </div>
 
-      {/* Description + Count + Download */}
-      <div className="rounded-[14px] border border-border p-6">
-        <p className="text-[13px] text-muted-foreground">
-          {t.exports.description}
-        </p>
-        <p className="mt-3 text-[13px]">
-          <span className="font-semibold tabular-nums">
-            {capped
-              ? MAX_EXPORT_ROWS.toLocaleString()
-              : count.toLocaleString()}
-          </span>{" "}
-          {t.exports.willInclude.replace(
-            "{count}",
-            capped || count !== 1 ? t.exports.invoiceMany : t.exports.invoiceOne,
-          )}
-          {capped ? (
-            <span className="ml-1 text-muted-foreground">
-              {t.exports.capped.replace("{max}", MAX_EXPORT_ROWS.toLocaleString())}
-            </span>
-          ) : null}
-        </p>
-        <a
-          href={downloadHref}
-          className={cn(
-            buttonVariants({ variant: "default", size: "sm" }),
-            "mt-4",
-          )}
-        >
-          <Download data-icon="inline-start" />
-          {t.exports.download}
-        </a>
-      </div>
+      {count === 0 ? (
+        <Empty className="rounded-[14px] border border-border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Download />
+            </EmptyMedia>
+            <EmptyTitle>{t.exports.emptyTitle}</EmptyTitle>
+            <EmptyDescription>{t.exports.emptyDescription}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="rounded-[14px] border border-border p-6">
+          <p className="text-[13px] text-muted-foreground">
+            {t.exports.description}
+          </p>
+          <p className="mt-3 text-[13px]">
+            <span className="font-semibold tabular-nums">
+              {capped
+                ? MAX_EXPORT_ROWS.toLocaleString()
+                : count.toLocaleString()}
+            </span>{" "}
+            {t.exports.willInclude.replace(
+              "{count}",
+              capped || count !== 1 ? t.exports.invoiceMany : t.exports.invoiceOne,
+            )}
+            {capped ? (
+              <span className="ml-1 text-muted-foreground">
+                {t.exports.capped.replace("{max}", MAX_EXPORT_ROWS.toLocaleString())}
+              </span>
+            ) : null}
+          </p>
+          <a
+            href={downloadHref}
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "mt-4",
+            )}
+          >
+            <Download data-icon="inline-start" />
+            {t.exports.download}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,8 +12,6 @@ import {
   FORGOT_PASSWORD_RATE_LIMIT_WINDOW_SECONDS,
 } from "@/constants/rate-limit"
 
-// Not configured (e.g. local dev without an Upstash account) → every limiter
-// below no-ops rather than blocking requests, same as before this existed.
 const isConfigured = Boolean(
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
 );

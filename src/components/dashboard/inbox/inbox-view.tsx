@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Check,
@@ -29,6 +29,7 @@ import {
   inboxTimeLabel,
   type InvoiceRow,
 } from "@/lib/invoices"
+import { FALLBACK_TIME_ZONE, INTL_LOCALE } from "@/lib/dashboard/format-date"
 import type { InboxListQuery } from "@/lib/invoices/inbox-query"
 import { paginationRange } from "@/lib/pagination"
 import type { DashboardDictionary } from "@/lib/dashboard/i18n"
@@ -65,6 +66,16 @@ function buildHref(pathname: string, next: InboxListQuery): string {
   return qs ? `${pathname}?${qs}` : pathname
 }
 
+const subscribeToNothing = () => () => {}
+const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
+const getServerTimeZone = () => FALLBACK_TIME_ZONE
+
+// Server render uses UTC; the browser swaps in its own zone after hydration
+// without a hydration mismatch.
+function useViewerTimeZone(): string {
+  return useSyncExternalStore(subscribeToNothing, getBrowserTimeZone, getServerTimeZone)
+}
+
 type Group = { label: string; items: InvoiceRow[] }
 
 // inboxGroupLabel / inboxTimeLabel return English "Today" / "Yesterday".
@@ -93,7 +104,9 @@ export function InboxView({
   grandTotal: number
   pageCount: number
 }) {
-  const { t } = useDashboardI18n()
+  const { t, locale } = useDashboardI18n()
+  const timeZone = useViewerTimeZone()
+  const labelOptions = { locale: INTL_LOCALE[locale], timeZone }
   const router = useRouter()
   const pathname = usePathname()
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -136,7 +149,7 @@ export function InboxView({
   const groups: Group[] = (() => {
     const map = new Map<string, InvoiceRow[]>()
     for (const inv of invoices) {
-      const label = inboxGroupLabel(inv.created_at, nowIso)
+      const label = inboxGroupLabel(inv.created_at, nowIso, labelOptions)
       const list = map.get(label) ?? []
       list.push(inv)
       map.set(label, list)
@@ -172,7 +185,7 @@ export function InboxView({
           {t.inbox.title}
         </h1>
         <p className="text-[12px] text-muted-foreground tabular-nums">
-          {totalCount} of {grandTotal}
+          {t.inbox.countOf.replace("{count}", String(totalCount)).replace("{total}", String(grandTotal))}
         </p>
       </div>
 
@@ -315,7 +328,7 @@ export function InboxView({
                                     {invoice.vendor ?? t.detail.unknownVendor}
                                   </span>
                                   <span className="shrink-0 text-[11px] text-muted-foreground">
-                                    {timeLabel(inboxTimeLabel(invoice.created_at, nowIso), t)}
+                                    {timeLabel(inboxTimeLabel(invoice.created_at, nowIso, labelOptions), t)}
                                   </span>
                                 </span>
                                 <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
@@ -344,7 +357,10 @@ export function InboxView({
 
           <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/60 px-3 py-2">
             <p className="text-[11px] text-muted-foreground tabular-nums">
-              {rangeStart}–{rangeEnd} of {totalCount}
+              {t.inbox.rangeOf
+                .replace("{start}", String(rangeStart))
+                .replace("{end}", String(rangeEnd))
+                .replace("{total}", String(totalCount))}
             </p>
             <div className="flex items-center gap-1">
               <Button

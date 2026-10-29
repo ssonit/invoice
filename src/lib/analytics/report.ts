@@ -1,3 +1,4 @@
+import { formatShortMonth } from "@/lib/dashboard/format-date";
 import { sumByCurrency, type CurrencyTotal, type InvoiceRow } from "@/lib/invoices";
 
 export type SpendTrendPoint = { month: string; amount: number };
@@ -37,7 +38,7 @@ function monthKey(date: Date): string {
 }
 
 function monthLabel(date: Date): string {
-  return date.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+  return formatShortMonth(date);
 }
 
 export function buildAnalyticsReport(

@@ -38,11 +38,11 @@ export default async function InboxPage({
   if (query.status === "review") {
     dbQuery = dbQuery.eq("needs_review", true)
   } else if (query.status === "approved") {
-    dbQuery = dbQuery.eq("needs_review", false).gte("confidence_score", 0.9)
+    dbQuery = dbQuery.eq("needs_review", false).not("approved_at", "is", null)
   } else if (query.status === "extracted") {
     dbQuery = dbQuery
       .eq("needs_review", false)
-      .or("confidence_score.lt.0.9,confidence_score.is.null")
+      .is("approved_at", null)
   }
 
   const [{ data, count }, { count: grandTotal }] = await Promise.all([

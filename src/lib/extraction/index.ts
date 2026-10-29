@@ -43,13 +43,6 @@ async function callProvider(
   input: ExtractionInput,
   method: ExtractionMetrics["method"],
 ): Promise<ExtractionOutcome> {
-  // Timed here rather than in each wrapper: this is the one layer that knows
-  // which provider ran, and it keeps the wrappers free of timing code. It's
-  // also the one place every extraction call passes through regardless of
-  // provider, so it's where rate-limit/failure and usage logging live too —
-  // the email path (process-extraction.ts) has no try/catch of its own
-  // around this call, so without logging here a provider failure there was
-  // otherwise invisible outside the Trigger.dev dashboard.
   const startedAt = Date.now();
   let result: ExtractionResult;
   try {

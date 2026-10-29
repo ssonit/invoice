@@ -38,9 +38,8 @@ export function buildExportHref(query: ExportQuery): string {
   return qs ? `/api/exports/invoices?${qs}` : "/api/exports/invoices";
 }
 
-/** First-of-month UTC ISO string `months` months ago. */
 export function rangeStartIso(now: Date, months: number): string {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  d.setUTCMonth(d.getUTCMonth() - months);
+  d.setUTCMonth(d.getUTCMonth() - months + 1);
   return d.toISOString();
 }

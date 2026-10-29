@@ -6,6 +6,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { useInView } from "@/hooks/use-in-view"
 import { useReportRpc } from "@/hooks/use-report-rpc"
 import { parseAnalyticsAggregates, reportFromAggregates } from "@/lib/analytics/aggregates"
+import { INTL_LOCALE } from "@/lib/dashboard/format-date"
 import { rangeStartIso, type AnalyticsQuery } from "@/lib/analytics/query"
 import { AnalyticsToolbar } from "@/components/dashboard/analytics/analytics-toolbar"
 import { AnalyticsStatCards } from "@/components/dashboard/analytics/analytics-stat-cards"
@@ -29,7 +30,7 @@ export function AnalyticsReportView({
   query: AnalyticsQuery
   requestedCurrency?: string
 }) {
-  const { t } = useDashboardI18n()
+  const { t, locale } = useDashboardI18n()
   const { ref, isInView } = useInView<HTMLDivElement>()
   const startDate = rangeStartIso(new Date(), query.range).slice(0, DATE_ONLY_LENGTH)
 
@@ -43,8 +44,8 @@ export function AnalyticsReportView({
   const data = result.status === "ready" ? result.data : null
   const report = useMemo(
     () =>
-      data ? reportFromAggregates(data, query.range, new Date(), requestedCurrency) : null,
-    [data, query.range, requestedCurrency],
+      data ? reportFromAggregates(data, query.range, new Date(), requestedCurrency, INTL_LOCALE[locale]) : null,
+    [data, query.range, requestedCurrency, locale],
   )
 
   const currencyKeys = report

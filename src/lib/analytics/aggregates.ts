@@ -4,6 +4,7 @@
 // currency, fills month buckets and folds the long vendor tail into "Other".
 
 import { type CurrencyTotal } from "@/lib/invoices";
+import { DEFAULT_INTL_LOCALE, formatShortMonth } from "@/lib/dashboard/format-date";
 import {
   TOP_VENDOR_LIMIT,
   type AnalyticsReport,
@@ -106,6 +107,7 @@ export function reportFromAggregates(
   months: number,
   now: Date = new Date(),
   selectedCurrency?: string,
+  locale: string = DEFAULT_INTL_LOCALE,
 ): AnalyticsReport {
   const totalsByCurrency: CurrencyTotal[] = aggregates.byCurrency
     .filter((entry) => entry.count > 0)
@@ -136,7 +138,7 @@ export function reportFromAggregates(
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
       monthlySpend.push({
-        month: d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
+        month: formatShortMonth(d, locale),
         amount: spendByMonth.get(monthBucketKey(d)) ?? 0,
       });
     }

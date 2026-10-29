@@ -25,7 +25,6 @@ export type NavGroup = {
   items: NavItem[]
 }
 
-/** Dashboard navigation — live routes work; soon/beta open a placeholder page. */
 export const navGroups: NavGroup[] = [
   {
     label: "Workspace",

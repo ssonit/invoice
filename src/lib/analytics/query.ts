@@ -9,7 +9,6 @@ const DEFAULT_RANGE: AnalyticsRange = 6;
 function clampRange(raw: number): AnalyticsRange {
   if (raw <= 6) return 6;
   if (raw >= 12) return 12;
-  // Between 6 and 12 (exclusive) — shouldn't happen with current UI, pick nearest
   return raw - 6 < 12 - raw ? 6 : 12;
 }
 
@@ -30,6 +29,6 @@ export function buildAnalyticsHref(query: AnalyticsQuery): string {
 
 export function rangeStartIso(now: Date, months: number): string {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  d.setUTCMonth(d.getUTCMonth() - months);
+  d.setUTCMonth(d.getUTCMonth() - months + 1);
   return d.toISOString();
 }

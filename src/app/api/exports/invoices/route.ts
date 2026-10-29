@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseExportQuery, rangeStartIso } from "@/lib/exports/query";
 import { invoicesToCsv } from "@/lib/exports/csv";
-import { normalizeInvoice } from "@/lib/invoices";
-import { effectiveInvoiceDate } from "@/lib/analytics/report";
+import { normalizeInvoice, type InvoiceRow } from "@/lib/invoices";
 
 const MAX_EXPORT_ROWS = 5_000;
+const EXPORT_PAGE_SIZE = 500;
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -22,50 +22,51 @@ export async function GET(request: Request) {
     status: searchParams.get("status") ?? undefined,
   });
 
-  let dbQuery = supabase
-    .from("invoices")
-    .select("*")
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(MAX_EXPORT_ROWS);
+  const now = new Date();
+  const rows: InvoiceRow[] = [];
+  while (rows.length <= MAX_EXPORT_ROWS) {
+    let dbQuery = supabase
+      .from("invoices")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
 
-  // Apply date window unless range is "all"
-  if (query.range !== "all") {
-    const start = rangeStartIso(new Date(), query.range);
-    dbQuery = dbQuery.or(`issue_date.gte.${start},created_at.gte.${start}`);
-  }
+    if (query.range !== "all") {
+      const start = rangeStartIso(now, query.range);
+      dbQuery = dbQuery.or(
+        `issue_date.gte.${start.slice(0, 10)},and(issue_date.is.null,created_at.gte.${start})`,
+      );
+    }
 
-  // Apply status filter
-  if (query.status === "review") {
-    dbQuery = dbQuery.eq("needs_review", true);
-  } else if (query.status === "ok") {
-    dbQuery = dbQuery.eq("needs_review", false);
-  }
+    if (query.status === "review") {
+      dbQuery = dbQuery.eq("needs_review", true);
+    } else if (query.status === "ok") {
+      dbQuery = dbQuery.eq("needs_review", false);
+    }
 
-  const { data, error } = await dbQuery;
-
-  if (error) {
-    console.error("Failed to fetch export invoices", user.id, error);
-    return NextResponse.json(
-      { error: "Could not fetch invoices. Please try again." },
-      { status: 500 },
+    const { data, error } = await dbQuery.range(
+      rows.length,
+      Math.min(rows.length + EXPORT_PAGE_SIZE - 1, MAX_EXPORT_ROWS),
     );
+
+    if (error) {
+      console.error("Failed to fetch export invoices", user.id, error);
+      return NextResponse.json(
+        { error: "Could not fetch invoices. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    if (!data?.length) break;
+    rows.push(...data.map(normalizeInvoice));
   }
 
-  const allRows = (data ?? []).map(normalizeInvoice);
-  const truncated = allRows.length >= MAX_EXPORT_ROWS;
+  const truncated = rows.length > MAX_EXPORT_ROWS;
+  const csv = invoicesToCsv(rows.slice(0, MAX_EXPORT_ROWS), { truncated });
 
-  // Post-filter by effective date when range is set (same as Analytics)
-  let rows = allRows;
-  if (query.range !== "all") {
-    const startDate = new Date(rangeStartIso(new Date(), query.range));
-    rows = allRows.filter((row) => effectiveInvoiceDate(row) >= startDate);
-  }
-
-  const csv = invoicesToCsv(rows, { truncated });
-
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = now.toISOString().slice(0, 10);
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

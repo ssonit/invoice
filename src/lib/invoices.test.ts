@@ -40,8 +40,17 @@ describe("getInboxStatus", () => {
     );
   });
 
-  it("returns 'approved' for high confidence", () => {
-    expect(getInboxStatus(row({ confidence_score: 0.9 }))).toBe("approved");
+  it("never treats high model confidence as human approval", () => {
+    expect(getInboxStatus(row({ confidence_score: 0.9 }))).toBe("extracted");
+    expect(getInboxStatus(row({ confidence_score: 1 }))).toBe("extracted");
+  });
+
+  it("honors explicit approval regardless of model confidence", () => {
+    expect(getInboxStatus(row({ confidence_score: 0.5, approved_at: "2026-10-28T00:00:00Z" }))).toBe("approved");
+  });
+
+  it("a review request takes precedence over a previous approval", () => {
+    expect(getInboxStatus(row({ needs_review: true, approved_at: "2026-10-28T00:00:00Z" }))).toBe("review");
   });
 
   it("returns 'extracted' for lower confidence that isn't flagged for review", () => {
