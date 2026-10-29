@@ -2,8 +2,7 @@
 
 **Date:** 2026-07-29
 **Status:** Approved for implementation
-**Source:** `Invoice_Reader_Product_Ideas.md` §1 (Cached document), plus the measurement gap
-found while deferring [`2026-07-29-extraction-routing-design.md`](2026-07-29-extraction-routing-design.md)
+**Source:** `Invoice_Reader_Product_Ideas.md` §1 (Cached document)
 
 ## Goal
 

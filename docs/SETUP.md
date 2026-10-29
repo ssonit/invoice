@@ -25,7 +25,7 @@ Upstash does **not** cover email forwarding — that path has no rate limit at a
 
 ## Optional — email forwarding
 Adds a per-user forwarding address; forwarded emails are parsed automatically.
-Set **all three** or none (the app refuses to start with a partial setup):
+Set both AgentMail keys or neither; Trigger.dev is optional:
 - `AGENTMAIL_API_KEY`, `AGENTMAIL_WEBHOOK_SECRET` — agentmail.to; webhook URL `https://<your-domain>/api/webhooks/agentmail`, event `message.received`.
   Cost note: one inbox per user. At time of writing: Free = 3 inboxes, $20/mo = 10, $200/mo = 150.
 - `TRIGGER_SECRET_KEY` — optional. cloud.trigger.dev. Without it the webhook processes each email itself after replying 200 (no queue, no automatic retry, bounded by the 300s function limit); with it, emails go through background tasks with retries. Edit `project` in `trigger.config.ts` to your own project ref, then `npx trigger.dev@latest deploy` (locally, run `npx trigger.dev@latest dev` next to `npm run dev`).

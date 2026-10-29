@@ -52,8 +52,9 @@ irregular gaps). The mark persists an `origin=manual` row in
 merged into the detection pipeline alongside auto-detected ones — manual overrides
 auto-detect for the same vendor.
 
-Eligibility: vendor must have at least one invoice with an `issue_date`. The latest
-invoice is used to derive `lastAmount`, `lastIssueDate`, and `nextExpectedDate`.
+Eligibility: vendor must have at least one invoice. The latest invoice is used to
+derive `lastAmount`, `lastIssueDate`, and `nextExpectedDate`, falling back to
+`created_at` when `issue_date` is absent.
 The resulting candidate enters the same reminder window as auto-detected subscriptions.
 
 Implementation: `buildManualCandidates()` + `mergeSubscriptionCandidates()` in
@@ -73,6 +74,6 @@ Manual marks extend the same table with `origin` and `cycle` columns
 
 ## Out of scope (v1)
 
-- Outbound email reminders via AgentMail send (AgentMail is receive-only today).
+- Outbound email reminders.
 - Confirmation history/audit log (upsert-only, latest state wins).
 - Cost/savings estimate ("you could save $X/year by cancelling").

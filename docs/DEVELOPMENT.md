@@ -45,7 +45,7 @@ cd .claude/worktrees/xyz
 
 | Step | Command | What it catches |
 |------|---------|-----------------|
-| Test | `npm run test` | Unit test regressions (Vitest, ~358 tests) |
+| Test | `npm run test` | Unit test regressions (Vitest) |
 | Lint | `npm run lint` | React/TS code quality, unused vars, hook rules |
 | Type-check | `npx tsc --noEmit` | Type errors across the whole project |
 

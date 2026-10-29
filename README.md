@@ -18,7 +18,7 @@ AI-powered invoice inbox: forward bills to a unique email address or upload PDFs
 - Node.js 20.9+
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (local stack)
 - A key for at least one extraction provider
-- Optionally, AgentMail + Trigger.dev accounts (email forwarding — set all three keys or none)
+- Optionally, AgentMail for email forwarding and Trigger.dev for background processing
 - Optionally, an Upstash Redis database (upload rate limiting —
   https://console.upstash.com, free tier)
 
@@ -55,13 +55,13 @@ All required variables are listed in [`.env.local.example`](.env.local.example):
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser + server Supabase client |
 | `SUPABASE_SECRET_KEY` | Privileged server paths (bypass RLS carefully) |
-| `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification (optional, with `TRIGGER_SECRET_KEY`) |
+| `AGENTMAIL_API_KEY` / `AGENTMAIL_WEBHOOK_SECRET` | Inbox provisioning + webhook verification (set both or neither) |
 | `TRIGGER_SECRET_KEY` | Trigger.dev task queue (optional, with the AgentMail pair); edit `project` in `trigger.config.ts` |
 | `EXTRACTION_PROVIDER` + provider API keys | Invoice OCR / extraction |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upload rate limiting (optional) |
 
 Supabase and the selected extraction provider's key are validated at server startup
-(`src/instrumentation.ts`), as is the email-forwarding group (all three or none) — a
+(`src/instrumentation.ts`), as is the AgentMail key pair — a
 missing required variable fails fast with a clear error instead of an obscure runtime
 failure. Never commit `.env.local`.
 
@@ -124,8 +124,9 @@ CI gates every PR with `lint → test → tsc --noEmit → build` — see
 
 ## Docs
 
+- [`docs/SELL-PRIVATE-INSTALL-VI.md`](docs/SELL-PRIVATE-INSTALL-VI.md) — gói cài riêng, mẫu báo giá, demo và checklist bàn giao cho doanh nghiệp nhỏ
+- [`docs/PRIVATE-INSTALL-ACCEPTANCE-VI.md`](docs/PRIVATE-INSTALL-ACCEPTANCE-VI.md) — mẫu biên bản nghiệm thu cho từng khách
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — plan → code → test → security review → deploy
-- [`docs/DASHBOARD.md`](docs/DASHBOARD.md) — dashboard UI map
 - [`docs/system-hardening.md`](docs/system-hardening.md) — auth recovery, upload dedup, account soft-delete
 - [`docs/third-party-services.md`](docs/third-party-services.md) — AgentMail, Trigger.dev, Upstash, Supabase setup notes
 - [`.claude/rules/`](.claude/rules/) — standing code conventions

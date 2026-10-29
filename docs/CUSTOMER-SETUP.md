@@ -109,8 +109,8 @@ downloads attachments, extracts invoices and replies to the sender.
    `https://<your-domain>/api/webhooks/agentmail`. Copy its signing secret into
    `AGENTMAIL_WEBHOOK_SECRET`.
 
-Set all three variables (`AGENTMAIL_API_KEY`, `AGENTMAIL_WEBHOOK_SECRET`,
-`TRIGGER_SECRET_KEY`) or none. A partial set stops the app at startup.
+Set both AgentMail keys or neither. `TRIGGER_SECRET_KEY` is optional; without it,
+the webhook processes email after responding, without automatic retries.
 
 ### 3. Verify (do this on a deployed URL, or locally through a tunnel)
 

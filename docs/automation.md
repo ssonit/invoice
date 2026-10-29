@@ -22,7 +22,7 @@ single-description cards from [Vercel Marketplace](https://vercel.com/marketplac
 verb-first action per card from [Cursor's MCP install links](https://cursor.com/docs/context/mcp/install-links);
 and the intake address shown once with a status pill from
 [Linear email intake](https://linear.app/integrations/create-issues-via-email). Visual
-style stays inside [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) tokens rather than copying those
+style stays inside [`globals.css`](../src/app/globals.css) tokens rather than copying those
 products' styling.
 
 Brand marks come from `simple-icons` as local SVG paths. The set has no OpenAI/ChatGPT,

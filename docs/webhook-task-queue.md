@@ -1,8 +1,9 @@
 # AgentMail webhook → Trigger.dev task queue
 
-Inbound invoice email is no longer processed inside the AgentMail webhook request.
-The route verifies the Svix signature, filters to `message.received`, then hands off
-to Trigger.dev and returns `200 { "status": "queued" }` immediately.
+The route verifies the Svix signature and filters to `message.received`. When
+Trigger.dev is configured and accepts the task, it returns `200 { "status": "queued" }`.
+Otherwise, it returns `200 { "status": "processing" }` and processes the email via
+`after()`, without automatic retries.
 
 ## Request path vs background work
 

@@ -31,13 +31,10 @@ calling `extractInvoice()`. A `(user_id, content_hash)` match short-circuits the
 and returns the existing invoice — no LLM call spent on an exact re-upload. On a miss, the
 row is saved via `.upsert(..., { onConflict: "user_id,content_hash" })` rather than
 `.insert()`, so a race between two concurrent uploads of the same file can't create a
-duplicate row either. `content_hash` is only ever set for `source = 'upload'` rows — the
-email path already dedupes independently via `source_ref`/`source_message_id`.
+duplicate row either.
 
 ## Invoices page: pagination + server-side filtering
 
-Originally scoped to `/dashboard/invoices` — Overview still needs the complete invoice
-history for stats/trend and is not list-paginated the same way.
 `src/lib/pagination.ts` (offset/page-count math) and `src/lib/invoices/query.ts`
 (page/vendor/status URL-param parsing) are pure and unit-tested; the invoices page itself builds a
 Supabase query with `.range()` + `.ilike()` + `.eq("needs_review", ...)` driven by those
@@ -52,7 +49,7 @@ regression versus rewriting sort as a server-side query param too.
 
 **Extended to `/dashboard/inbox` (2026-07-25):** same pattern —
 `src/lib/invoices/inbox-query.ts` (page/q/status/source parsing, unit-tested) drives a
-server-side `.range()` + `.or(ilike...)` query in `page.tsx`, with `InboxView` switched
+server-side `.range()` + `.ilike("search_text", ...)` query in `page.tsx`, with `InboxView` switched
 from local `useState`/`useMemo` filtering to props-driven data + URL navigation (the
 `selectedId` detail-pane selection stays client-only — never reflected in the URL).
 
@@ -64,17 +61,6 @@ history), so pagination is a server-side `Array.slice()` after that compute. The
 not shipping off-page vendors (and their nested invoice windows) in the RSC payload.
 `VendorsList` drops local page `useState`; sheet/edit/delete/lazy-invoice state stays
 client-only. Search/filter/sort resets `page` to 1.
-
-Inbox's status filter (`review`/`extracted`/`approved`, from `getInboxStatus()` in
-`src/lib/invoices.ts`) isn't a single DB column — it combines two columns, translated to
-SQL in `page.tsx` as:
-```
-review:    needs_review = true
-approved:  needs_review = false AND confidence_score >= 0.9
-extracted: needs_review = false AND (confidence_score < 0.9 OR confidence_score IS NULL)
-```
-All three translations were verified directly against Postgres counts during manual
-testing (see Verification below) and matched exactly.
 
 While rewriting `InboxView`'s state management, a second (pre-existing, not
 newly-introduced) instance of the `setState`-inside-`useEffect` anti-pattern was found and

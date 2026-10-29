@@ -11,6 +11,6 @@ shadcn/ui primitives live in `src/components/ui/`, customized — re-running
 or review the diff before accepting any regeneration.
 
 Dark-mode-only design tokens, lime accent (`#E8FF47`), Outfit display font — full details
-in [`docs/DESIGN-SYSTEM.md`](../../docs/DESIGN-SYSTEM.md) and
-[`docs/DASHBOARD.md`](../../docs/DASHBOARD.md). Don't introduce new one-off colors/fonts
+in [`src/app/globals.css`](../../src/app/globals.css) and
+[`src/app/layout.tsx`](../../src/app/layout.tsx). Don't introduce new one-off colors/fonts
 outside those tokens without checking there first.

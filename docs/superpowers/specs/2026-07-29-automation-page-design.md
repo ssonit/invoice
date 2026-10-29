@@ -73,7 +73,7 @@ button on all eight cards means the same control eight times, which is the templ
 worth avoiding. The address is a workspace-level resource, so it is presented once.
 
 **Style is not borrowed, only structure.** This project already has a strict token system
-([`docs/DESIGN-SYSTEM.md`](../../DESIGN-SYSTEM.md)): cards are `rounded-[14px]` with
+([`globals.css`](../../../src/app/globals.css)): cards are `rounded-[14px]` with
 `shadow-none`, type is limited to 11/12/13/14/15px, hierarchy comes from weight and color
 rather than size, transitions are 150/200/300ms only, and dashboard surfaces carry no
 gradients. Every component below stays inside those tokens.
