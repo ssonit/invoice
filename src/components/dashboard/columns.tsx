@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { compareInvoiceAmounts, type InvoiceRow } from "@/lib/invoices";
+import { compareInvoiceAmounts, formatInvoiceDate, type InvoiceRow } from "@/lib/invoices";
 import type { DashboardDictionary } from "@/lib/dashboard/i18n";
 
 function SortHeader({
@@ -27,7 +27,7 @@ function SortHeader({
   );
 }
 
-export function getColumns(t: DashboardDictionary): ColumnDef<InvoiceRow>[] {
+export function getColumns(t: DashboardDictionary, intlLocale: string): ColumnDef<InvoiceRow>[] {
   return [
   {
     accessorKey: "vendor",
@@ -40,7 +40,7 @@ export function getColumns(t: DashboardDictionary): ColumnDef<InvoiceRow>[] {
     accessorKey: "invoice_number",
     header: t.invoicesList.colNumber,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.invoice_number ?? "-"}</span>
+      <span className="text-foreground/80">{row.original.invoice_number ?? "-"}</span>
     ),
     enableSorting: false,
   },
@@ -66,14 +66,16 @@ export function getColumns(t: DashboardDictionary): ColumnDef<InvoiceRow>[] {
     accessorKey: "issue_date",
     header: ({ column }) => <SortHeader label={t.invoicesList.colIssueDate} column={column} />,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.issue_date ?? "-"}</span>
+      <span className="text-foreground/80">
+        {row.original.issue_date ? formatInvoiceDate(row.original.issue_date, intlLocale) : "-"}
+      </span>
     ),
   },
   {
     accessorKey: "source",
     header: t.invoicesList.colSource,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">
+      <span className="text-foreground/80">
         {t.inbox.sourceFilters[row.original.source] ?? row.original.source}
       </span>
     ),

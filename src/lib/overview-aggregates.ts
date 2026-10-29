@@ -3,6 +3,7 @@
 // InvoiceStats / TrendPoint structures the Overview cards render.
 
 import type { CurrencyTotal, InvoiceStats, TrendPoint } from "@/lib/invoices";
+import { DEFAULT_INTL_LOCALE, formatShortMonth } from "@/lib/dashboard/format-date";
 
 export const OVERVIEW_TREND_MONTHS = 6;
 
@@ -90,6 +91,7 @@ export function trendFromOverviewAggregates(
   aggregates: OverviewAggregates,
   now: Date = new Date(),
   months = OVERVIEW_TREND_MONTHS,
+  locale: string = DEFAULT_INTL_LOCALE,
 ): TrendPoint[] {
   const countByMonth = new Map(aggregates.byMonth.map((m) => [m.month, m.count]));
   const points: TrendPoint[] = [];
@@ -97,7 +99,7 @@ export function trendFromOverviewAggregates(
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
     points.push({
-      month: d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
+      month: formatShortMonth(d, locale),
       count: countByMonth.get(key) ?? 0,
     });
   }

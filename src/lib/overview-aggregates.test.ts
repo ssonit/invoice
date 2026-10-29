@@ -82,6 +82,12 @@ describe("trendFromOverviewAggregates", () => {
     ]);
   });
 
+  it("labels months in the requested locale", () => {
+    const points = trendFromOverviewAggregates(base, NOW, 3, "vi-VN");
+    expect(points.map((p) => p.month)).not.toEqual(["May", "Jun", "Jul"]);
+    expect(points[0].month).toMatch(/5/);
+  });
+
   it("handles a window crossing a year boundary", () => {
     const points = trendFromOverviewAggregates(
       { ...base, byMonth: [{ month: "2025-12", count: 4 }] },

@@ -8,6 +8,16 @@ import { SUBSCRIPTION_CONFIRMATION_STATUS } from "@/constants/subscriptions";
 import { confirmSubscription, unmarkVendorSubscription } from "@/app/dashboard/vendors/actions";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n";
 
 type ManageAction = "cancel" | "reactivate" | "unmark";
@@ -16,15 +26,18 @@ type ManageAction = "cancel" | "reactivate" | "unmark";
 // back, or stop tracking the vendor as a subscription altogether.
 export function SubscriptionManageButtons({
   vendorKey,
+  vendorName,
   isCancelled,
 }: {
   vendorKey: string;
+  vendorName: string;
   isCancelled: boolean;
 }) {
   const { t } = useDashboardI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [pendingAction, setPendingAction] = useState<ManageAction | null>(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 
   function run(action: ManageAction) {
     setPendingAction(action);
@@ -49,6 +62,7 @@ export function SubscriptionManageButtons({
             ? t.vendors.reactivated
             : t.vendors.unmarked,
       );
+      setIsCancelDialogOpen(false);
       router.refresh();
     });
   }
@@ -76,7 +90,7 @@ export function SubscriptionManageButtons({
           size="sm"
           variant="outline"
           disabled={isPending}
-          onClick={() => run("cancel")}
+          onClick={() => setIsCancelDialogOpen(true)}
         >
           {icon("cancel", <Ban data-icon="inline-start" />)}
           {t.vendors.cancelSubscription}
@@ -92,6 +106,35 @@ export function SubscriptionManageButtons({
         {icon("unmark", <Tag data-icon="inline-start" />)}
         {t.vendors.unmarkSubscription}
       </Button>
+
+      <AlertDialog
+        open={isCancelDialogOpen}
+        onOpenChange={(next) => !isPending && setIsCancelDialogOpen(next)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.vendors.cancelSubscriptionTitle.replace("{vendor}", vendorName)}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t.vendors.cancelSubscriptionDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>{t.vendors.keepSubscription}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                run("cancel");
+              }}
+            >
+              {isPending && pendingAction === "cancel"
+                ? t.vendors.cancelling
+                : t.vendors.cancelSubscription}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

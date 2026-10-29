@@ -302,6 +302,7 @@ export function VendorsList({
                     <div className="mt-3 border-t border-border pt-3">
                       <SubscriptionManageButtons
                         vendorKey={selected.key}
+                        vendorName={selected.label}
                         isCancelled={selected.subscription.status === "cancelled"}
                       />
                     </div>

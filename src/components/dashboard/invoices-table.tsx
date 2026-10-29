@@ -14,6 +14,8 @@ import { getColumns } from "./columns";
 import { useDashboardI18n } from "./dashboard-i18n";
 import { InvoicesToolbar } from "./invoices-toolbar";
 import { InvoiceDetail } from "./invoice-detail";
+import { INTL_LOCALE } from "@/lib/dashboard/format-date";
+import { normalizeSearchText } from "@/lib/invoices/search";
 import type { InvoiceRow } from "@/lib/invoices";
 import type { InvoiceListQuery } from "@/lib/invoices/query";
 import { Button } from "@/components/ui/button";
@@ -35,9 +37,9 @@ import {
 } from "@/components/ui/empty";
 
 export function InvoicesTable({
-  data,
+  data: serverData,
   query,
-  totalCount,
+  totalCount: serverTotalCount,
   pageCount,
   isEmailIntakeEnabled,
 }: {
@@ -47,13 +49,36 @@ export function InvoicesTable({
   pageCount: number;
   isEmailIntakeEnabled: boolean;
 }) {
-  const { t } = useDashboardI18n();
-  const columns = useMemo(() => getColumns(t), [t]);
+  const { t, locale } = useDashboardI18n();
+  const columns = useMemo(() => getColumns(t, INTL_LOCALE[locale]), [t, locale]);
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Rows hidden the moment a delete succeeds, before the refreshed server data
+  // arrives; once a refresh drops them from `serverData` they no longer count.
+  const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
+  // What the user has typed but the server hasn't answered yet.
+  const [typedSearch, setTypedSearch] = useState<string | null>(null);
+
+  const withoutDeleted = useMemo(
+    () => serverData.filter((invoice) => !deletedIds.has(invoice.id)),
+    [serverData, deletedIds],
+  );
+  const removedCount = serverData.length - withoutDeleted.length;
+  const isSearchPending =
+    typedSearch !== null &&
+    normalizeSearchText(typedSearch) !== normalizeSearchText(query.vendor);
+  // Filter the loaded page instantly while the server query is in flight.
+  const data = useMemo(() => {
+    if (!isSearchPending) return withoutDeleted;
+    const needle = normalizeSearchText(typedSearch ?? "");
+    return withoutDeleted.filter((invoice) =>
+      normalizeSearchText(`${invoice.vendor ?? ""} ${invoice.invoice_number ?? ""}`).includes(needle),
+    );
+  }, [withoutDeleted, isSearchPending, typedSearch]);
+  const totalCount = isSearchPending ? data.length : Math.max(serverTotalCount - removedCount, 0);
   const selectedInvoice = data.find((invoice) => invoice.id === selectedId) ?? null;
 
   // TanStack Table returns non-memoizable functions; React Compiler skips it.
@@ -81,13 +106,13 @@ export function InvoicesTable({
   // Onboarding copy is only right for an account with no invoices at all; a
   // filtered search that matches nothing falls through to the table's
   // "no matches" row, keeping the toolbar's Clear button reachable.
-  const hasActiveFilters = Boolean(query.vendor) || query.status !== "all";
+  const hasActiveFilters = Boolean(query.vendor) || query.status !== "all" || isSearchPending;
   const isEmpty = data.length === 0 && totalCount === 0 && !hasActiveFilters;
 
   if (isEmpty) {
     return (
       <div className="flex flex-col gap-3">
-        <InvoicesToolbar query={query} resultCount={totalCount} />
+        <InvoicesToolbar query={query} resultCount={totalCount} onSearchChange={setTypedSearch} />
         <Empty className="rounded-[14px] border border-border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -107,7 +132,7 @@ export function InvoicesTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <InvoicesToolbar query={query} resultCount={totalCount} />
+      <InvoicesToolbar query={query} resultCount={totalCount} onSearchChange={setTypedSearch} />
 
       <div className={isPending ? "opacity-70" : undefined}>
         <div className="overflow-x-auto rounded-[14px] border border-border">
@@ -202,6 +227,7 @@ export function InvoicesTable({
               key={selectedInvoice.id}
               invoice={selectedInvoice}
               onClose={() => setSelectedId(null)}
+              onDeleted={(id) => setDeletedIds((current) => new Set(current).add(id))}
             />
           ) : null}
         </SheetContent>

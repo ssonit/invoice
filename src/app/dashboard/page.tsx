@@ -4,7 +4,8 @@ import { ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { ContentShell } from "@/components/dashboard/content-shell"
 import { OverviewReportView } from "@/components/dashboard/overview-report-view"
-import { normalizeInvoice } from "@/lib/invoices"
+import { formatInvoiceDate, normalizeInvoice } from "@/lib/invoices"
+import { INTL_LOCALE } from "@/lib/dashboard/format-date"
 import { getDashboardDictionary } from "@/lib/dashboard/locale-server"
 import { GettingStarted } from "@/components/dashboard/getting-started"
 import { isEmailIntakeConfigured } from "@/lib/email-intake"
@@ -29,7 +30,7 @@ export default async function DashboardOverviewPage() {
 
   const recent = (data ?? []).map(normalizeInvoice)
   const totalCount = count ?? recent.length
-  const { t } = await getDashboardDictionary()
+  const { t, locale } = await getDashboardDictionary()
 
   return (
     <ContentShell
@@ -86,7 +87,9 @@ export default async function DashboardOverviewPage() {
                       {invoice.invoice_number
                         ? `#${invoice.invoice_number}`
                         : t.overview.noNumber}
-                      {invoice.issue_date ? ` · ${invoice.issue_date}` : ""}
+                      {invoice.issue_date
+                        ? ` · ${formatInvoiceDate(invoice.issue_date, INTL_LOCALE[locale])}`
+                        : ""}
                     </p>
                   </div>
                   <p className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">

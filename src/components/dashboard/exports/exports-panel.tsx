@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 
@@ -33,7 +33,7 @@ function buildPageHref(query: ExportQuery): string {
 }
 
 export function ExportsPanel({
-  query,
+  query: committedQuery,
   count,
 }: {
   query: ExportQuery;
@@ -52,6 +52,17 @@ export function ExportsPanel({
   };
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Highlight the clicked filter immediately; the count below is stale until
+  // the server answers, so it shows a placeholder while pending.
+  const [targetQuery, setTargetQuery] = useState<ExportQuery>(committedQuery);
+  const query = isPending ? targetQuery : committedQuery;
+
+  function selectFilter(next: ExportQuery) {
+    setTargetQuery(next);
+    startTransition(() => {
+      router.push(buildPageHref(next));
+    });
+  }
   const capped = count > MAX_EXPORT_ROWS;
   const downloadHref = buildExportHref(query);
 
@@ -64,14 +75,7 @@ export function ExportsPanel({
               key={String(value)}
               variant={query.range === value ? "secondary" : "ghost"}
               size="sm"
-              disabled={isPending}
-              onClick={() => {
-                startTransition(() => {
-                  router.push(
-                    buildPageHref({ ...query, range: value }),
-                  );
-                });
-              }}
+              onClick={() => selectFilter({ ...query, range: value })}
             >
               {rangeLabels[value]}
             </Button>
@@ -83,14 +87,7 @@ export function ExportsPanel({
               key={value}
               variant={query.status === value ? "secondary" : "ghost"}
               size="sm"
-              disabled={isPending}
-              onClick={() => {
-                startTransition(() => {
-                  router.push(
-                    buildPageHref({ ...query, status: value }),
-                  );
-                });
-              }}
+              onClick={() => selectFilter({ ...query, status: value })}
             >
               {statusLabels[value]}
             </Button>
@@ -98,7 +95,15 @@ export function ExportsPanel({
         </div>
       </div>
 
-      {count === 0 ? (
+      {isPending ? (
+        <div
+          className="rounded-[14px] border border-border p-6"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-[13px] text-muted-foreground">{t.exports.calculating}</p>
+        </div>
+      ) : count === 0 ? (
         <Empty className="rounded-[14px] border border-border">
           <EmptyHeader>
             <EmptyMedia variant="icon">

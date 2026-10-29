@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
+import { useDashboardI18n } from "@/components/dashboard/dashboard-i18n"
+import { INTL_LOCALE } from "@/lib/dashboard/format-date"
 import { useInView } from "@/hooks/use-in-view"
 import { useReportRpc } from "@/hooks/use-report-rpc"
 import {
@@ -18,6 +20,7 @@ import { ChartSkeleton, ReportError, StatCardsSkeleton } from "@/components/dash
  * this block scrolls into view (IntersectionObserver).
  */
 export function OverviewReportView() {
+  const { locale } = useDashboardI18n()
   const { ref, isInView } = useInView<HTMLDivElement>()
 
   // Computed once per mount so the RPC args stay stable across re-renders.
@@ -40,7 +43,13 @@ export function OverviewReportView() {
 
   const data = result.status === "ready" ? result.data : null
   const stats = useMemo(() => (data ? statsFromOverviewAggregates(data) : null), [data])
-  const trend = useMemo(() => (data ? trendFromOverviewAggregates(data) : null), [data])
+  const trend = useMemo(
+    () =>
+      data
+        ? trendFromOverviewAggregates(data, new Date(), undefined, INTL_LOCALE[locale])
+        : null,
+    [data, locale],
+  )
 
   return (
     <div ref={ref} className="flex flex-col gap-5">

@@ -84,9 +84,11 @@ function toEditForm(invoice: Pick<InvoiceRow, "vendor" | "invoice_number" | "iss
 export function InvoiceDetail({
   invoice,
   onClose,
+  onDeleted,
 }: {
   invoice: InvoiceRow
   onClose?: () => void
+  onDeleted?: (id: string) => void
 }) {
   const { t, locale } = useDashboardI18n()
   const intlLocale = INTL_LOCALE[locale]
@@ -145,6 +147,7 @@ export function InvoiceDetail({
       }
       toast.success(t.detail.deleted)
       setIsDeleteOpen(false)
+      onDeleted?.(invoice.id)
       onClose?.()
       router.refresh()
     })

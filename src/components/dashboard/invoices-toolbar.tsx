@@ -30,9 +30,11 @@ function buildHref(pathname: string, next: InvoiceListQuery): string {
 export function InvoicesToolbar({
   query,
   resultCount,
+  onSearchChange,
 }: {
   query: InvoiceListQuery
   resultCount: number
+  onSearchChange?: (value: string) => void
 }) {
   const { t } = useDashboardI18n()
   const statusLabels: Record<InvoiceListStatus, string> = {
@@ -88,7 +90,10 @@ export function InvoicesToolbar({
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={vendor}
-            onChange={(e) => setVendor(e.target.value)}
+            onChange={(e) => {
+              setVendor(e.target.value)
+              onSearchChange?.(e.target.value)
+            }}
             placeholder={t.invoices.searchPlaceholder}
             className="h-8 ps-8"
             aria-label={t.invoices.searchLabel}
@@ -113,6 +118,7 @@ export function InvoicesToolbar({
             size="sm"
             onClick={() => {
               setVendor("")
+              onSearchChange?.("")
               startTransition(() => router.push(pathname))
             }}
           >
